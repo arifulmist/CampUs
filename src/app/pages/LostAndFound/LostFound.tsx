@@ -102,6 +102,9 @@ export function LostFound() {
   // or we decide to close programmatically (Post).
   const allowCloseRef = useRef(false);
 
+  // ref to native file input so we can clear its value (browsers may keep it)
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // open comments dialog for a post
   const openComments = (post: LFPost) => {
     setActivePost(post);
@@ -115,6 +118,30 @@ export function LostFound() {
 
   function generateId(prefix = "lf-") {
     return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  }
+
+  // Reset function to clear the announce form and preview and native file input
+  function resetForm() {
+    setForm({
+      title: "",
+      description: "",
+      date: "",
+      time: "",
+      file: undefined,
+    });
+    setImageDataUrl(null);
+    setImageName(null);
+    setPreviewOpen(false);
+    setTitleError(false);
+
+    // clear native input if available
+    if (fileInputRef.current) {
+      try {
+        fileInputRef.current.value = "";
+      } catch {
+        // ignore if browser forbids it
+      }
+    }
   }
 
   // When user picks a file: store file, imageName, and read data URL for preview/storage
@@ -165,20 +192,8 @@ export function LostFound() {
       [newPost.id]: prev[newPost.id] ?? [],
     }));
 
-    // reset form and preview
-    setForm({
-      title: "",
-      description: "",
-      date: "",
-      time: "",
-      file: undefined,
-    });
-    setImageDataUrl(null);
-    setImageName(null);
-
-    // reset file input element if present
-    const fileInput = document.getElementById("lf-file-input") as HTMLInputElement | null;
-    if (fileInput) fileInput.value = "";
+    // reset form and preview (clear file input via ref)
+    resetForm();
 
     // allow dialog to close and then close
     allowCloseRef.current = true;
@@ -223,25 +238,38 @@ export function LostFound() {
   // Open announce modal (explicit opener) - ensures no accidental close allowed
   function openAnnounceModal() {
     allowCloseRef.current = false;
+    // clear any stale state immediately so the dialog shows fresh content
+    resetForm();
     setIsAnnounceOpen(true);
+  }
+
+  // Local explicit close: invoked by the visible close button (DialogClose)
+  // Reset the form and allow close then close the dialog.
+  function handleClose() {
+    allowCloseRef.current = true;
+    // reset before closing so parent sees cleared state if needed
+    resetForm();
+    setIsAnnounceOpen(false);
   }
 
   // Dialog's onOpenChange handler that blocks unsolicited closes
   function handleAnnounceDialogChange(nextOpen: boolean) {
     if (nextOpen) {
-      // dialog opened
+      // dialog opened -> ensure fresh form and block accidental close
       allowCloseRef.current = false;
+      resetForm();
       setIsAnnounceOpen(true);
       return;
     }
-    // nextOpen === false: a close was requested (overlay click, ESC, DialogClose)
+    // nextOpen === false: a close was requested (overlay click, ESC, etc.)
     if (allowCloseRef.current) {
-      // allowed close
+      // allowed close -> reset and close
+      resetForm();
       setIsAnnounceOpen(false);
       allowCloseRef.current = false;
       setTitleError(false);
     } else {
-      // ignore the close request (re-open)
+      // not allowed -> re-open (ignore the user's accidental close)
       setIsAnnounceOpen(true);
     }
   }
@@ -279,10 +307,12 @@ export function LostFound() {
               <DialogTitle>Announce Lost or Found Item</DialogTitle>
 
               {/* Use the library's default close control (DialogClose).
-                  Clicking this will set allowCloseRef and then close the dialog. */}
+                  Clicking this will call our handleClose to reset and allow close. */}
               <DialogClose
-                onClick={() => {
-                  allowCloseRef.current = true;
+                onClick={(e) => {
+                  // prevent nested DialogClose's default behavior from racing with our state change:
+                  e.stopPropagation();
+                  handleClose();
                 }}
                 className="absolute top-4 right-4 rounded-full bg-white/90 p-2 border border-stroke-grey"
                 aria-label="Close announce dialog"
@@ -348,7 +378,7 @@ export function LostFound() {
               <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] items-center gap-3">
                 <Button
                   className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
-                  onClick={() => document.getElementById("lf-file-input")?.click()}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   Upload Image
                 </Button>
@@ -356,9 +386,12 @@ export function LostFound() {
                 <div className="flex items-center gap-3">
                   <input
                     id="lf-file-input"
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={handleFileInput}
+                    onChange={(e) => {
+                      handleFileInput(e);
+                    }}
                     className="hidden"
                   />
 

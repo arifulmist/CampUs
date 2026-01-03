@@ -1,5 +1,5 @@
 import { PostBody } from "@/components/PostBody.tsx";
-import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
+import { UpcomingEventsHome } from "@/components/UpcomingEventsHome.tsx";
 
 import { placeholderUser } from "@/lib/placeholderUser.ts";
 import placeholderPostImg from "@/assets/images/placeholderPostImg.png";
@@ -12,7 +12,6 @@ const content = {
 };
 const user = placeholderUser;
 
-
 export function Home() {
   return (
     <div className="flex gap-10 h-full w-full p-10">
@@ -20,7 +19,7 @@ export function Home() {
         <PostBody title={title} content={content} user={user} />
         <PostBody title={title} content={content} user={user} />
       </div>
-      <UpcomingEvents />
+      <UpcomingEventsHome />
     </div>
   );
 }

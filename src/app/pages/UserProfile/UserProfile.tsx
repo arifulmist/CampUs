@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { UpcomingEvents } from "@/components/UpcomingEvents";
+import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
 import {
   Select,
   SelectContent,
@@ -35,10 +35,7 @@ import { useNavigate } from "react-router-dom";
 import { openChatWith } from "@/app/pages/Messaging/backend/chatStore";
 import UserProfileUpdate from "./components/UserProfileUpdate"; // new modal component
 import { InterestedPosts } from "./components/InterestedPosts";
-import {
-  getInterested,
-  subscribe,
-} from "./backend/interestedStore";
+import { getInterested, subscribe } from "./backend/interestedStore";
 import type { InterestedItem } from "./backend/interestedStore";
 type Skill = { title: string; detail?: string };
 type Contact = {
@@ -47,7 +44,10 @@ type Contact = {
 };
 export function UserProfile() {
   const [messageOpen, setMessageOpen] = useState(false);
-  const [chatTarget, setChatTarget] = useState<{ id: string; name: string } | null>(null);
+  const [chatTarget, setChatTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [skills, setSkills] = useState<Skill[]>([
     { title: "UI/UX", detail: "MIST INNOVATION CLUB" },
     { title: "Java, MySQL, C++", detail: "MIST Academic Courses" },
@@ -309,7 +309,7 @@ export function UserProfile() {
     <div className="min-h-screen w-full bg-background-lm text-text-lm animate-fade-in pb-8">
       {/* Page-level Navbar to match the provided design */}
       <div className="container mx-auto px-4">
-        <div className="grid items-start grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(0,1fr)_350px]">
           {/* Main profile card */}
           <section className="rounded-2xl border border-stroke-grey bg-primary-lm shadow-sm animate-slide-in">
             {/* Header */}
@@ -637,7 +637,7 @@ export function UserProfile() {
             </div>
           </section>
           {/* Sidebar: Upcoming Events (shared component) + Interested Posts */}
-          <div className="flex flex-col gap-6">
+          <div className="hidden lg:flex lg:flex-col gap-6 w-[350px] lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-96px)] lg:overflow-hidden">
             <UpcomingEvents />
             <InterestedPosts items={interestedPosts} />
           </div>
@@ -843,6 +843,3 @@ export function UserProfile() {
     </div>
   );
 }
-
-
-
