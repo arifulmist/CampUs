@@ -31,6 +31,27 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
   // preview modal open state (for expanded image view)
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Reset function to clear the form
+  function resetForm() {
+    setCategory("workshop");
+    setTitle("");
+    setTagInput("");
+    setTags([]);
+    setSegments([{ id: generateId(), name: "", description: "", date: "", time: "" }]);
+    setImageDataUrl(null);
+    setImageName(null);
+    setTitleError(false);
+    setPreviewOpen(false);
+  }
+
+  // Ensure the modal opens with cleared state every time `open` becomes true
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (!open) return;
@@ -82,6 +103,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
   function addTag() {
     const t = tagInput.trim();
     if (!t) return;
+    // preserve uniqueness
     setTags(prev => [...new Set([...prev, t])]);
     setTagInput("");
   }
@@ -113,6 +135,11 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
     };
 
     onCreate(post);
+
+    // clear internal state immediately so nothing lingers
+    resetForm();
+
+    // then tell parent to close
     onClose();
   }
 
