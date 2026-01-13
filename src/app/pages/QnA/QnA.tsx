@@ -1,16 +1,7 @@
 import { useState, Suspense, useEffect, useRef } from "react";
-import {
-  Search,
-  Heart as HeartIcon,
-  MessageCircle as MessageIcon,
-  Share2 as ShareIcon,
-  MoreVertical,
-  Check,
-  Tag as TagIcon,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +9,14 @@ import {
   DialogTitle,
 } from "../../../components/ui/dialog";
 import { Textarea } from "../../../components/ui/textarea";
-import { Badge } from "../../../components/ui/badge";
+import { UserInfo } from "@/components/UserInfo";
+import {
+  LikeButton,
+  CommentButton,
+  ShareButton,
+} from "../../../components/PostButtons";
 import { PostDetail } from "./components/PostDetail";
+import { addNotification } from "../../../lib/notifications";
 
 type Post = {
   id: string;
@@ -50,11 +47,11 @@ const initialMockPosts: Post[] = [
     authorAvatar: "/abstract-geometric-shapes.png",
     authorCourse: "NSE-18",
     content:
-      "Hello! I recently decided to write a research paper inspired by my seniors. My interests include cybersecurity and AI, but I’m a newbie. Can anyone guide me? (This demo post includes a fairly long body to show wrapping and read-more behavior.)",
+      "Hello! I recently decided to write a research paper inspired by my seniors. My interests include cybersecurity and AI, but I’m a newbie. I tried learning about Machine Learning, Pattern Recognition, LLMs and other jargon but it's all still very confusing to me. Like it just straight up flies over my head. As for cybersecurity, I find OSINT problems fun to solve, but Web Hacking is my absolute weak spot. Can anyone guide me?",
     category: "Advice",
     tags: ["Research", "Academic"],
-    reactions: 54,
-    comments: 33,
+    reactions: 0,
+    comments: 3,
     shares: 1,
     timestamp: "2 days ago",
   },
@@ -68,9 +65,9 @@ const initialMockPosts: Post[] = [
       "I want to start a deep fake detection project for my final year. Any suggestions?",
     category: "Question",
     tags: ["AI", "Project"],
-    reactions: 42,
-    comments: 18,
-    shares: 3,
+    reactions: 0,
+    comments: 3,
+    shares: 1,
     timestamp: "3 days ago",
   },
 ];
@@ -141,6 +138,13 @@ function QAPageContent() {
       timestamp: "Just now",
     };
     setPosts((p) => [created, ...p]);
+    // Notify: new QnA post created
+    addNotification({
+      type: "qna",
+      title: `New QnA Post: ${title}`,
+      description: newPost.description,
+      path: "/qna",
+    });
     setIsNewPostOpen(false);
     setNewPost({ title: "", description: "", tags: [], category: "Question" });
   }
@@ -148,16 +152,67 @@ function QAPageContent() {
   // add an inline comment to a post (increments comment count)
   function addInlineComment(postId: string, commentText: string) {
     if (!commentText.trim()) return;
-    setPosts((prev) =>
-      prev.map((p) =>
+    // Update comments count, then open detail view with updated post
+    setPosts((prev) => {
+      const next = prev.map((p) =>
         p.id === postId ? { ...p, comments: p.comments + 1 } : p
-      )
-    );
+      );
+      const updated = next.find((p) => p.id === postId) || null;
+      setSelectedPost(updated);
+      return next;
+    });
   }
 
+  // Inject a small style reset to force native scrollbar appearance for this component only.
+  useEffect(() => {
+    // create and append style element
+    const style = document.createElement("style");
+    style.dataset.qna = "reset-scrollbar";
+    style.innerHTML = `
+      /* limit to QnA container so we don't affect other pages */
+      .qna-reset-scrollbar {
+        /* restore platform/native scrollbar behavior */
+        scrollbar-width: auto !important; /* Firefox */
+        -ms-overflow-style: auto !important; /* IE 10+ */
+      }
+
+      /* WebKit browsers: try to restore default thumb/track look */
+      .qna-reset-scrollbar::-webkit-scrollbar {
+        width: auto !important;
+        height: auto !important;
+        background: transparent !important;
+        -webkit-appearance: scrollbar !important;
+      }
+      .qna-reset-scrollbar::-webkit-scrollbar-thumb {
+        background: initial !important;
+        border-radius: initial !important;
+        border: none !important;
+        -webkit-appearance: scrollbarthumb !important;
+      }
+      .qna-reset-scrollbar::-webkit-scrollbar-track {
+        background: initial !important;
+        -webkit-appearance: scrollbartrack !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background-lm animate-fade-in">
-      <main className="mx-auto max-w-4xl px-4 py-6">
+    // add qna-reset-scrollbar class so our injected CSS affects this component only
+    <div
+      className="qna-reset-scrollbar min-h-screen bg-background-lm animate-fade-in"
+      style={{
+        minHeight: "100vh",
+        overflowY: "auto", // allow native scrollbars when needed (auto instead of forced scroll)
+      }}
+    >
+      <main
+        className="mx-auto max-w-4xl px-4 py-6 w-full box-border"
+        style={{ boxSizing: "border-box" }}
+      >
         {selectedPost ? (
           <PostDetail
             post={{ ...selectedPost, commentsCount: selectedPost.comments }}
@@ -167,35 +222,41 @@ function QAPageContent() {
           <>
             {/* Search + New Post */}
             <div className="mb-6 flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent-lm" />
+              <div className="relative flex-1 min-w-0 w-[60vw] rounded-md bg-primary-lm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 text-accent-lm" />
                 <Input
                   placeholder="Search anything"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 pl-9 rounded-full bg-primary-lm border border-stroke-grey placeholder:text-text-lighter-lm focus:ring-2 focus:ring-accent-lm focus:border-accent-lm"
+                  className="h-10 w-full min-w-0 pl-9 rounded-full bg-primary-lm border border-stroke-grey placeholder:text-text-lighter-lm focus:ring-2 focus:ring-accent-lm focus:border-accent-lm"
                 />
               </div>
-              <Button
-                onClick={() => setIsNewPostOpen(true)}
-                className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
-              >
-                New Post
-              </Button>
+
+              {/* New Post button kept same width to avoid reflow */}
+              <div className="shrink-0">
+                <Button
+                  onClick={() => setIsNewPostOpen(true)}
+                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4"
+                >
+                  New Post
+                </Button>
+              </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6">
+            {/* Tabs: centered and fixed button widths so switching doesn't reflow */}
+            <div className="flex gap-2 mb-6 justify-center">
               {(["All", "Question", "Advice", "Resource"] as const).map(
                 (tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                    // min-w ensures every button occupies same space; text-center avoids shifts
+                    className={`min-w-22 box-border text-center px-3 py-2 rounded-full text-sm font-medium transition focus:outline-none ${
                       activeTab === tab
                         ? "bg-accent-lm text-primary-lm"
                         : "bg-primary-lm text-text-lm hover:bg-hover-lm"
                     }`}
+                    aria-pressed={activeTab === tab}
                   >
                     {tab}
                   </button>
@@ -203,17 +264,27 @@ function QAPageContent() {
               )}
             </div>
 
-            {/* Posts */}
-            <div className="space-y-4">
-              {filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onOpenDetail={() => setSelectedPost(post)}
-                  onLike={() => toggleLike(post.id)}
-                  onAddInlineComment={(text) => addInlineComment(post.id, text)}
-                />
-              ))}
+            {/* Posts: reserve a minimum height so switching to empty doesn't collapse layout */}
+            <div className="space-y-4 min-h-48">
+              {filteredPosts.length === 0 ? (
+                <div className="flex items-center justify-center min-h-48">
+                  <p className="text-text-lighter-lm text-lg">
+                    No posts in this category
+                  </p>
+                </div>
+              ) : (
+                filteredPosts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onOpenDetail={() => setSelectedPost(post)}
+                    onLike={() => toggleLike(post.id)}
+                    onAddInlineComment={(text) =>
+                      addInlineComment(post.id, text)
+                    }
+                  />
+                ))
+              )}
             </div>
           </>
         )}
@@ -221,9 +292,7 @@ function QAPageContent() {
 
       {/* New Post Dialog */}
       <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
-        <DialogContent
-          className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm max-h-[80vh] overflow-y-auto"
-        >
+        <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Post</DialogTitle>
           </DialogHeader>
@@ -232,7 +301,9 @@ function QAPageContent() {
             <Input
               placeholder="Title"
               value={newPost.title}
-              onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+              onChange={(e) =>
+                setNewPost({ ...newPost, title: e.target.value })
+              }
               className="w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
             />
 
@@ -247,10 +318,6 @@ function QAPageContent() {
             />
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-text-lm">
-                <TagIcon className="h-4 w-4 text-accent-lm" />
-                <span className="text-sm font-medium text-text-lm">Tag</span>
-              </div>
               <div className="flex flex-wrap gap-2">
                 {(["Question", "Advice", "Resource"] as const).map((cat) => (
                   <button
@@ -264,9 +331,6 @@ function QAPageContent() {
                         : "border-stroke-grey bg-primary-lm text-text-lm hover:bg-hover-lm"
                     }`}
                   >
-                    {newPost.category === cat && (
-                      <Check className="h-3.5 w-3.5 text-accent-lm" />
-                    )}
                     {cat}
                   </button>
                 ))}
@@ -293,6 +357,11 @@ function QAPageContent() {
  * - Detects overflow and shows "Read More" when needed
  * - Clicking "Read More" or the Comment icon expands the card in-place (revealing full content + inline reply box)
  * - Clicking the card header/title opens the detail view
+ *
+ * Layout notes:
+ * - `min-h-[14rem]` keeps cards visually consistent across tabs
+ * - `flex flex-col` + `justify-between` pins the footer (actions + timestamp) to the bottom
+ * - main content sits in a `flex-grow` container so long text doesn't change the overall card height below the min
  */
 function PostCard({
   post,
@@ -311,209 +380,170 @@ function PostCard({
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
 
-  // measure overflow
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
-
-    const check = () => {
-      // small tolerance
-      setShowReadMore(el.scrollHeight > el.clientHeight + 1);
-    };
-
-    // run on next tick to let layout settle
-    const t = setTimeout(check, 0);
-    window.addEventListener("resize", check);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", check);
-    };
+    setShowReadMore(el.scrollHeight > el.clientHeight + 1);
   }, [post.content]);
-
-  function handleCommentClick(e?: React.MouseEvent) {
-    // If event provided, stop it from opening detail. We expand inline instead.
-    e?.stopPropagation();
-    setCollapsed(false);
-    setReplying(true);
-  }
-
-  function submitReply() {
-    const txt = replyText.trim();
-    if (!txt) return;
-    onAddInlineComment(txt);
-    setReplyText("");
-    setReplying(false);
-    // keep expanded so user sees their comment effect
-  }
 
   return (
     <div
-      // clicking outside buttons opens detail
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpenDetail();
-        }
+      onClick={() => {
+        // Avoid navigating to detail while composing a reply
+        if (!replying) onOpenDetail();
       }}
-      onClick={onOpenDetail}
-      className="bg-primary-lm p-6 rounded-xl border border-stroke-grey shadow-sm hover:shadow-md hover:border-stroke-peach transition animate-slide-in"
-      style={{ cursor: "pointer" }}
+      className="
+        relative
+        bg-secondary-lm p-8 rounded-2xl
+        border-2 border-stroke-grey
+        hover:bg-hover-lm hover:border-stroke-peach
+        transition cursor-pointer w-full box-border
+        min-h-56 flex flex-col justify-between
+      "
     >
-      <div className="flex justify-between mb-3">
-        <Badge className={`rounded-full px-3 py-1 border ${categoryStyles[post.category]}`}>
-          {post.category}
-        </Badge>
-        <MoreVertical className="h-5 w-5 text-accent-lm" />
+      <span
+        className={`
+        absolute top-4 right-4
+        px-3 py-1 font-semibold rounded-full border
+        ${categoryStyles[post.category]}
+      `}
+      >
+        {post.category}
+      </span>
+
+      {/* Top: user + title */}
+      <div>
+        <UserInfo
+          userImg={post.authorAvatar}
+          userName={post.author}
+          userBatch={post.authorCourse}
+        />
+
+        <h5 className="font-[Poppins] font-semibold text-text-lm mt-2">
+          {post.title}
+        </h5>
       </div>
 
-      <div className="mb-2">
-        <h3
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail();
-          }}
-          className="text-lg font-semibold text-text-lm mb-2 wrap-break-word whitespace-normal max-w-full"
-        >
-          {post.title}
-        </h3>
-
-        <div className="flex items-center gap-2 mb-3">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={post.authorAvatar} />
-            <AvatarFallback>{post.author[0]}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-medium text-text-lm">{post.author}</span>
-          <span className="text-sm text-text-lighter-lm">{post.timestamp}</span>
-        </div>
-
-        {/* CONTENT area: fixed collapsed height so card doesn't grow */}
+      {/* Middle: content + tags (flex-grow so footer stays at bottom) */}
+      <div className="grow mt-3">
         <div
           ref={contentRef}
-          className="text-text-lm mb-2 wrap-break-word whitespace-normal max-w-full"
-          style={
-            collapsed
-              ? { maxHeight: "6rem", overflow: "hidden" } // fixed collapsed height
-              : {}
-          }
+          className="text-text-lighter-lm text-md leading-relaxed"
+          style={collapsed ? { maxHeight: "6rem", overflow: "hidden" } : {}}
         >
           {post.content}
         </div>
 
-        {/* Read More toggles collapsed state */}
         {showReadMore && (
-          <Button
-            variant="ghost"
-            className="ml-0 h-auto p-0 text-accent-lm"
+          <button
             onClick={(e) => {
-              e.stopPropagation(); // don't open detail
+              e.stopPropagation();
               setCollapsed((c) => !c);
-              // if expanding, also show reply area
-              if (collapsed) {
-                setReplying(true);
-              }
+              if (collapsed) setReplying(true);
+            }}
+            className="text-accent-lm text-sm font-medium mt-1"
+          >
+            {collapsed ? "Read more" : "Show less"}
+          </button>
+        )}
+
+        <div className="flex gap-2 flex-wrap mt-3">
+          <span className="font-bold bg-[#C23D00] text-primary-lm px-3 py-1.5 rounded-full text-sm">
+            #{post.category}
+          </span>
+          {post.tags.map((tag) => (
+            <span
+              key={tag}
+              className="font-bold bg-[#C23D00] text-primary-lm px-3 py-1.5 rounded-full text-sm"
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer: actions + timestamp + inline reply area (if expanded) */}
+      <div>
+        <div className="flex gap-4 items-center mt-4">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onLike();
             }}
           >
-            {collapsed ? "Read More" : "Show less"}
-          </Button>
-        )}
-      </div>
+            <LikeButton />
+          </button>
 
-      {/* Image / other content can follow here if needed */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail();
+            }}
+          >
+            <CommentButton />
+          </button>
 
-      <div className="mt-4 flex items-center gap-3">
-        {/* Like: stop propagation so it doesn't open detail */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onLike();
-          }}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm"
-        >
-          <HeartIcon className="h-4 w-4" />
-          <span className="text-sm font-bold">{post.reactions}</span>
-        </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              alert("Share clicked");
+            }}
+          >
+            <ShareButton />
+          </button>
+        </div>
 
-        {/* Comment: expand inline rather than open detail */}
-        <button
-          type="button"
-          onClick={(e) => handleCommentClick(e)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm"
-        >
-          <MessageIcon className="h-4 w-4" />
-          <span className="text-sm font-bold">{post.comments}</span>
-        </button>
+        <p className="text-xs text-text-lighter-lm mt-2">{post.timestamp}</p>
 
-        {/* Share: keep local, stop propagation */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            alert("Share clicked (implement share logic)");
-          }}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm"
-        >
-          <ShareIcon className="h-4 w-4" />
-          <span className="text-sm font-bold">{post.shares}</span>
-        </button>
-      </div>
-
-      {/* Inline reply area shown when expanded or replying */}
-      {!collapsed && (
-        <div className="mt-4 bg-primary-lm rounded-xl p-4 shadow-sm border border-stroke-grey">
-          {!replying ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setReplying(true);
-              }}
-              className="w-full text-left px-4 py-3 text-text-lighter-lm text-sm hover:bg-hover-lm rounded-lg transition-colors"
-            >
-              Add a reply
-            </button>
-          ) : (
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Add a reply..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                className="min-h-25 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
-              />
-              <div className="flex items-center justify-between pt-2 border-t border-stroke-grey">
-                <span className="text-xs text-text-lighter-lm italic">
-                  Replying as You
-                </span>
-                <div className="flex gap-2">
+        {/* INLINE REPLY (kept in footer but reserves space only when visible) */}
+        {!collapsed && (
+          <div className="mt-4 bg-secondary-lm rounded-2xl p-6 border-2 border-stroke-grey">
+            {!replying ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setReplying(true);
+                }}
+                className="w-full text-left px-4 py-3 text-text-lighter-lm text-sm hover:bg-hover-lm rounded-lg transition"
+              >
+                Add a reply
+              </button>
+            ) : (
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Add a reply..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="border-none bg-secondary-lm text-text-lm focus-visible:ring-0"
+                />
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setReplying(false);
                       setReplyText("");
                     }}
-                    className="text-text-lm"
                   >
                     Cancel
                   </Button>
                   <Button
-                    size="sm"
-                    className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      submitReply();
+                    className="bg-accent-lm text-primary-lm"
+                    onClick={() => {
+                      onAddInlineComment(replyText);
+                      setReplyText("");
+                      setReplying(false);
                     }}
                   >
                     Comment
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

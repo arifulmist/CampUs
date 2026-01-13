@@ -9,14 +9,11 @@ export function SignupLoginBox({
   title: string;
 }) {
   return (
-    /* Full viewport wrapper → consistent centering everywhere */
-    <div className="min-h-screen flex items-center justify-center">
-      
-      {/* Your original box — width preserved */}
-      <div className="flex flex-row mx-10 my-8 bg-secondary-lm rounded-3xl shadow-lg shadow-stroke-grey w-[85vw] max-w-350">
+    <div className="min-h-screen flex items-center justify-center">      
+      <div className="flex flex-row mx-10 my-8 bg-secondary-lm rounded-3xl shadow-lg shadow-stroke-grey w-[85vw] max-w-350 h-165">
         
         {/* Left section */}
-        <div className="px-12 py-8 flex flex-col justify-center gap-3 w-1/2">
+        <div className="px-12 py-8 flex flex-col justify-center gap-3 w-1/2 overflow-y-auto">
           <p className="text-text-lm text-xl font-[Poppins] font-medium">
             {title}
           </p>

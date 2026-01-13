@@ -6,6 +6,7 @@ export type ChatMessage = {
   from: "me" | "other";
   text: string;
   ts: number;
+  status?: "pending" | "sent" | "delivered" | "failed";
 };
 
 export type ChatThread = {
@@ -19,10 +20,26 @@ type Listener = (state: {
   activeUserId: string | null;
 }) => void;
 
+const STORAGE_KEY = "app.chat.v1";
 const state: { threads: ChatThread[]; activeUserId: string | null } = {
   threads: [],
   activeUserId: null,
 };
+
+// hydrate from localStorage
+(function hydrate() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        threads?: ChatThread[];
+        activeUserId?: string | null;
+      };
+      state.threads = Array.isArray(parsed.threads) ? parsed.threads : [];
+      state.activeUserId = parsed.activeUserId ?? null;
+    }
+  } catch {}
+})();
 
 const listeners: Listener[] = [];
 
@@ -31,6 +48,15 @@ function notify() {
     threads: [...state.threads],
     activeUserId: state.activeUserId,
   };
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        threads: state.threads,
+        activeUserId: state.activeUserId,
+      })
+    );
+  } catch {}
   listeners.forEach((l) => l(snapshot));
 }
 
@@ -80,6 +106,7 @@ export function sendMessage(text: string) {
     from: "me",
     text: msg,
     ts: Date.now(),
+    status: "pending",
   });
   notify();
 }
@@ -94,4 +121,31 @@ export function receiveMessage(fromUserId: string, text: string) {
     ts: Date.now(),
   });
   notify();
+}
+
+// ---- Conversation helpers (min/max id pair) ----
+export type ConversationMessage = {
+  conversationId: string;
+  senderId: string;
+  text: string;
+  timestamp: number;
+};
+
+const convMessages: ConversationMessage[] = [];
+
+export function getConversationId(a: string, b: string) {
+  const [minId, maxId] = [a, b].sort();
+  return `${minId}_${maxId}`;
+}
+
+export function addConversationMessage(
+  conversationId: string,
+  senderId: string,
+  text: string
+) {
+  convMessages.push({ conversationId, senderId, text, timestamp: Date.now() });
+}
+
+export function getConversationMessages(conversationId: string) {
+  return convMessages.filter((m) => m.conversationId === conversationId);
 }

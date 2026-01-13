@@ -10,7 +10,7 @@ interface PasswordProps {
   onMatchChange?: (matches: boolean) => void;
 }
 
-const checkPasswordStrength = (password: string) => {
+export const checkPasswordStrength = (password: string) => {
   if (!password) return { score: 0, messages: [], strength: "" };
   
   let score:number = 0;
@@ -87,19 +87,18 @@ export function Password({
     <>
       {/* Password Input with Toggle */}
       <div className="relative">
-        <InputField
+       <InputField
+          name="password"
           label={label}
           type={showPassword ? "text" : "password"}
           value={value}
           changeHandler={handleInputChange}
-        ></InputField>
-        
-        {/* View/Hide Toggle Button */}
-        <button
-          type="button"
-          onClick={togglePasswordVisibility}
-          className="absolute mt-2 ml-2 focus:outline-none"
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          rightSlot={
+          <button
+            type="button"
+            onClick={togglePasswordVisibility}
+            className="absolute mt-2 ml-2 focus:outline-none"
+            aria-label={showPassword ? "Hide password" : "Show password"}
         >
           {showPassword ? (
             // Eye closed icon (hide password)
@@ -124,13 +123,14 @@ export function Password({
               <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
             </svg>
           )}
-        </button>
+          </button>}
+        ></InputField>
       </div>
 
-      {/* Password Strength Indicator */}
+       {/*Password strength*/}
       {showStrength && value && (
-        <div className="mt-2">
-          <div className="flex align-center gap-1 w-3/4 text-sm mb-1">
+        <div className="mt-2 w-full">
+          <div className="flex align-center gap-1 w-full text-sm mb-1">
             <span>
               Password strength: <strong>{passwordStrength.strength}</strong>
             </span>
@@ -138,7 +138,7 @@ export function Password({
           </div>
           
           {/* Strength Bar */}
-          <div className="h-2 w-3/4 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-2 w-full bg-stroke-grey rounded-full overflow-hidden">
             <div
               className="h-full transition-all duration-300"
               style={{
@@ -148,7 +148,7 @@ export function Password({
             />
           </div>
           
-          {/* Requirements List */}
+          
           {passwordStrength.messages.length > 0 && (
             <p className="text-xs text-gray-600 mt-1">
               Requirements: {passwordStrength.messages.join(", ")}
@@ -157,7 +157,7 @@ export function Password({
         </div>
       )}
 
-      {/* Password Match Indicator (only when compareValue is provided) */}
+      {/* Password Match Indicator*/}
       {compareValue && value && (
         <p
           className={`text-sm mt-2 ${passwordsMatch ? "text-text-lighter-lm" : "text-accent-lm"}`}

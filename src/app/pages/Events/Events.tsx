@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import postImg from "@/assets/images/placeholderPostImg.png";
-import CategorySelection, { type CategoryKey } from "../../../components/CategorySelection";
-import EventPost from "./components/EventPost";
+import { CategoryFilter } from "@/components/Category_Events_CollabHub/CategoryFilter";
+import type { Category } from "@/components/Category_Events_CollabHub/Category";
 import CreateEventModal from "./components/CreateEventModal";
 import EventPostDetail from "./components/EventPostDetail";
-
+import { PostBody } from "@/components/PostBody";
+import { placeholderUser } from "../../../lib/placeholderUser";
+import { addNotification } from "../../../lib/notifications";
 
 type Segment = {
   id: string;
@@ -39,8 +41,7 @@ const initialPosts: EventPostType[] = [
     dept: "CSE-23",
     excerpt:
       "For the first time, MIST Cyber Security Club is hosting a 3-in-1 event exclusively for MIST students! CyberVoid'25 kicks off on Dec 10, 2025...",
-    body:
-      "For the first time, MIST Cyber Security Club is hosting a 3-in-1 event exclusively for MIST students! CyberVoid'25 kicks off on Dec 10, 2025, and wraps up on Dec 12. Don't miss out on this incredible 3-day experience! Register now and secure your spot! Features include cybersecurity quiz, CTF challenges and hands-on workshops.",
+    body: "For the first time, MIST Cyber Security Club is hosting a 3-in-1 event exclusively for MIST students! CyberVoid'25 kicks off on Dec 10, 2025, and wraps up on Dec 12. Don't miss out on this incredible 3-day experience! Register now and secure your spot! Features include cybersecurity quiz, CTF challenges and hands-on workshops.",
     image: postImg,
     segments: [
       {
@@ -70,7 +71,8 @@ const initialPosts: EventPostType[] = [
     title: "Cloud Security Seminar — Industry speakers",
     author: "Cloud Club",
     dept: "EECE",
-    excerpt: "Join industry experts for a seminar on modern cloud security architecture...",
+    excerpt:
+      "Join industry experts for a seminar on modern cloud security architecture...",
     body: "An in-depth seminar with speakers from major cloud providers covering best practices for secure deployments.",
     image: null,
     segments: [],
@@ -83,10 +85,9 @@ const initialPosts: EventPostType[] = [
 
 export function Events() {
   const [posts, setPosts] = useState<EventPostType[]>(initialPosts);
-  const [filter, setFilter] = useState<CategoryKey>("all");
+  const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
 
-  // selected post for detail view
   const [selectedPost, setSelectedPost] = useState<EventPostType | null>(null);
 
   const filtered = useMemo(() => {
@@ -95,13 +96,52 @@ export function Events() {
   }, [posts, filter]);
 
   function handleCreate(post: EventPostType) {
-    setPosts((prev) => [post, ...prev]);
+    // ensure created post has defaults so layout behavior stays consistent
+    const normalized: EventPostType = {
+      id: post.id ?? Date.now().toString(),
+      category: post.category ?? "workshop",
+      title: post.title ?? "Untitled",
+      author: post.author ?? "Unknown",
+      dept: post.dept ?? "",
+      excerpt: post.excerpt ?? "",
+      body: post.body ?? "",
+      image: typeof post.image !== "undefined" ? post.image : null,
+      segments: post.segments ?? [],
+      tags: post.tags ?? [],
+      likes: post.likes ?? 0,
+      comments: post.comments ?? 0,
+      shares: post.shares ?? 0,
+    };
+
+    setPosts((prev) => [normalized, ...prev]);
+    addNotification({
+      type: "event",
+      title: `New Event: ${normalized.title}`,
+      description: normalized.excerpt || normalized.body,
+      path: "/events",
+    });
   }
 
-  // when user clicks a post: show detail
   function openDetail(post: EventPostType) {
-    setSelectedPost(post);
-    // optionally scroll to top:
+    // normalize post before selecting to avoid missing properties or capitalization issues
+    const normalized: EventPostType = {
+      id: post.id ?? Date.now().toString(),
+      category: post.category ?? "workshop",
+      title: post.title ?? "Untitled",
+      author: post.author ?? "Unknown",
+      dept: post.dept ?? "",
+      excerpt: post.excerpt ?? "",
+      body: post.body ?? "",
+      image: typeof post.image !== "undefined" ? post.image : null,
+      segments: post.segments ?? [],
+      tags: post.tags ?? [],
+      likes: post.likes ?? 0,
+      comments: post.comments ?? 0,
+      shares: post.shares ?? 0,
+    };
+
+    setSelectedPost(normalized);
+    // keep UX friendly: scroll top to show detail (optional)
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -111,35 +151,79 @@ export function Events() {
 
   return (
     <div className="min-h-screen bg-background-lm">
-      <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-3">
-            <CategorySelection value={filter} onChange={setFilter} />
-          </div>
+      <div className="flex gap-10 h-full w-full p-10">
+        {/* LEFT: Posts */}
+        <div className="flex flex-col gap-10 h-full bg-primary-lm p-10 rounded-2xl border-2 border-stroke-grey">
+         { !selectedPost && <button
+            onClick={() => setModalOpen(true)}
+            className="w-full rounded-md border border-stroke-grey bg-secondary-lm px-4 py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
+          >
+            Click to announce an event here
+          </button>}
 
-          <div className="col-span-12 lg:col-span-9">
-            <div className="rounded-xl bg-secondary-lm border border-stroke-grey p-4">
-              <button
-                onClick={() => setModalOpen(true)}
-                className="w-full rounded-md border border-stroke-grey bg-primary-lm px-4 py-3 text-left text-sm text-text-lighter-lm hover:bg-[#FFF4EE]"
-              >
-                Click to announce an event here
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-6">
+          <div className="flex items-center justify-center">
+            <div className="w-[60vw]">
               {selectedPost ? (
-                // Render the detail view
+                // detail view is constrained to same width as the list view
                 <EventPostDetail post={selectedPost} onBack={closeDetail} />
               ) : (
-                // Render the feed
-                filtered.map((p) => (
-                  <EventPost key={p.id} post={p as any} onClick={() => openDetail(p)} />
-                ))
+                <div className="flex flex-col gap-10 h-full">
+                  {filtered.length === 0 ? (
+                    <div className="flex items-center justify-center">
+                      <p className="text-text-lighter-lm text-lg">
+                        No posts in this category
+                      </p>
+                    </div>
+                  ) : (
+                    filtered.map((p) => {
+                      const content = {
+                        text: p.excerpt ?? p.body ?? "",
+                        img: p.image ?? undefined,
+                      };
+
+                      const user = {
+                        ...placeholderUser,
+                        name: p.author,
+                        batch: p.dept ?? "Student",
+                      };
+
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => openDetail(p)}
+                          className="cursor-pointer flex flex-col gap-4"
+                        >
+                          <PostBody
+                            title={p.title}
+                            content={content}
+                            user={user}
+                            tags={p.tags}
+                            category={p.category}
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* RIGHT: Categories */}
+        {!selectedPost && <CategoryFilter
+          categories={
+            [
+              "all",
+              "workshop",
+              "seminar",
+              "course",
+              "competition",
+            ] as unknown as Category[]
+          }
+          selected={filter}
+          onChange={setFilter}
+        />}
       </div>
 
       <CreateEventModal

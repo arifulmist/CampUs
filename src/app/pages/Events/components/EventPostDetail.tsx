@@ -102,6 +102,8 @@ export default function EventPostDetail({ post, onBack }: Props) {
     competition: "bg-purple-100 text-purple-700 border border-purple-200",
   };
 
+  // Normalize category to lowercase before using the map (defensive)
+  const normalizedCategory = (post.category || "").toString().toLowerCase();
   const catLabel = post.category
     ? post.category.charAt(0).toUpperCase() + post.category.slice(1)
     : "";
@@ -113,9 +115,9 @@ export default function EventPostDetail({ post, onBack }: Props) {
 
     const newComment: Comment = {
       id: generateId("c_"),
-      author: "Hasan Mahmud",
+      author: "Alvi Binte Zamil",
       avatar: "/placeholder.svg?key=h1",
-      course: "CSE-22",
+      course: "CSE-23",
       content: txt,
       likes: 0,
       replies: [],
@@ -148,9 +150,9 @@ export default function EventPostDetail({ post, onBack }: Props) {
 
     const reply: Comment = {
       id: generateId("r_"),
-      author: "Hasan Mahmud",
+      author: "Alvi Binte Zamil",
       avatar: "/placeholder.svg?key=h1",
-      course: "CSE-22",
+      course: "CSE-23",
       content: txt,
       likes: 0,
       replies: [],
@@ -175,7 +177,8 @@ export default function EventPostDetail({ post, onBack }: Props) {
         <div className="flex items-start justify-between mb-4">
           <Badge
             variant="secondary"
-            className={`bg-secondary-lm text-accent-lm px-3 py-1 ${catClassMap[post.category] ?? ""}`}
+            // use normalizedCategory for the mapping so capitalization mismatches don't break layout
+            className={`bg-secondary-lm text-accent-lm px-3 py-1 ${catClassMap[normalizedCategory] ?? ""}`}
           >
             {catLabel}
           </Badge>
@@ -295,9 +298,6 @@ export default function EventPostDetail({ post, onBack }: Props) {
               className="min-h-25 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
             />
             <div className="flex items-center justify-between pt-2 border-t border-stroke-grey">
-              <span className="text-xs text-text-lighter-lm italic">
-                Replying as Hasan Mahmud
-              </span>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"

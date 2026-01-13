@@ -29,7 +29,7 @@ interface Props {
 
 export default function CommentThread({
   initialComments = [],
-  currentUser = { name: "Hasan Mahmud", avatar: "/placeholder.svg", course: "CSE-22" },
+  currentUser = { name: "Alvi Binte Zamil", avatar: "/placeholder.svg", course: "CSE-23" },
   onChange,
 }: Props) {
   const [comments, setComments] = useState<Comment[]>(initialComments);

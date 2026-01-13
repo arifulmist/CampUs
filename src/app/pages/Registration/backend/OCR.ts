@@ -110,11 +110,6 @@ function parseMISTStudentInfo(text: string): OCRResult {
     if (deptBatchMatch) {
       result.department = deptBatchMatch[1].toUpperCase().trim();
       let batch = deptBatchMatch[2].trim();
-      
-      // Convert 2-digit batch to 4-digit (23 -> 2023)
-      if (batch.length === 2) {
-        batch = '20' + batch;
-      }
       result.batch = batch;
       deptBatchFound = true;
       console.log('Found Dept/Batch:', result.department, result.batch);

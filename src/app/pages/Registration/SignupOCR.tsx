@@ -85,12 +85,12 @@ export function SignupOCR() {
     >
       <div className="flex flex-col items-center">
         {/* Instructions */}
-        <div className="mb-6 text-center">
-          <p className="text-md text-text-lighter-lm mb-2">
+        <div className="mb-3 text-center">
+          <p className="text-md text-text-lighter-lm">
             Make sure your ID card is clearly visible in the box below
           </p>
           {fileName && (
-            <p className="text-base text-text-lighter-lm font-semibold">File: {fileName}</p>
+            <p className="text-base text-accent-lm font-medium">File: {fileName}</p>
           )}
         </div>
         
@@ -148,12 +148,7 @@ export function SignupOCR() {
         <div className="flex gap-4">
           <button
             onClick={handleBack}
-            className="px-6 py-2 rounded-xl font-medium border"
-            style={{ 
-              backgroundColor: "white", 
-              color: "#6B7280",
-              borderColor: "#9CA3AF"
-            }}
+            className="px-6 py-2 rounded-lg font-medium bg-primary-lm text-text-lighter-lm border-[1.5px] border-stroke-grey hover:bg-stroke-grey transition cursor-pointer"
             disabled={isScanning}
           >
             Back
@@ -162,10 +157,8 @@ export function SignupOCR() {
           <button
             onClick={handleScan}
             disabled={isScanning}
-            className="px-6 py-2 rounded-xl font-medium flex items-center gap-2"
+            className="px-6 py-2 rounded-lg font-medium flex items-center gap-2 bg-accent-lm hover:bg-hover-btn-lm text-primary-lm transition"
             style={{ 
-              backgroundColor: isScanning ? "#E5E7EB" : "#C23D00", 
-              color: "white",
               cursor: isScanning ? "not-allowed" : "pointer"
             }}
           >

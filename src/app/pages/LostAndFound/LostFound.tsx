@@ -1,8 +1,17 @@
 import { useState, useEffect, useRef } from "react";
-import { Heart, MessageCircle, Share2, MoreVertical } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  MoreVertical,
+} from "lucide-react";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "../../../components/ui/avatar";
 import cycleImg from "../../../assets/images/cycle.png";
 import { Textarea } from "../../../components/ui/textarea";
 import {
@@ -12,8 +21,18 @@ import {
   DialogTitle,
   DialogClose,
 } from "../../../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../components/ui/dropdown-menu";
 
-import CommentThread, { type Comment as CTComment } from "./components/CommentThread";
+import CommentThread, {
+  type Comment as CTComment,
+} from "./components/CommentThread";
+import { addNotification } from "../../../lib/notifications";
+import { DialogOverlay } from "@radix-ui/react-dialog";
 
 type LFPost = {
   id: string;
@@ -39,7 +58,7 @@ const mockPosts: LFPost[] = [
     description:
       "Bhai amar cycle churi hoye gese MIST theke please bhai keu dekhle boliyen...",
     imageUrl: cycleImg,
-    reactions: 46,
+    reactions: 4,
     comments: 2,
     shares: 2,
     timestamp: "2h ago",
@@ -60,9 +79,38 @@ export function LostFound() {
 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [activePost, setActivePost] = useState<LFPost | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", description: "" });
+
+  // remove confirm dialog state
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
   // posts state (initialized from mockPosts)
   const [posts, setPosts] = useState<LFPost[]>(mockPosts);
+
+  // track whether current user liked each post
+  const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
+
+  // toggle like/unlike and update reactions count accordingly
+  const toggleLike = (postId: string) => {
+    setLikedByMe((prevLiked) => {
+      const wasLiked = !!prevLiked[postId];
+      // update reactions count based on previous like state
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                reactions: Math.max(0, p.reactions + (wasLiked ? -1 : 1)),
+              }
+            : p
+        )
+      );
+      return { ...prevLiked, [postId]: !wasLiked };
+    });
+  };
 
   type LFComment = {
     id: string;
@@ -73,7 +121,9 @@ export function LostFound() {
   };
 
   // commentsByPost stores simple comments; we will map to CommentThread's shape on demand
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, LFComment[]>>({
+  const [commentsByPost, setCommentsByPost] = useState<
+    Record<string, LFComment[]>
+  >({
     "lf-1": [
       {
         id: "c1",
@@ -111,13 +161,59 @@ export function LostFound() {
     setIsCommentsOpen(true);
   };
 
+  // open edit dialog for a post
+  const openEdit = (post: LFPost) => {
+    setEditingPostId(post.id);
+    setEditForm({ title: post.title, description: post.description });
+    setIsEditOpen(true);
+  };
+
+  // save edit changes
+  const saveEdit = () => {
+    if (!editingPostId) return;
+    const title = editForm.title.trim();
+    const description = editForm.description.trim();
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === editingPostId
+          ? { ...p, title: title || p.title, description }
+          : p
+      )
+    );
+    setIsEditOpen(false);
+    setEditingPostId(null);
+  };
+
+  // request to remove: open confirm dialog
+  const requestRemove = (postId: string) => {
+    setPendingRemoveId(postId);
+    setIsRemoveConfirmOpen(true);
+  };
+
+  // perform removal (called after confirm)
+  const removePost = (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setCommentsByPost((prev) => {
+      const { [postId]: _removed, ...rest } = prev;
+      return rest;
+    });
+    if (activePost?.id === postId) {
+      setIsCommentsOpen(false);
+      setActivePost(null);
+    }
+    setIsRemoveConfirmOpen(false);
+    setPendingRemoveId(null);
+  };
+
   // Filtering posts (search query currently unused)
   const filtered = posts.filter((p) =>
     p.title.toLowerCase().includes(query.toLowerCase())
   );
 
   function generateId(prefix = "lf-") {
-    return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    return `${prefix}${Date.now().toString(36)}${Math.random()
+      .toString(36)
+      .slice(2)}`;
   }
 
   // Reset function to clear the announce form and preview and native file input
@@ -173,8 +269,8 @@ export function LostFound() {
     const newPost: LFPost = {
       id: generateId("lf-"),
       title: title,
-      author: "You",
-      authorCourse: "—",
+      author: "Alvi Binte Zamil",
+      authorCourse: "CSE-23",
       authorAvatar: "/placeholder.svg",
       description,
       imageUrl,
@@ -185,6 +281,14 @@ export function LostFound() {
     };
 
     setPosts((prev) => [newPost, ...prev]);
+
+    // Notify: new Lost & Found post created
+    addNotification({
+      type: "lostfound",
+      title: `Lost & Found: ${newPost.title}`,
+      description: newPost.description,
+      path: "/lost-and-found",
+    });
 
     // ensure a comments bucket exists for this post
     setCommentsByPost((prev) => ({
@@ -231,7 +335,9 @@ export function LostFound() {
     // update commentsByPost and post.comment count
     setCommentsByPost((prev) => ({ ...prev, [activePost.id]: lfList }));
     setPosts((prev) =>
-      prev.map((p) => (p.id === activePost.id ? { ...p, comments: lfList.length } : p))
+      prev.map((p) =>
+        p.id === activePost.id ? { ...p, comments: lfList.length } : p
+      )
     );
   }
 
@@ -278,31 +384,45 @@ export function LostFound() {
     <>
       <div className="min-h-screen bg-background-lm animate-fade-in">
         <main className="mx-auto max-w-4xl px-4 py-6">
-          {/* Composer */}
-          <div className="rounded-xl border border-stroke-grey bg-primary-lm p-4 mb-6">
-            <Input
-              placeholder="Tap to announce what has been lost or found"
-              readOnly
-              onClick={openAnnounceModal}
-              className="cursor-pointer rounded-lg bg-primary-lm border-stroke-peach placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
-            />
-          </div>
-
           {/* Posts */}
-          <div className="space-y-4">
-            {filtered.map((post) => (
-              <LFPostCard
-                key={post.id}
-                post={post}
-                onOpenComments={() => openComments(post)}
+          <div className="space-y-4 bg-primary-lm p-10 rounded-xl border-2 border-stroke-grey">
+            <div className="rounded-lg border border-stroke-grey bg-primary-lm mb-6 w-full hover:bg-hover-lm transition">
+              <Input
+                placeholder="Tap to announce what has been lost or found"
+                readOnly
+                onClick={openAnnounceModal}
+                className="cursor-pointer rounded-lg border-none placeholder:text-accent-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
               />
-            ))}
+            </div>
+            {filtered.length === 0 ? (
+              <div className="text-center py-10 text-text-lighter-lm">
+                <p className="text-lg font-medium">No posts available</p>
+                <p className="text-sm mt-1">
+                  Be the first to announce a lost or found item.
+                </p>
+              </div>
+            ) : (
+              filtered.map((post) => (
+                <LFPostCard
+                  key={post.id}
+                  post={post}
+                  onOpenComments={() => openComments(post)}
+                  onEdit={() => openEdit(post)}
+                  onRemove={() => requestRemove(post.id)}
+                  isLiked={!!likedByMe[post.id]}
+                  onToggleLike={() => toggleLike(post.id)}
+                />
+              ))
+            )}
           </div>
         </main>
 
         {/* Announce Dialog */}
         <Dialog open={isAnnounceOpen} onOpenChange={handleAnnounceDialogChange}>
-          <DialogContent className="sm:max-w-xl bg-primary-lm border-stroke-grey text-text-lm">
+          <DialogContent
+            showCloseButton={false}
+            className="sm:max-w-xl bg-primary-lm border-stroke-grey text-text-lm"
+          >
             <DialogHeader>
               <DialogTitle>Announce Lost or Found Item</DialogTitle>
 
@@ -317,7 +437,8 @@ export function LostFound() {
                 className="absolute top-4 right-4 rounded-full bg-white/90 p-2 border border-stroke-grey"
                 aria-label="Close announce dialog"
               >
-                ✕
+                {" "}
+                x
               </DialogClose>
             </DialogHeader>
 
@@ -329,12 +450,15 @@ export function LostFound() {
                   value={form.title}
                   onChange={(e) => {
                     setForm({ ...form, title: e.target.value });
-                    if (titleError && e.target.value.trim()) setTitleError(false);
+                    if (titleError && e.target.value.trim())
+                      setTitleError(false);
                   }}
                   className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
                 {titleError && (
-                  <p className="text-sm text-red-600 mt-1">Title is required.</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    Title is required.
+                  </p>
                 )}
               </div>
 
@@ -397,7 +521,9 @@ export function LostFound() {
 
                   <div className="flex-1 border border-stroke-grey rounded-lg px-3 py-2 flex items-center">
                     {!imageDataUrl ? (
-                      <div className="text-sm text-text-lighter-lm">No file chosen</div>
+                      <div className="text-sm text-text-lighter-lm">
+                        No file chosen
+                      </div>
                     ) : (
                       <div className="flex items-center gap-3">
                         <button
@@ -417,7 +543,9 @@ export function LostFound() {
                           <div className="text-sm font-medium text-text-lm">
                             {imageName ?? "Image selected"}
                           </div>
-                          <div className="text-xs text-text-lighter-lm">Click to expand</div>
+                          <div className="text-xs text-text-lighter-lm">
+                            Click to expand
+                          </div>
                         </div>
                       </div>
                     )}
@@ -470,8 +598,11 @@ export function LostFound() {
           </>
         )}
 
-        {/* Comments Dialog (uses your CommentThread) */}
-        <Dialog open={isCommentsOpen} onOpenChange={(v) => setIsCommentsOpen(v)}>
+        <Dialog
+          open={isCommentsOpen}
+          onOpenChange={(v) => setIsCommentsOpen(v)}
+        >
+          <DialogOverlay className="bg-stroke-grey z-100"></DialogOverlay>
           <DialogContent className="sm:max-w-xl bg-primary-lm border-stroke-grey text-text-lm">
             {activePost && (
               <div className="space-y-4">
@@ -491,12 +622,106 @@ export function LostFound() {
                 </div>
 
                 <CommentThread
-                  initialComments={mapLFToCTComments(commentsByPost[activePost.id])}
-                  currentUser={{ name: "You", avatar: "/placeholder.svg", course: "—" }}
-                  onChange={(newComments) => handleCommentsChangeForActivePost(newComments)}
+                  initialComments={mapLFToCTComments(
+                    commentsByPost[activePost.id]
+                  )}
+                  currentUser={{
+                    name: "Alvi Binte Zamil",
+                    avatar: "/placeholder.svg",
+                    course: "CSE-23",
+                  }}
+                  onChange={(newComments) =>
+                    handleCommentsChangeForActivePost(newComments)
+                  }
                 />
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Post Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent className="sm:max-w-xl bg-primary-lm border-stroke-grey text-text-lm">
+            <DialogHeader>
+              <DialogTitle>Edit Post</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div>
+                <label className="text-sm text-text-lighter-lm">Title</label>
+                <Input
+                  placeholder="Title"
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, title: e.target.value })
+                  }
+                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-text-lighter-lm">
+                  Description
+                </label>
+                <Textarea
+                  placeholder="Description"
+                  rows={5}
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, description: e.target.value })
+                  }
+                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
+                  onClick={saveEdit}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-stroke-grey text-text-lm"
+                  onClick={() => setIsEditOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Remove Post Confirm Dialog */}
+        <Dialog
+          open={isRemoveConfirmOpen}
+          onOpenChange={setIsRemoveConfirmOpen}
+        >
+          <DialogContent className="sm:max-w-md bg-primary-lm border border-stroke-peach text-text-lm">
+            <DialogHeader>
+              <DialogTitle>Hide Post?</DialogTitle>
+            </DialogHeader>
+            {/* <div className="mt-1 flex items-center gap-2 rounded-md bg-secondary-lm border border-stroke-peach p-2">
+              <AlertTriangle className="h-4 w-4 text-accent-lm" />
+              <span className="text-sm text-accent-lm">
+                This action cannot be undone.
+              </span>
+            </div> */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <Button
+                variant="outline"
+                className="border-stroke-grey text-text-lm hover:bg-secondary-lm"
+                onClick={() => setIsRemoveConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm focus-visible:ring-accent-lm"
+                onClick={() => {
+                  if (pendingRemoveId) removePost(pendingRemoveId);
+                }}
+              >
+                Hide
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -508,7 +733,21 @@ export function LostFound() {
  * Small helper component to render each post and handle "Read more" when description overflows.
  * Kept inside same file to avoid changing your project structure.
  */
-function LFPostCard({ post, onOpenComments }: { post: LFPost; onOpenComments: () => void }) {
+function LFPostCard({
+  post,
+  onOpenComments,
+  onEdit,
+  onRemove,
+  isLiked,
+  onToggleLike,
+}: {
+  post: LFPost;
+  onOpenComments: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+  isLiked: boolean;
+  onToggleLike: () => void;
+}) {
   const descRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [showReadMore, setShowReadMore] = useState(false);
@@ -538,9 +777,7 @@ function LFPostCard({ post, onOpenComments }: { post: LFPost; onOpenComments: ()
   }, [post.description]);
 
   return (
-    <div
-      className="bg-primary-lm p-6 rounded-xl border border-stroke-grey shadow-sm hover:shadow-md hover:border-stroke-peach transition animate-slide-in"
-    >
+    <div className="bg-secondary-lm p-6 rounded-xl border border-stroke-grey hover:border-stroke-peach hover:bg-hover-lm transition animate-slide-in">
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="text-xl font-bold text-text-lm">{post.title}</h3>
@@ -549,12 +786,44 @@ function LFPostCard({ post, onOpenComments }: { post: LFPost; onOpenComments: ()
               <AvatarImage src={post.authorAvatar || "/placeholder.svg"} />
               <AvatarFallback>{post.author[0]}</AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium text-text-lm">{post.author}</span>
-            <span className="text-[12px] text-text-lighter-lm">{post.authorCourse}</span>
-            <span className="text-[12px] text-text-lighter-lm">• {post.timestamp}</span>
+            <span className="text-sm font-medium text-text-lm">
+              {post.author}
+            </span>
+            <span className="text-[12px] text-text-lighter-lm">
+              {post.authorCourse}
+            </span>
+            <span className="text-[12px] text-text-lighter-lm">
+              • {post.timestamp}
+            </span>
           </div>
         </div>
-        <MoreVertical className="h-5 w-5 text-accent-lm" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="p-1 rounded hover:bg-secondary-lm"
+              aria-label="Post options"
+            >
+              <MoreVertical className="h-5 w-5 text-accent-lm" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="bg-primary-lm border border-stroke-grey text-text-lm rounded-lg shadow-md"
+          >
+            <DropdownMenuItem
+              onClick={onEdit}
+              className="text-accent-lm hover:bg-secondary-lm hover:text-accent-lm focus:bg-secondary-lm"
+            >
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-accent-lm hover:bg-secondary-lm hover:text-accent-lm focus:bg-secondary-lm"
+              onClick={onRemove}
+            >
+              Hide
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="mb-4">
@@ -584,12 +853,24 @@ function LFPostCard({ post, onOpenComments }: { post: LFPost; onOpenComments: ()
       </div>
 
       {post.imageUrl && (
-        <img src={post.imageUrl} alt="Lost item" className="w-full rounded-lg border border-stroke-grey mb-4" />
+        <img
+          src={post.imageUrl}
+          alt="Lost item"
+          className="w-full rounded-lg border border-stroke-grey mb-4"
+        />
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm">
-          <Heart className="h-4 w-4" />
+        <button
+          onClick={onToggleLike}
+          className={
+            "flex items-center gap-1.5 px-3 py-1 rounded-full border " +
+            (isLiked
+              ? "border-stroke-peach bg-accent-lm text-primary-lm"
+              : "border-stroke-peach bg-secondary-lm text-accent-lm")
+          }
+        >
+          <Heart className="h-4 w-4" fill={isLiked ? "currentColor" : "none"} />
           <span className="text-sm font-bold">{post.reactions}</span>
         </button>
 

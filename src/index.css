@@ -40,6 +40,8 @@ body
   --text-3xl: 2.488rem;
   --text-4xl: 2.986rem;
 
+  --font-header: "Poppins", sans-serif;
+
   /*Animations*/
   --animate-slide-in: slide-in 0.15s ease-in-out forwards;
   @keyframes slide-in {

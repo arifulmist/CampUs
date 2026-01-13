@@ -29,41 +29,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import userImg from "../../../assets/images/placeholderUser.png";
+import userImg from "@/assets/images/placeholderUser.png";
 import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { openChatWith } from "@/app/pages/Messaging/backend/chatStore";
+import { mockUsers, mockLoggedInUser } from "@/lib/mockUsers";
 import UserProfileUpdate from "./components/UserProfileUpdate"; // new modal component
 import { InterestedPosts } from "./components/InterestedPosts";
-import { getInterested, subscribe } from "./backend/interestedStore";
 import type { InterestedItem } from "./backend/interestedStore";
+import { mockProfiles } from "@/lib/mockProfiles";
+import {
+  getInterested,
+  subscribe as interestedSubscribe,
+} from "./backend/interestedStore";
 type Skill = { title: string; detail?: string };
 type Contact = {
   type: "gmail" | "linkedin" | "github" | "facebook";
   id: string;
 };
 export function UserProfile() {
+  const navigate = useNavigate();
+  const { userId: routeUserId } = useParams();
+  const loggedIn = mockLoggedInUser;
+  const viewedUser = routeUserId
+    ? mockUsers.find((u) => u.id === routeUserId) || loggedIn
+    : loggedIn;
+  // Redirect to /profile if trying to view own param route
+  useEffect(() => {
+    if (routeUserId && routeUserId === loggedIn.id) {
+      navigate("/profile", { replace: true });
+    }
+  }, [routeUserId, loggedIn.id, navigate]);
   const [messageOpen, setMessageOpen] = useState(false);
   const [chatTarget, setChatTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
-  const [skills, setSkills] = useState<Skill[]>([
-    { title: "UI/UX", detail: "MIST INNOVATION CLUB" },
-    { title: "Java, MySQL, C++", detail: "MIST Academic Courses" },
-  ]);
-  const [interests, setInterests] = useState<string[]>([
-    "Robotics",
-    "UI/UX",
-    "CTF",
-    "Automation",
-    "Hackathon",
-    "Arduino",
-  ]);
-  const [contacts, setContacts] = useState<Contact[]>([
-    { type: "github", id: "alvi" },
-    { type: "linkedin", id: "" },
-  ]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   // Bio state
   const [bio, setBio] = useState<string>("");
   const [bioOpen, setBioOpen] = useState(false);
@@ -111,16 +115,37 @@ export function UserProfile() {
   const [modalMode, setModalMode] = useState<"skill" | "interest" | "contact">(
     "skill"
   );
-  // Interested posts state (from CollabHub)
-  const [interestedPosts, setInterestedPosts] = useState<InterestedItem[]>(() =>
-    getInterested()
-  );
+  // Interested posts state (per user)
+  const [interestedPosts, setInterestedPosts] = useState<InterestedItem[]>([]);
 
-  // Keep in sync with store
+  // Load per-user mock profile data; for logged-in user, reflect dynamic interested store
   useEffect(() => {
-    const unsub = subscribe((items) => setInterestedPosts(items));
-    return unsub;
-  }, []);
+    const data = mockProfiles[viewedUser.id];
+    if (data) {
+      setBio(data.bio ?? "");
+      setBadges([...data.badges]);
+      setSkills([...data.skills]);
+      setInterests([...data.interests]);
+      setContacts([...data.contacts]);
+    } else {
+      setBio("");
+      setBadges([]);
+      setSkills([]);
+      setInterests([]);
+      setContacts([]);
+    }
+
+    let unsub: (() => void) | undefined;
+    if (viewedUser.id === loggedIn.id) {
+      setInterestedPosts(getInterested());
+      unsub = interestedSubscribe((items) => setInterestedPosts(items));
+    } else {
+      setInterestedPosts(data ? [...data.interestedPosts] : []);
+    }
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [viewedUser.id, loggedIn.id]);
   const openAddSkill = () => {
     setModalMode("skill");
     setModalOpen(true);
@@ -306,10 +331,11 @@ export function UserProfile() {
     }
   };
   return (
-    <div className="min-h-screen w-full bg-background-lm text-text-lm animate-fade-in pb-8">
+    <div className="min-h-screen  w-full bg-background-lm text-text-lm animate-fade-in pb-8">
       {/* Page-level Navbar to match the provided design */}
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(0,1fr)_350px]">
+        {/* <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(0,1fr)_350px]"> */}
+        <div className="flex gap-6 items-start justify-center" >
           {/* Main profile card */}
           <section className="rounded-2xl border border-stroke-grey bg-primary-lm shadow-sm animate-slide-in">
             {/* Header */}
@@ -317,7 +343,7 @@ export function UserProfile() {
               <div className="relative">
                 <div className="rounded-full border-4 border-stroke-peach p-1">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={userImg} />
+                    <AvatarImage src={viewedUser.avatar || userImg} />
                     <AvatarFallback>TT</AvatarFallback>
                   </Avatar>
                 </div>
@@ -325,26 +351,28 @@ export function UserProfile() {
               <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <h1 className="text-xl font-extrabold tracking-tight text-text-lm">
-                    Alvi Binte Zamil
+                    {viewedUser.name}
                   </h1>
-                  <Button
-                    size="sm"
-                    className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
-                    onClick={() => {
-                      const profileUserId =
-                        contacts.find((c) => c.type === "github" && c.id.trim())
-                          ?.id || "alvi";
-                      setChatTarget({
-                        id: profileUserId,
-                        name: "Alvi Binte Zamil",
-                      });
-                      setMessageOpen(true);
-                    }}
-                  >
-                    Message
-                  </Button>
+                  {viewedUser.id !== loggedIn.id && (
+                    <Button
+                      size="sm"
+                      className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                      onClick={() => {
+                        openChatWith(viewedUser.id, viewedUser.name);
+                        setChatTarget({
+                          id: viewedUser.id,
+                          name: viewedUser.name,
+                        });
+                        setMessageOpen(true);
+                      }}
+                    >
+                      Message
+                    </Button>
+                  )}
                 </div>
-                <div className="mt-1 text-sm text-text-lighter-lm">CSE-23</div>
+                <div className="mt-1 text-sm text-text-lighter-lm">
+                  {viewedUser.department}
+                </div>
                 <div className="text-sm text-text-lighter-lm">LEVEL-3</div>
                 <div className="mt-3">
                   {/* Header row: title + add button */}
@@ -637,7 +665,7 @@ export function UserProfile() {
             </div>
           </section>
           {/* Sidebar: Upcoming Events (shared component) + Interested Posts */}
-          <div className="hidden lg:flex lg:flex-col gap-6 w-[350px] lg:sticky lg:top-[96px] lg:max-h-[calc(100vh-96px)] lg:overflow-hidden">
+          <div className="lg:flex lg:flex-col flex flex-col gap-6 w-[350px] lg:sticky lg:top-[96px] mt-4 lg:max-h-[calc(100vh-96px)] lg:overflow-hidden">
             <UpcomingEvents />
             <InterestedPosts items={interestedPosts} />
           </div>
@@ -836,7 +864,7 @@ export function UserProfile() {
             onOpenChange={setMessageOpen}
             userId={chatTarget.id}
             userName={chatTarget.name}
-            avatarSrc={userImg}
+            avatarSrc={viewedUser.avatar || userImg}
           />
         )}
       </div>

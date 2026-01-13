@@ -88,9 +88,9 @@ export function PostDetail({ post, onBack }: PostDetailProps) {
 
     const newComment: Comment = {
       id: generateId("c_"),
-      author: "Hasan Mahmud",
+      author: "Alvi Binte Zamil",
       avatar: "/placeholder.svg?key=h1",
-      course: "CSE-22",
+      course: "CSE-23",
       content: txt,
       likes: 0,
       replies: [],
@@ -121,9 +121,9 @@ export function PostDetail({ post, onBack }: PostDetailProps) {
     if (!txt) return;
     const reply: Comment = {
       id: generateId("r_"),
-      author: "Hasan Mahmud",
+      author: "Alvi Binte Zamil",
       avatar: "/placeholder.svg?key=h1",
-      course: "CSE-22",
+      course: "CSE-23",
       content: txt,
       likes: 0,
       replies: [],
@@ -211,9 +211,6 @@ export function PostDetail({ post, onBack }: PostDetailProps) {
               className="min-h-25 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
             />
             <div className="flex items-center justify-between pt-2 border-t border-stroke-grey">
-              <span className="text-xs text-text-lighter-lm italic">
-                Replying as Hasan Mahmud
-              </span>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"

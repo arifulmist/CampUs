@@ -8,11 +8,11 @@ import { Login } from "./pages/Registration/Login";
 import { Login2FA } from "./pages/Registration/Login2FA";
 import { Home } from "./pages/Home/Home";
 import { CollabHub } from "./pages/CollabHub/CollabHub";
-import { Events }  from "./pages/Events/Events";
+import { Events } from "./pages/Events/Events";
 import { QnA } from "./pages/QnA/QnA";
-import { Notes } from "./pages/Study/Notes";
+import { Notes } from "./pages/Study/components/Notes";
 import { StudyLayout } from "./pages/Study/StudyLayout";
-import { Resources } from "./pages/Study/Resources";
+import { Resources } from "./pages/Study/components/Resources";
 import { LostFound } from "./pages/LostAndFound/LostFound";
 import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Error_NotFound";
@@ -38,7 +38,7 @@ export const router = createBrowserRouter([
     element: <Layout />,
     errorElement: <NotFound />,
     children: [
-      { path: "/home", element: <Home /> },
+      { path: "/home", element: <Home />},
       { path: "/collab", element: <CollabHub /> },
       { path: "/events", element: <Events /> },
       { path: "/qna", element: <QnA /> },
@@ -49,12 +49,14 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="notes" replace /> },
           { path: "notes", element: <Notes /> },
           { path: "resources", element: <Resources /> },
+          { path: "*", element: <NotFound /> }
         ],
       },
       { path: "/lost-and-found", element: <LostFound /> },
       { path: "/profile", element: <UserProfile /> },
+      { path: "/profile/:userId", element: <UserProfile /> },
       { path: "/messages", element: <Messaging /> },
+      { path: "*", element: <NotFound /> }
     ],
   },
-
 ]);

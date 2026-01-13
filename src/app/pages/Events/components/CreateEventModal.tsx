@@ -128,10 +128,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
       body: "",
       image: imageDataUrl,
       segments,
-      tags,
-      likes: 0,
-      comments: 0,
-      shares: 0,
+      tags
     };
 
     onCreate(post);
