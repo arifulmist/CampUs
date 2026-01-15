@@ -1,7 +1,7 @@
 import { PostBody } from "@/components/PostBody.tsx";
 import { UpcomingEventsHome } from "@/components/UpcomingEventsHome.tsx";
 
-import { placeholderUser } from "@/lib/placeholderUser.ts";
+import { placeholderUser } from "@/mockData/placeholderUser";
 import placeholderPostImg from "@/assets/images/placeholderPostImg.png";
 
 //placeholder data

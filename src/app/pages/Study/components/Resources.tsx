@@ -1,6 +1,6 @@
 import { Link, useParams, useOutletContext } from "react-router";
-import { getResources, type ResourceItem } from "@/lib/studyMock";
-import { placeholderUser } from "@/lib/placeholderUser";
+import { getResources, type ResourceItem } from "@/mockData/studyMock";
+import { placeholderUser } from "@/mockData/placeholderUser";
 import { useState } from "react";
 import { UserInfo } from "@/components/UserInfo";
 import { ResourceAddModal } from "./ResourcesAddModal";

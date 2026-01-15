@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import postImg from "@/assets/images/placeholderPostImg.png";
-import { CategoryFilter } from "@/components/Category_Events_CollabHub/CategoryFilter";
-import type { Category } from "@/components/Category_Events_CollabHub/Category";
+import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
+import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateEventModal from "./components/CreateEventModal";
 import EventPostDetail from "./components/EventPostDetail";
 import { PostBody } from "@/components/PostBody";
-import { placeholderUser } from "../../../lib/placeholderUser";
-import { addNotification } from "../../../lib/notifications";
+import { placeholderUser } from "../../../mockData/placeholderUser";
+import { addNotification } from "../../../mockData/notifications";
 
 type Segment = {
   id: string;

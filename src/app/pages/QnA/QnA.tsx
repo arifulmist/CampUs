@@ -16,7 +16,7 @@ import {
   ShareButton,
 } from "../../../components/PostButtons";
 import { PostDetail } from "./components/PostDetail";
-import { addNotification } from "../../../lib/notifications";
+import { addNotification } from "../../../mockData/notifications";
 
 type Post = {
   id: string;

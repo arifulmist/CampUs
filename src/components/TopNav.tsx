@@ -20,7 +20,7 @@ import {
   subscribe as notiSubscribe,
   getUnreadCount,
   markAllRead,
-} from "../lib/notifications";
+} from "../mockData/notifications";
 
 //Arbitrary placeholder values till db is connected
 const userName: string = "Alvi Binte Zamil";

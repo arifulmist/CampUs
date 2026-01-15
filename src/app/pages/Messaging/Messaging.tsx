@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "@/mockData/utils";
 import {
   subscribe as chatSubscribe,
   getThreads,

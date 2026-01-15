@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { placeholderUser } from "../../../lib/placeholderUser";
+import { placeholderUser } from "../../../mockData/placeholderUser";
 import {
   LikeButton,
   CommentButton,
@@ -8,10 +8,10 @@ import {
 
 import { UserInfo } from "@/components/UserInfo";
 import { Button } from "@/components/ui/button";
-import { CategoryFilter } from "@/components/Category_Events_CollabHub/CategoryFilter";
-import type { Category } from "@/components/Category_Events_CollabHub/Category";
+import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
+import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
-import { addNotification } from "../../../lib/notifications";
+import { addNotification } from "../../../mockData/notifications";
 import {
   addInterested,
   removeInterested,

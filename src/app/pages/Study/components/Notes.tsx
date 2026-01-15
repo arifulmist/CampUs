@@ -4,8 +4,8 @@ import pdfIcon from "@/assets/images/pdfImage.svg";
 
 import { useParams, useOutletContext } from "react-router";
 
-import { getNotes, type Note } from "@/lib/studyMock";
-import { placeholderUser } from "@/lib/placeholderUser";
+import { getNotes, type Note } from "@/mockData/studyMock";
+import { placeholderUser } from "@/mockData/placeholderUser";
 import { ButtonCTA } from "@/components/ButtonCTA";
 import { useState } from "react";
 import { NotesAddModal } from "./NotesAddModal";
