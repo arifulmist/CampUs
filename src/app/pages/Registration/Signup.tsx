@@ -95,15 +95,6 @@ function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
   };
   reader.readAsDataURL(f);
 }
-  // const [isFormValid, setIsFormValid] = useState(false);
-
-//   useEffect(() => {
-//   const allFilled = Object.values(formData).every(val => val.trim() !== "");
-//   const passwordStrong = checkPasswordStrength(formData.password).score >= 4; // Strong or Very Strong
-//   const emailValid = isValidEmail(formData.email);
-//   setIsFormValid(allFilled && passwordsMatch && passwordStrong && emailValid);
-// }, [formData, passwordsMatch]);
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

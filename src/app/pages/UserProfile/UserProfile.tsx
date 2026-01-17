@@ -33,11 +33,11 @@ import userImg from "@/assets/images/placeholderUser.png";
 import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
 import { useNavigate, useParams } from "react-router";
 import { openChatWith } from "@/app/pages/Messaging/backend/chatStore";
-import { mockUsers, mockLoggedInUser } from "@/lib/mockUsers";
+import { mockUsers, mockLoggedInUser } from "@/mockData/mockUsers";
 import UserProfileUpdate from "./components/UserProfileUpdate"; // new modal component
 import { InterestedPosts } from "./components/InterestedPosts";
 import type { InterestedItem } from "./backend/interestedStore";
-import { mockProfiles } from "@/lib/mockProfiles";
+import { mockProfiles } from "@/mockData/mockProfiles";
 import {
   getInterested,
   subscribe as interestedSubscribe,

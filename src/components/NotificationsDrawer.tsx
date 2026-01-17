@@ -15,7 +15,7 @@ import {
   type NotificationItem,
   subscribe,
   clearCurrentEvent,
-} from "../lib/notifications";
+} from "../mockData/notifications";
 
 function TypeIcon({ type }: { type: NotificationItem["type"] }) {
   const className = "h-4 w-4 text-accent-lm";

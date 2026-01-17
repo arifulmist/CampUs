@@ -31,7 +31,7 @@ import {
 import CommentThread, {
   type Comment as CTComment,
 } from "./components/CommentThread";
-import { addNotification } from "../../../lib/notifications";
+import { addNotification } from "../../../mockData/notifications";
 import { DialogOverlay } from "@radix-ui/react-dialog";
 
 type LFPost = {

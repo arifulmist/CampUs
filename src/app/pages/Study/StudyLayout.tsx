@@ -1,8 +1,8 @@
 import { NavLink, Outlet, useParams, useLocation } from "react-router";
 import { Sidebar } from "./components/Sidebar";
-import { getNotes, getResources, type Note, type ResourceItem } from "@/lib/studyMock";
+import { getNotes, getResources, type Note, type ResourceItem } from "@/mockData/studyMock";
 import { useMemo, useState, useEffect } from "react";
-import { placeholderUser } from "@/lib/placeholderUser";
+import { placeholderUser } from "@/mockData/placeholderUser";
 
 export function StudyLayout() {
   const { level, term } = useParams();

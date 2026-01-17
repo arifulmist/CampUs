@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { mockUsers } from "@/lib/mockUsers";
+import { mockUsers } from "@/mockData/mockUsers";
 
 export function UserSearch() {
   const [query, setQuery] = useState("");

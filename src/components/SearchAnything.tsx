@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { mockUsers } from "@/lib/mockUsers";
+import { mockUsers } from "@/mockData/mockUsers";
 import searchIcon from "../assets/icons/search_icon.svg";
 
 export function SearchAnything() {
