@@ -893,6 +893,23 @@ function getErrorMessage(error: unknown) {
   return "Unexpected error";
 }
 
+type UserInfoRow = {
+  name: string | null;
+  batch: number | null;
+  department: string | null;
+  student_id: string | null;
+  departments_lookup?: {
+    department_name: string | null;
+  } | null;
+};
+
+function formatBatchLabel(profile: UserInfoRow | null): string {
+  const deptName =
+    profile?.departments_lookup?.department_name || profile?.department || "";
+  const batchValue = profile?.batch ?? null;
+  return deptName && batchValue ? `${deptName}-${batchValue}` : "";
+}
+
 const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg"] as const;
 type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
@@ -945,7 +962,10 @@ export function UserProfile()
   const profileImageUrl = useObjectUrl(profileImageFile);
   const profileDraftUrl = useObjectUrl(profileDraftFile);
 
-  const [displayName, setDisplayName] = useState<string>("Aldkjskd");
+  const [displayName, setDisplayName] = useState<string>("Loading...");
+  const [studentId, setStudentId] = useState<string>("");
+  const [batchLabel, setBatchLabel] = useState<string>("");
+
   const [bio, setBio] = useState<string>("Lorem ipsum fk u");
   const [contacts, setContacts] = useState<string[]>(["alksak.skl"]);
 
@@ -958,6 +978,60 @@ export function UserProfile()
   const effectiveProfilePreviewUrl = profileDraftUrl ?? profileImageUrl ?? placeholderUserImg;
 
   const anyModalOpen = backgroundModalOpen || profileModalOpen;
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadUserInfo() {
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        const authUid = userData.user?.id;
+
+        if (!mounted) return;
+
+        if (!authUid) {
+          setDisplayName("Guest");
+          setStudentId("");
+          setBatchLabel("");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("user_info")
+          .select(
+            "name,batch,department,student_id,departments_lookup(department_name)"
+          )
+          .eq("auth_uid", authUid)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if (error) throw error;
+        const profile = data as unknown as UserInfoRow | null;
+
+        setDisplayName(profile?.name?.trim() || "User");
+        setStudentId(profile?.student_id?.trim() || "");
+        setBatchLabel(formatBatchLabel(profile));
+      } catch (e: unknown) {
+        if (!mounted) return;
+        console.error("Failed to load user_info:", e);
+        setDisplayName("User");
+        setStudentId("");
+        setBatchLabel("");
+      }
+    }
+
+    loadUserInfo();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      loadUserInfo();
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -1163,8 +1237,8 @@ export function UserProfile()
               </button>
             </div>
             <h3 className="font-header">{displayName}</h3>
-            <h6>20232039293</h6>
-            <h6>CSE-23</h6>
+            {!!studentId && <h6>{studentId}</h6>}
+            {!!batchLabel && <h6>{batchLabel}</h6>}
             <p className="lg:my-3">{bio}</p>
             <div className="flex lg:gap-3 flex-wrap lg:mb-5">
               {contacts.map((c, idx) => (
