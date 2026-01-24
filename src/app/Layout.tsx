@@ -20,10 +20,8 @@ export function Layout() {
         className={`${
           hideNav
             ? "min-h-screen h-screen flex items-center justify-center"
-            : "flex items-start justify-center"
-        }`} 
-        data-debug-main
-        style={{outline: "2px dashed rgba(220, 38, 38, 0.6)"}}
+            : "flex items-center justify-center"
+        }`}
       >
         <Outlet />
       </main>

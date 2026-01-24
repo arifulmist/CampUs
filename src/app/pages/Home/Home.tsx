@@ -15,7 +15,8 @@ const user = placeholderUser;
 export function Home() {
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in justify-center items-start">
-      <div className="bg-primary-lm border border-stroke-grey rounded-lg">
+      <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-10 lg:w-[70vw]">
+        <PostBody title={title} user={user} content={content}></PostBody>
         <PostBody title={title} user={user} content={content}></PostBody>
       </div>
       <div className="lg:w-[20vw]">
