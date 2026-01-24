@@ -1,10 +1,9 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import Logo from "../assets/logo-light.svg";
 
 import placeholderDP from "../assets/images/placeholderUser.png";
 import messageIcon from "../assets/icons/message_icon.svg";
 import bellIcon from "../assets/icons/bell_icon.svg";
-import moonIcon from "../assets/icons/moon_icon.svg";
 import userIcon from "../assets/icons/user_icon.svg";
 import signoutIcon from "../assets/icons/logout_icon.svg";
 
@@ -13,32 +12,36 @@ import { useEffect, useRef, useState } from "react";
 import NotificationsDrawer from "./NotificationsDrawer";
 import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
 import {
-  getActiveUserId,
-  getThreads,
-} from "@/app/pages/Messaging/backend/chatStore";
-import {
   subscribe as notiSubscribe,
   getUnreadCount,
   markAllRead,
 } from "../mockData/notifications";
+import { supabase } from "../../supabase/supabaseClient";
 
-//Arbitrary placeholder values till db is connected
-const userName: string = "Alvi Binte Zamil";
-const userBatch: string = "CSE-23";
+type UserProfileRow = {
+  name: string | null;
+  batch: number | null;
+  department: string | null;
+  student_id: string | null;
+  departments_lookup?: {
+    department_name: string | null;
+  } | null;
+};
 
 export function TopNav() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  const [hasUnread, setHasUnread] = useState(() => getUnreadCount() > 0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
+  const [userName, setUserName] = useState<string>("Loading...");
+  const [userBatch, setUserBatch] = useState<string>("");
   const [msgTarget, setMsgTarget] = useState<{
     id: string | null;
     name?: string;
   } | null>(null);
 
   useEffect(() => {
-    // initialize badge and subscribe to changes
-    setHasUnread(getUnreadCount() > 0);
     const unsub = notiSubscribe(() => {
       setHasUnread(getUnreadCount() > 0);
     });
@@ -51,6 +54,58 @@ export function TopNav() {
       markAllRead();
     }
   }, [isNotifOpen]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProfile() {
+      const { data: userData } = await supabase.auth.getUser();
+      const authUid = userData.user?.id;
+
+      if (!mounted) return;
+
+      if (!authUid) {
+        setUserName("Guest");
+        setUserBatch("");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_info")
+        .select("name,batch,department,student_id,departments_lookup(department_name)")
+        .eq("auth_uid", authUid)
+        .maybeSingle();
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error("Failed to load user profile:", error);
+        setUserName("User");
+        setUserBatch("");
+        return;
+      }
+
+      const profile = data as unknown as UserProfileRow | null;
+
+      const displayName = profile?.name?.trim() || "User";
+      const deptName = profile?.departments_lookup?.department_name || profile?.department || "";
+      const batchValue = profile?.batch ?? null;
+      const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
+
+      setUserName(displayName);
+      setUserBatch(displayBatch);
+    }
+
+    loadProfile();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      loadProfile();
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <nav className="bg-primary-lm border border-stroke-grey flex justify-between px-10 py-3">
@@ -86,14 +141,34 @@ export function TopNav() {
           <img src={placeholderDP} className="rounded-full size-8" />
         </button>
 
-        {isOpen && <UserClickModal isOpen={isOpen} onClose={()=>setIsOpen(false)}></UserClickModal>}
+        {isOpen && (
+          <UserClickModal
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            userName={userName}
+            userBatch={userBatch}
+            onSignOut={async () => {
+              try {
+                await supabase.auth.signOut();
+              } finally {
+                localStorage.removeItem("user");
+                localStorage.removeItem("isAuthenticated");
+                localStorage.removeItem("studentId");
+                setIsOpen(false);
+                setIsNotifOpen(false);
+                setIsMsgOpen(false);
+                navigate("/login", { replace: true });
+              }
+            }}
+          />
+        )}
       </div>
       <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
       {isMsgOpen && (
         <MessageDrawer
           open={isMsgOpen}
           onOpenChange={setIsMsgOpen}
-          userId={msgTarget?.id || (undefined as any)}
+          userId={msgTarget?.id ?? undefined}
           userName={msgTarget?.name || ""}
           avatarSrc={undefined}
         />
@@ -102,7 +177,19 @@ export function TopNav() {
   );
 }
 
-function UserClickModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()=>void }) {
+function UserClickModal({
+  isOpen,
+  onClose,
+  userName,
+  userBatch,
+  onSignOut,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  userName: string;
+  userBatch: string;
+  onSignOut: () => void | Promise<void>;
+}) {
     const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,7 +230,7 @@ function UserClickModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()=>voi
       <ModalButtons
         icon={signoutIcon}
         label="Sign Out"
-        linkto={"/login"}
+        onClick={onSignOut}
       ></ModalButtons>
     </div>
   );
@@ -153,17 +240,23 @@ function ModalButtons({
   icon,
   label,
   linkto,
+  onClick,
 }: {
   icon: string;
   label: string;
-  linkto: string;
+  linkto?: string;
+  onClick?: () => void | Promise<void>;
 }) {
-  return (
-    <Link to={linkto}>
-      <button className="flex items-center gap-2 w-full my-1 px-2 py-2 hover:bg-hover-lm hover:rounded-lg">
-        <img src={icon}></img>
-        <p className="text-accent-lm">{label}</p>
-      </button>
-    </Link>
+  const btn = (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 w-full my-1 px-2 py-2 hover:bg-hover-lm hover:rounded-lg"
+    >
+      <img src={icon}></img>
+      <p className="text-accent-lm">{label}</p>
+    </button>
   );
+
+  return linkto ? <Link to={linkto}>{btn}</Link> : btn;
 }

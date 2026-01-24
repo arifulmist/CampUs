@@ -9,6 +9,7 @@ import {
   storeOTP, 
   sendOTPEmail 
 } from "./backend/otpService";
+import { LucideXCircle } from "lucide-react";
 
 export function Login() {
   const navigate = useNavigate();
@@ -86,13 +87,14 @@ export function Login() {
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="mb-4 px-3 py-1 bg-accent-lm/15 rounded-lg flex gap-1 items-center">
+            <LucideXCircle className="text-accent-lm size-4"></LucideXCircle>
+            <p className="text-base text-accent-lm">{error}</p>
           </div>
         )}
 
-        {/* Development OTP Display */}
-        {devOTP && process.env.NODE_ENV === 'development' && (
+        {/* Development OTP Display
+        {devOTP && import.meta.env.DEV && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
               <strong>Development Mode:</strong> OTP is: <span className="font-mono font-bold">{devOTP}</span>
@@ -101,7 +103,7 @@ export function Login() {
               This would be sent to: {userEmail}
             </p>
           </div>
-        )}
+        )} */}
         
         {/* Student ID Field */}
         <InputField
@@ -119,8 +121,16 @@ export function Login() {
           label="Password" 
           value={password} 
           onChange={setPassword} 
-          required
         />
+                {/* Forgot Password Link */}
+        <div className="-mt-3">
+          <Link 
+            to="/forgot-password" 
+            className="text-sm text-accent-lm hover:underline cursor-pointer"
+          >
+            Forgot Password?
+          </Link>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-4 mt-10">
@@ -148,24 +158,15 @@ export function Login() {
           </p>
         </div>
 
-        {/* Forgot Password Link */}
-        <div className="text-center mt-4">
-          <Link 
-            to="/forgot-password" 
-            className="text-sm text-accent-lm hover:underline cursor-pointer"
-          >
-            Forgot Password?
-          </Link>
-        </div>
 
-        {/* Development Note */}
-        {process.env.NODE_ENV === 'development' && (
+        {/* Development Note
+        {import.meta.env.DEV && (
           <div className="mt-4 p-2 bg-gray-100 rounded text-center">
             <p className="text-xs text-gray-600">
               Development mode: Check console for OTP
             </p>
           </div>
-        )}
+        )} */}
       </form>
     </SignupLoginBox>
   );

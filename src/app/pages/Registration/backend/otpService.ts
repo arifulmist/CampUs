@@ -1,4 +1,4 @@
-import { supabase, callEdgeFunction } from './supabaseClient';
+import { supabase, callEdgeFunction } from '../../../../../supabase/supabaseClient';
 
 /**
  * Generate a 6-digit OTP
@@ -12,26 +12,29 @@ export function generateOTP(): string {
  */
 export async function storeOTP(studentId: string, email: string, otp: string): Promise<boolean> {
   try {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const authUid = authData.user?.id;
+
+    if (authError || !authUid) {
+      console.error('User must be signed in to store OTP:', authError);
+      return false;
+    }
+
     // OTP expires in 10 minutes
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
-    // Delete any existing OTPs for this student (optional)
-    await supabase
-      .from('otp_verification')
-      .delete()
-      .eq('student_id', studentId);
-
-    // Insert new OTP
+    // Upsert OTP (otp_verification PK is auth_uid)
     const { error } = await supabase
       .from('otp_verification')
-      .insert({
+      .upsert({
+        auth_uid: authUid,
         student_id: studentId,
         email: email,
         otp_code: otp,
         expires_at: expiresAt.toISOString(),
         is_used: false
-      });
+      }, { onConflict: 'auth_uid' });
 
     if (error) {
       console.error('Error storing OTP:', error);
@@ -54,25 +57,11 @@ export async function sendOTPEmail(email: string, otp: string, studentId: string
   devOTP?: string;
 }> {
   try {
-    // Get values directly
-const supabaseUrl = 'https://jbwgefxvczlimjemgslt.supabase.co'
-const supabaseKey = 'sb_publishable_Bxj3qsK6iictW40ISesQjw_NYAMLqam'
-    
-    // Direct fetch without callEdgeFunction
-    const response = await fetch(`${supabaseUrl}/functions/v1/send-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}` // KEY IS HERE
-      },
-      body: JSON.stringify({
-        email,
-        otp,
-        student_id: studentId
-      })
+    const result = await callEdgeFunction('send-otp', {
+      email,
+      otp,
+      student_id: studentId,
     });
-
-    const result = await response.json();
     
     if (result.error) {
       console.error('Error sending OTP email:', result.error);
@@ -103,17 +92,27 @@ const supabaseKey = 'sb_publishable_Bxj3qsK6iictW40ISesQjw_NYAMLqam'
 /**
  * Verify OTP from database
  */
-export async function verifyOTP(studentId: string, otp: string): Promise<{
+export async function verifyOTP(otp: string): Promise<{
   success: boolean;
   message: string;
-  userData?: any;
+  userData?: Record<string, unknown>;
 }> {
   try {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const authUid = authData.user?.id;
+
+    if (authError || !authUid) {
+      return {
+        success: false,
+        message: 'Not authenticated. Please login again.',
+      };
+    }
+
     // Get the latest valid OTP for this student
     const { data, error } = await supabase
       .from('otp_verification')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('auth_uid', authUid)
       .eq('otp_code', otp)
       .eq('is_used', false)
       .gt('expires_at', new Date().toISOString())
@@ -133,7 +132,7 @@ export async function verifyOTP(studentId: string, otp: string): Promise<{
     const { error: updateError } = await supabase
       .from('otp_verification')
       .update({ is_used: true })
-      .eq('id', data.id);
+      .eq('auth_uid', authUid);
 
     if (updateError) {
       console.error('Error marking OTP as used:', updateError);
@@ -143,7 +142,7 @@ export async function verifyOTP(studentId: string, otp: string): Promise<{
     const { data: userData, error: userError } = await supabase
       .from('user_info')
       .select('*')
-      .eq('student_id', studentId)
+      .eq('auth_uid', authUid)
       .single();
 
     if (userError || !userData) {
@@ -156,7 +155,7 @@ export async function verifyOTP(studentId: string, otp: string): Promise<{
     return {
       success: true,
       message: 'OTP verified successfully',
-      userData: userData
+      userData: userData as Record<string, unknown>
     };
   } catch (error) {
     console.error('Exception verifying OTP:', error);
@@ -174,17 +173,32 @@ export async function validateCredentials(studentId: string, password: string): 
   success: boolean;
   message: string;
   email?: string;
-  userData?: any;
+  authUid?: string;
+  userData?: Record<string, unknown>;
 }> {
   try {
-    const { data, error } = await supabase
+    // Resolve email from student_id
+    const { data: userInfo, error: lookupError } = await supabase
       .from('user_info')
-      .select('*')
+      .select('email')
       .eq('student_id', studentId)
-      .eq('password', password)
       .single();
 
-    if (error || !data) {
+    if (lookupError || !userInfo?.email) {
+      console.error('Error looking up user email:', lookupError);
+      return {
+        success: false,
+        message: 'Invalid Student ID or Password'
+      };
+    }
+
+    // Authenticate using Supabase Auth
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: userInfo.email,
+      password,
+    });
+
+    if (signInError || !signInData.user) {
       return {
         success: false,
         message: 'Invalid student ID or password'
@@ -194,8 +208,9 @@ export async function validateCredentials(studentId: string, password: string): 
     return {
       success: true,
       message: 'Credentials valid',
-      email: data.email,
-      userData: data
+      email: userInfo.email,
+      authUid: signInData.user.id,
+      userData: userInfo as unknown as Record<string, unknown>
     };
   } catch (error) {
     console.error('Error validating credentials:', error);

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { SignupLoginBox } from "./components/SignupLoginBox";
-import { verifyOTP } from "./backend/otpService";
+import { verifyOTP, generateOTP, storeOTP, sendOTPEmail } from "./backend/otpService";
 
 export function Login2FA() {
   const { userId } = useParams<{ userId: string }>();
@@ -138,15 +138,15 @@ export function Login2FA() {
     setSuccess("");
 
     try {
-      const verification = await verifyOTP(userId!, code);
+      const verification = await verifyOTP(code);
       
-      if (verification.success) {
+      if (verification.success && verification.userData) {
         setSuccess("✅ Verification successful! Redirecting...");
         
         // Store user session
         localStorage.setItem('user', JSON.stringify(verification.userData));
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('studentId', verification.userData.student_id);
+        localStorage.setItem('studentId', String(verification.userData.student_id));
         
         // Redirect to home
         setTimeout(() => {
@@ -175,13 +175,32 @@ export function Login2FA() {
     setError("");
     
     try {
-      // Navigate back to login to regenerate OTP
-      navigate("/login", { 
-        state: { 
-          autoResend: true,
-          userId: userId 
-        } 
-      });
+      if (!userId || !userEmail) {
+        setError("Missing user details. Please login again.");
+        return;
+      }
+
+      const otp = generateOTP();
+      const stored = await storeOTP(userId, userEmail, otp);
+      if (!stored) {
+        setError("Failed to generate verification code");
+        return;
+      }
+
+      const emailResult = await sendOTPEmail(userEmail, otp, userId);
+      if (!emailResult.success && !emailResult.devOTP) {
+        setError(emailResult.message);
+        return;
+      }
+
+      if (emailResult.devOTP) {
+        setDevOTP(emailResult.devOTP);
+      }
+
+      setTimeLeft(600);
+      setCanResend(false);
+      setSuccess("A new code has been sent.");
+      setTimeout(() => setSuccess(""), 2000);
     } catch (error) {
       console.error("Resend error:", error);
       setError("Failed to resend OTP");
@@ -204,13 +223,13 @@ export function Login2FA() {
   const seconds = timeLeft % 60;
 
   return (
-    <SignupLoginBox title="Two-Factor Authentication">
+    <SignupLoginBox title="Enter Verification Code">
       <div className="space-y-6 max-w-xl">
         {/* Header */}
         <div className="text-center">
-          <h3 className="text-lg font-medium text-text-lm mb-2">
+          {/* <h3 className="text-lg font-medium text-text-lm mb-2">
             Enter Verification Code
-          </h3>
+          </h3> */}
           <p className="text-text-lighter-lm">
             We sent a 6-digit code to{" "}
             <span className="font-medium text-accent-lm">
@@ -221,13 +240,13 @@ export function Login2FA() {
 
         {/* Success Message */}
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-700">{success}</p>
+          <div className="p-3 bg-online-indicator/15 rounded-lg">
+            <p className="text-base text-online-indicator">{success}</p>
           </div>
         )}
 
         {/* Development OTP Display */}
-        {devOTP && process.env.NODE_ENV === 'development' && (
+        {devOTP && import.meta.env.DEV && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Development Mode:</strong> OTP is:{" "}
@@ -302,11 +321,11 @@ export function Login2FA() {
         </form>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+        <div className="flex justify-between items-center pt-4">
           <button
             type="button"
             onClick={handleBack}
-            className="text-sm text-text-lighter-lm hover:text-accent-lm transition flex items-center gap-1"
+            className="text-base font-medium text-accent-lm hover:text-hover-btn-lm transition flex items-center gap-1"
           >
             ← Back to Login
           </button>
@@ -315,10 +334,10 @@ export function Login2FA() {
             type="button"
             onClick={handleResend}
             disabled={!canResend || loading}
-            className={`text-sm font-medium transition flex items-center gap-1
+            className={`text-base font-light transition flex items-center gap-1
               ${canResend 
                 ? "text-accent-lm hover:text-hover-btn-lm cursor-pointer" 
-                : "text-gray-400 cursor-not-allowed"
+                : "text-text-lighter-lm cursor-not-allowed"
               }`}
           >
             {loading ? (
@@ -335,9 +354,6 @@ export function Login2FA() {
         {/* Help Text */}
         <div className="text-center text-sm text-text-lighter-lm pt-4">
           <p>Didn't receive the code? Check your spam folder.</p>
-          <p className="mt-1 text-xs">
-            Code will auto-submit when all digits are entered
-          </p>
         </div>
       </div>
     </SignupLoginBox>

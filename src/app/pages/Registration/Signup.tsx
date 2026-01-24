@@ -5,10 +5,15 @@ import { Password } from "./components/Password";
 import { useLocation } from "react-router";
 import { InputField } from "../../../components/InputField";
 import { ButtonCTA } from "../../../components/ButtonCTA";
-import { supabase } from "./backend/supabaseClient"; // Import Supabase client
+import { supabase } from "../../../../supabase/supabaseClient"; 
+import type { PostgrestError } from "@supabase/supabase-js";
 
-const DEPTS = ["CSE", "EECE", "CE", "ME", "NSE", "NAME", "EWCE", "PME", "BME", "ARCH"];
 const LEVELS = ["1", "2", "3", "4"];
+
+type DepartmentOption = {
+  dept_id: string;
+  department_name: string;
+};
 
 type FormData = {
   name: string;
@@ -33,6 +38,11 @@ export function Signup() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [emailValid, setEmailValid] = useState(true);
+  const [studentIdValid, setStudentIdValid] = useState(true);
+
+  const [deptOptions, setDeptOptions] = useState<DepartmentOption[]>([]);
+  const [deptOptionsLoading, setDeptOptionsLoading] = useState(false);
+  const [deptOptionsError, setDeptOptionsError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -46,6 +56,47 @@ export function Signup() {
     confirmPassword: "",
   });
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDepartments() {
+      setDeptOptionsLoading(true);
+      setDeptOptionsError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("departments_lookup")
+          .select("dept_id, department_name")
+          .order("department_name", { ascending: true });
+
+        if (!mounted) return;
+
+        if (error) {
+          console.error("Failed to load departments:", error);
+          const pgError = error as PostgrestError;
+          const details = [pgError.code, pgError.message, pgError.details, pgError.hint]
+            .filter(Boolean)
+            .join(" | ");
+          setDeptOptionsError(details || "Failed to load departments. Please refresh.");
+          setDeptOptions([]);
+        } else {
+          setDeptOptions((data ?? []) as DepartmentOption[]);
+        }
+      } catch (err) {
+        console.error("Unexpected error while loading departments:", err);
+        setDeptOptionsError("Unexpected error while loading departments.");
+        setDeptOptions([]);
+      }
+
+      setDeptOptionsLoading(false);
+    }
+
+    loadDepartments();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Handle OCR data when returning from scanning
   useEffect(() => {
     const ocrData = location.state?.ocrData;
@@ -55,6 +106,7 @@ export function Signup() {
         ...prev,
         name: ocrData.name || prev.name,
         studentId: ocrData.studentId || prev.studentId,
+        // OCR might return dept name; we resolve to dept_id once options are loaded
         dept: ocrData.dept || prev.dept,
         batch: ocrData.batch || prev.batch,
       }));
@@ -65,6 +117,20 @@ export function Signup() {
       }
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (!formData.dept || deptOptions.length === 0) return;
+
+    const matchesDeptId = deptOptions.some(d => d.dept_id === formData.dept);
+    if (matchesDeptId) return;
+
+    const matchByName = deptOptions.find(
+      d => d.department_name.toLowerCase() === String(formData.dept).toLowerCase()
+    );
+    if (matchByName) {
+      setFormData(prev => ({ ...prev, dept: matchByName.dept_id }));
+    }
+  }, [deptOptions, formData.dept]);
 
   function chooseFile() {
     fileRef.current?.click();
@@ -107,6 +173,10 @@ export function Signup() {
     if (name === "email") {
       setEmailValid(isValidEmail(value));
     }
+
+    if (name === "studentId") {
+      setStudentIdValid(isValidStudentId(value));
+    }
     
     // Clear error when user starts typing
     if (signupError) {
@@ -116,6 +186,10 @@ export function Signup() {
 
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const isValidStudentId = (studentId: string) => {
+    return /^[0-9]{9}$/.test(studentId);
   };
 
   const handlePasswordChange = (value: string) => {
@@ -147,6 +221,11 @@ export function Signup() {
     return;
   }
 
+  if (!studentIdValid) {
+    alert("Student ID must be exactly 9 digits");
+    return;
+  }
+
   // Check if all required fields are filled
   if (!formData.name || !formData.studentId || !formData.dept || !formData.level || 
       !formData.batch || !formData.email || !formData.mobile || !formData.password) {
@@ -157,59 +236,78 @@ export function Signup() {
   setIsLoading(true);
 
   try {
-    // Check if user already exists - FIXED QUERY
-    // First check by email
-    const { data: existingByEmail, error: emailError } = await supabase
-      .from('user_info')
-      .select('email')
-      .eq('email', formData.email)
-      .maybeSingle(); // Use maybeSingle instead of single
-
-    // Check by student ID
-    const { data: existingById, error: idError } = await supabase
+    // Check uniqueness constraints that we can validate client-side
+    // (email uniqueness is enforced by Supabase Auth; student_id uniqueness is in user_info)
+    const { data: existingByStudentId, error: existingByStudentIdError } = await supabase
       .from('user_info')
       .select('student_id')
       .eq('student_id', formData.studentId)
       .maybeSingle();
 
-    // If either exists, show error
-    if (existingByEmail || existingById) {
-      setSignupError("User with this email or student ID already exists");
-      setIsLoading(false);
+    if (existingByStudentIdError) {
+      console.error("Supabase error (student_id check):", existingByStudentIdError);
+      setSignupError(`Could not validate student ID: ${existingByStudentIdError.message}`);
       return;
     }
 
-    // Insert new user into the database
-    const { data, error } = await supabase
+    if (existingByStudentId) {
+      setSignupError("User with this student ID already exists");
+      return;
+    }
+
+    // Create auth user (auth.users)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
+    });
+
+    if (authError) {
+      console.error("Supabase auth error:", authError);
+      setSignupError(authError.message);
+      return;
+    }
+
+    const authUid = authData.user?.id;
+    if (!authUid) {
+      setSignupError("Signup failed: missing auth user id");
+      return;
+    }
+
+    // Upsert profile row (public.user_info)
+    // A DB trigger (e.g. handle_auth_user_created) may create a placeholder row first;
+    // upsert ensures we populate the remaining fields instead of failing on duplicate key.
+    const { data: profileData, error: profileError } = await supabase
       .from('user_info')
-      .insert({
-        student_id: formData.studentId,
-        name: formData.name,
-        department: formData.dept,
-        level: formData.level,
-        batch: formData.batch,
+      .upsert({
+        auth_uid: authUid,
         email: formData.email,
-        password: formData.password,
-        mobile: formData.mobile || null
-      })
-      .select(); // Returns the inserted row
+        name: formData.name,
+        // FK expects dept_id (length 2)
+        department: formData.dept,
+        level: Number.parseInt(formData.level, 10),
+        batch: Number.parseInt(formData.batch, 10),
+        mobile: formData.mobile || null,
+        student_id: formData.studentId,
+      }, { onConflict: 'auth_uid' })
+      .select();
 
-    if (error) {
-      console.error("Supabase error:", error);
-      
-      // Handle specific error cases
-      if (error.code === '23505') {
-        setSignupError("User with this email or student ID already exists");
-      } else if (error.code === '42501') {
-        setSignupError("Permission denied. Please check your Supabase RLS policies.");
+    if (profileError) {
+      console.error("Supabase error (user_info insert):", profileError);
+      if (profileError.code === '23505') {
+        // Could be either auth_uid or student_id unique constraints
+        setSignupError("User profile already exists (duplicate key). Try a different Student ID or login instead.");
+      } else if (profileError.code === '42501') {
+        setSignupError("Permission denied. Please check your Supabase RLS policies for user_info.");
       } else {
-        setSignupError(`Signup failed: ${error.message}`);
+        setSignupError(`Profile creation failed: ${profileError.message}`);
       }
-      setIsLoading(false);
       return;
     }
 
-    console.log("User created successfully:", data);
+    console.log("User created successfully:", profileData);
     
     // Clear form data
     setFormData({
@@ -225,7 +323,7 @@ export function Signup() {
     });
     
     // Show success message and redirect
-    alert("Signup successful! You can now login.");
+    alert("Signup successful! Please check your email for verification (if enabled), then login.");
     navigate('/login');
     
   } catch (error) {
@@ -277,14 +375,19 @@ export function Signup() {
               required
             />
 
-            <InputField
-              label="Student ID"
-              name="studentId"
-              type="text"
-              value={formData.studentId} 
-              changeHandler={handleInputChange}
-              required
-            />
+            <div className="flex flex-col">
+              <InputField
+                label="Student ID"
+                name="studentId"
+                type="text"
+                value={formData.studentId}
+                changeHandler={handleInputChange}
+                required
+              />
+              {!studentIdValid && (
+                <p className="text-sm text-accent-lm mt-1">Student ID must be exactly 9 digits.</p>
+              )}
+            </div>
   
             <div className="flex flex-row w-full align-middle justify-between">
               <div className="flex flex-col">
@@ -296,9 +399,30 @@ export function Signup() {
                   className="px-2 bg-primary-lm border border-stroke-grey rounded-lg w-32 h-10 text-base text-text-lighter-lm font-normal focus:outline-accent-lm"
                   required
                 >
-                  <option value="" className="text-text-lighter-lm">Select Dept</option>
-                  {DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  <option value="" className="text-text-lighter-lm">
+                    {deptOptionsLoading ? "Loading..." : "Select Dept"}
+                  </option>
+                  {deptOptions.map(d => (
+                    <option key={d.dept_id} value={d.dept_id}>
+                      {d.department_name}
+                    </option>
+                  ))}
                 </select>
+                {!deptOptionsLoading && !deptOptionsError && deptOptions.length === 0 && (
+                  <p className="text-xs text-text-lighter-lm mt-1">No departments found.</p>
+                )}
+                {deptOptionsError && (
+                  <div className="mt-1 flex items-start gap-2">
+                    <p className="text-xs text-accent-lm wrap-break-word">{deptOptionsError}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="text-xs underline text-accent-lm whitespace-nowrap"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col">
@@ -380,7 +504,6 @@ export function Signup() {
               value={formData.password}
               onChange={handlePasswordChange}
               showStrength={true}
-              required
             />
 
             <Password
@@ -389,7 +512,6 @@ export function Signup() {
               onChange={handleConfirmPasswordChange}
               compareValue={formData.password}
               onMatchChange={setPasswordsMatch}
-              required
             />
 
             <div className="flex items-center gap-4">
