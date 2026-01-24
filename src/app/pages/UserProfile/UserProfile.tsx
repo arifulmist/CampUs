@@ -1528,19 +1528,43 @@ export function UserProfile()
                   />
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium">Choose an image</label>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      onChange={onPickBackgroundFile}
-                      className="block w-full text-sm"
-                    />
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-start">
+                        <input
+                          id="background-image-file"
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={onPickBackgroundFile}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="background-image-file"
+                          className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm disabled:opacity-50 cursor-pointer"
+                        >
+                          Choose file
+                        </label>
+                        {backgroundDraftFile?.name && (
+                          <p className="mt-1 text-sm text-text-lighter-lm max-w-[20rem] wrap-break-word">
+                            {backgroundDraftFile.name}
+                          </p>
+                        )}
+                      </div>
+
+                      {backgroundImgUrl && !backgroundDraftFile && (
+                        <button
+                          type="button"
+                          onClick={removeBackgroundImage}
+                          className="px-4 py-2 rounded-md border border-accent-lm text-accent-lm bg-primary-lm"
+                          disabled={backgroundSaving}
+                        >
+                          Remove current
+                        </button>
+                      )}
+                    </div>
                     {backgroundFileError && (
                       <p className="text-sm text-accent-lm">{backgroundFileError}</p>
                     )}
-                    <p className="text-xs text-text-lighter-lm">
-                      After selecting, you’ll see a preview here before confirming.
-                    </p>
+
                   </div>
 
                   <div className="flex justify-end gap-3">
@@ -1552,16 +1576,6 @@ export function UserProfile()
                     >
                       Cancel
                     </button>
-                    {backgroundImgUrl && (
-                      <button
-                        type="button"
-                        onClick={removeBackgroundImage}
-                        className="px-4 py-2 rounded-md border border-accent-lm text-accent-lm bg-primary-lm"
-                        disabled={backgroundSaving}
-                      >
-                        Remove
-                      </button>
-                    )}
                     <button
                       type="button"
                       onClick={confirmBackgroundImage}
@@ -1614,27 +1628,43 @@ export function UserProfile()
                       />
                     </div>
                     <div className="flex flex-col gap-2 flex-1">
-                      <label className="text-sm font-medium">Replace profile picture</label>
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        onChange={onPickProfileFile}
-                        className="block w-full text-sm"
-                      />
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-start">
+                          <input
+                            id="profile-image-file"
+                            type="file"
+                            accept="image/png,image/jpeg"
+                            onChange={onPickProfileFile}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="profile-image-file"
+                            className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm text-sm disabled:opacity-50 cursor-pointer"
+                          >
+                            Choose file
+                          </label>
+                          {profileDraftFile?.name && (
+                            <p className="mt-1 text-sm text-text-lighter-lm max-w-[20rem] wrap-break-word">
+                              {profileDraftFile.name}
+                            </p>
+                          )}
+                        </div>
+
+                        {profilePictureUrl && !profileDraftFile && !profilePictureRemove && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfilePictureRemove(true);
+                              setProfileDraftFile(null);
+                            }}
+                            className="text-sm text-accent-lm border border-accent-lm rounded-md px-3 py-2"
+                          >
+                            Remove current
+                          </button>
+                        )}
+                      </div>
                       {profileFileError && (
                         <p className="text-sm text-accent-lm">{profileFileError}</p>
-                      )}
-                      {profilePictureUrl && !profileDraftFile && !profilePictureRemove && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setProfilePictureRemove(true);
-                            setProfileDraftFile(null);
-                          }}
-                          className="self-start text-sm text-accent-lm border border-accent-lm rounded-full px-3 py-1"
-                        >
-                          Remove current
-                        </button>
                       )}
                       {profilePictureRemove && (
                         <p className="text-sm text-text-lighter-lm">Profile picture will be removed on Save.</p>
@@ -1644,32 +1674,32 @@ export function UserProfile()
 
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Name</label>
+                      <label className="font-medium">Name</label>
                       <input
                         value={nameDraft}
                         onChange={(e) => setNameDraft(e.target.value)}
-                        className="w-full rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
                         placeholder="Your name"
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Bio</label>
+                      <label className="font-medium">Bio</label>
                       <textarea
                         value={bioDraft}
                         onChange={(e) => setBioDraft(e.target.value)}
-                        className="w-full min-h-24 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                        className="w-full min-h-24 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
                         placeholder="Write a short bio..."
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-sm font-medium">Contacts</label>
+                      <label className="font-medium">Contacts</label>
                       <div className="flex gap-2">
                         <input
                           value={newContactDraft}
                           onChange={(e) => setNewContactDraft(e.target.value)}
-                          className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                          className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
                           placeholder="Add contact (handle / email / URL)"
                         />
                         <button
@@ -1696,7 +1726,7 @@ export function UserProfile()
                               key={`${c}-${idx}`}
                               className="inline-flex items-center gap-2 rounded-full border border-stroke-grey bg-primary-lm px-3 py-1"
                             >
-                              <span className="text-sm">{c}</span>
+                              <span>{c}</span>
                               <button
                                 type="button"
                                 onClick={() =>
