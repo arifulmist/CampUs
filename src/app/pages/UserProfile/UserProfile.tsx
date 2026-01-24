@@ -871,57 +871,529 @@
 //   );
 // }
 
-import placeholderUserImg from "@/assets/images/placeholderUser.png"; 
+import placeholderUserImg from "@/assets/images/placeholderUser.png";
 import { UpcomingEvents } from "@/components/UpcomingEvents";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import InterestedPosts from "./components/InterestedPosts";
-import { placeholderUser } from "@/mockData/placeholderUser";
+import type { InterestedItem } from "./backend/interestedStore";
+import crossBtnIcon from "@/assets/icons/cross_btn.svg";
 
-const placeholderPost={
-  text: "jsdkjdasjdjad"
-};
-
-//all contact icons
-import Email from "@/assets/icons/email_icon.png";
 import Github from "@/assets/icons/github_icon.svg";
-import Whatsapp from "@/assets/icons/whatsapp_icon.svg";
-import Facebook from "@/assets/icons/facebook_icon.svg";
-import Instagram from "@/assets/icons/instagram_icon.png";
-import Discord from "@/assets/icons/discord_icon.svg";
-import LinkedIn from "@/assets/icons/linkedin_icon.svg";
 import { LucidePencil, LucidePlus } from "lucide-react";
-import { PostBody } from "@/components/PostBody";
 import { Link } from "react-router";
+import AddLookupItemModal, {
+  type SkillsLookupItem,
+} from "./components/AddLookupItemModal";
+
+import { supabase } from "../../../../supabase/supabaseClient";
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Unexpected error";
+}
+
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg"] as const;
+type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
+
+function isAllowedImage(file: File): file is File & { type: AllowedImageType } {
+  return ALLOWED_IMAGE_TYPES.includes(file.type as AllowedImageType);
+}
+
+function useObjectUrl(file: File | null): string | null {
+  const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+
+  useEffect(() => {
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [url]);
+
+  return url;
+}
 
 
 export function UserProfile()
 {
-  const [interestedPosts, setInterestedPosts] = useState<InterestedItem[]>([]);
-  const contactIcons = [Github, Whatsapp, LinkedIn, Discord, Email, Facebook, Instagram];
+  const [interestedPosts] = useState<InterestedItem[]>([]);
+
+  const [skillsLookup, setSkillsLookup] = useState<SkillsLookupItem[]>([]);
+  const [skillsLookupLoading, setSkillsLookupLoading] = useState(false);
+  const [skillsLookupError, setSkillsLookupError] = useState<string>("");
+
+  const [skills, setSkills] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+
+  const [addLookupModalOpen, setAddLookupModalOpen] = useState(false);
+  const [addLookupModalMode, setAddLookupModalMode] = useState<
+    "skills" | "interests"
+  >("skills");
+
+  // Background image state
+  const [backgroundModalOpen, setBackgroundModalOpen] = useState(false);
+  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
+  const [backgroundDraftFile, setBackgroundDraftFile] = useState<File | null>(null);
+  const [backgroundFileError, setBackgroundFileError] = useState<string>("");
+  const backgroundImageUrl = useObjectUrl(backgroundImageFile);
+  const backgroundDraftUrl = useObjectUrl(backgroundDraftFile);
+
+  // Profile state
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profileDraftFile, setProfileDraftFile] = useState<File | null>(null);
+  const [profileFileError, setProfileFileError] = useState<string>("");
+  const profileImageUrl = useObjectUrl(profileImageFile);
+  const profileDraftUrl = useObjectUrl(profileDraftFile);
+
+  const [displayName, setDisplayName] = useState<string>("Aldkjskd");
+  const [bio, setBio] = useState<string>("Lorem ipsum fk u");
+  const [contacts, setContacts] = useState<string[]>(["alksak.skl"]);
+
+  const [nameDraft, setNameDraft] = useState<string>(displayName);
+  const [bioDraft, setBioDraft] = useState<string>(bio);
+  const [contactsDraft, setContactsDraft] = useState<string[]>(contacts);
+  const [newContactDraft, setNewContactDraft] = useState<string>("");
+
+  const effectiveBackgroundPreviewUrl = backgroundDraftUrl ?? backgroundImageUrl;
+  const effectiveProfilePreviewUrl = profileDraftUrl ?? profileImageUrl ?? placeholderUserImg;
+
+  const anyModalOpen = backgroundModalOpen || profileModalOpen;
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSkillsLookup() {
+      setSkillsLookupLoading(true);
+      setSkillsLookupError("");
+      try {
+        const { data, error } = await supabase
+          .from("skills_lookup")
+          .select("id, skill")
+          .order("skill", { ascending: true });
+
+        if (error) throw error;
+        if (alive) {
+          const parsed: SkillsLookupItem[] = [];
+          for (const row of data ?? []) {
+            const rec = row as Record<string, unknown>;
+            const idValue = rec.id;
+            const skillValue = rec.skill;
+
+            if (typeof idValue === "number" && typeof skillValue === "string") {
+              parsed.push({ id: idValue, skill: skillValue });
+            }
+          }
+          setSkillsLookup(parsed);
+        }
+      } catch (e: unknown) {
+        if (alive) setSkillsLookupError(getErrorMessage(e));
+      } finally {
+        if (alive) setSkillsLookupLoading(false);
+      }
+    }
+
+    loadSkillsLookup();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function openAddSkillsModal() {
+    setAddLookupModalMode("skills");
+    setAddLookupModalOpen(true);
+  }
+
+  function openAddInterestsModal() {
+    setAddLookupModalMode("interests");
+    setAddLookupModalOpen(true);
+  }
+
+  function openBackgroundModal() {
+    setBackgroundDraftFile(null);
+    setBackgroundFileError("");
+    setBackgroundModalOpen(true);
+  }
+
+  function closeBackgroundModal() {
+    setBackgroundModalOpen(false);
+    setBackgroundDraftFile(null);
+    setBackgroundFileError("");
+  }
+
+  function openProfileModal() {
+    setProfileDraftFile(null);
+    setProfileFileError("");
+    setNameDraft(displayName);
+    setBioDraft(bio);
+    setContactsDraft(contacts);
+    setNewContactDraft("");
+    setProfileModalOpen(true);
+  }
+
+  function closeProfileModal() {
+    setProfileModalOpen(false);
+    setProfileDraftFile(null);
+    setProfileFileError("");
+  }
+
+  useEffect(() => {
+    if (!anyModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [anyModalOpen]);
+
+  useEffect(() => {
+    if (!anyModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeBackgroundModal();
+        closeProfileModal();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [anyModalOpen]);
+
+  const onPickBackgroundFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!isAllowedImage(file)) {
+      setBackgroundFileError("Only PNG, JPG, and JPEG files are allowed.");
+      setBackgroundDraftFile(null);
+      return;
+    }
+    setBackgroundFileError("");
+    setBackgroundDraftFile(file);
+  };
+
+  const onPickProfileFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!isAllowedImage(file)) {
+      setProfileFileError("Only PNG, JPG, and JPEG files are allowed.");
+      setProfileDraftFile(null);
+      return;
+    }
+    setProfileFileError("");
+    setProfileDraftFile(file);
+  };
+
+  const confirmBackgroundImage = () => {
+    if (!backgroundDraftFile) return;
+    setBackgroundImageFile(backgroundDraftFile);
+    closeBackgroundModal();
+  };
+
+  const saveProfile = () => {
+    if (profileDraftFile) {
+      setProfileImageFile(profileDraftFile);
+    }
+    setDisplayName(nameDraft.trim() || displayName);
+    setBio(bioDraft);
+    setContacts(contactsDraft.filter((c) => c.trim()).map((c) => c.trim()));
+    closeProfileModal();
+  };
 
   return(
     <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
+      <AddLookupItemModal
+        open={addLookupModalOpen}
+        mode={addLookupModalMode}
+        lookupItems={skillsLookup}
+        lookupLoading={skillsLookupLoading}
+        lookupError={skillsLookupError}
+        onClose={() => setAddLookupModalOpen(false)}
+        onLookupItemCreated={(item) =>
+          setSkillsLookup((prev) =>
+            prev.some((p) => p.id === item.id) ? prev : [...prev, item]
+          )
+        }
+        onInserted={(value) => {
+          if (addLookupModalMode === "skills") {
+            setSkills((prev) => (prev.includes(value) ? prev : [...prev, value]));
+          } else {
+            setInterests((prev) =>
+              prev.includes(value) ? prev : [...prev, value]
+            );
+          }
+        }}
+      />
       <div className="flex flex-col lg:gap-5 lg:w-[70vw]"> {/*profile content*/}
         
         {/* profile picture, basic details and bio */}
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl flex flex-col h-fit">
-          <div className="w-full h-[30vh] bg-stroke-grey rounded-t-xl"></div>
+          <div
+            className="w-full h-[30vh] bg-stroke-grey rounded-t-xl relative overflow-hidden"
+            style={
+              backgroundImageUrl
+                ? {
+                    backgroundImage: `url(${backgroundImageUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }
+                : undefined
+            }
+          >
+            <button
+              type="button"
+              onClick={openBackgroundModal}
+              aria-label="Edit background image"
+              className="absolute lg:top-3 lg:right-3 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-2 border border-stroke-grey cursor-pointer"
+            >
+              <LucidePencil className="size-5" />
+            </button>
+          </div>
           <div className="flex flex-col lg:ml-8">
-            <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 overflow-hidden">
-              <img src={placeholderUserImg} className="object-cover lg:size-35 rounded-full"></img>
+            <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
+              <img
+                src={profileImageUrl ?? placeholderUserImg}
+                className="object-cover lg:size-35 rounded-full"
+                alt="Profile"
+              />
+              <button
+                type="button"
+                onClick={openProfileModal}
+                aria-label="Edit profile"
+                className="absolute lg:top-2 lg:-right-1 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-1.5 border border-stroke-grey cursor-pointer"
+              >
+                <LucidePencil className="size-5" />
+              </button>
             </div>
-            <h3 className="font-header">Aldkjskd</h3>
+            <h3 className="font-header">{displayName}</h3>
             <h6>20232039293</h6>
             <h6>CSE-23</h6>
-            <p className="lg:my-3">Lorem ipsum fk u</p>
+            <p className="lg:my-3">{bio}</p>
             <div className="flex lg:gap-3 flex-wrap lg:mb-5">
-              <div className="flex lg:gap-2 items-center">
-                <img src={Github} className="size-8"></img>
-                <p>alksak.skl</p>
-              </div>
+              {contacts.map((c, idx) => (
+                <div key={`${c}-${idx}`} className="flex lg:gap-2 items-center">
+                  <img src={Github} className="size-8" alt="Contact" />
+                  <p>{c}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Edit Background Image Modal */}
+        {backgroundModalOpen && (
+          <>
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: 10000, backgroundColor: "rgba(0,0,0,0.4)" }}
+              onMouseDown={closeBackgroundModal}
+            />
+            <div
+              className="fixed inset-0 flex items-center justify-center"
+              style={{ zIndex: 10001 }}
+            >
+              <div
+                className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-8 lg:py-6 lg:w-130 lg:relative lg:animate-slide-in max-h-[85vh] overflow-y-auto"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="lg:flex lg:justify-between lg:items-center">
+                  <h4 className="lg:font-header text-text-lm lg:font-medium">Edit Background Image</h4>
+                  <button type="button" onClick={closeBackgroundModal} className="cursor-pointer">
+                    <img src={crossBtnIcon} alt="Close modal" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4 lg:mt-4">
+                  <div
+                    className="w-full h-56 rounded-xl border border-stroke-grey bg-stroke-grey overflow-hidden"
+                    style={
+                      effectiveBackgroundPreviewUrl
+                        ? {
+                            backgroundImage: `url(${effectiveBackgroundPreviewUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium">Choose an image</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      onChange={onPickBackgroundFile}
+                      className="block w-full text-sm"
+                    />
+                    {backgroundFileError && (
+                      <p className="text-sm text-accent-lm">{backgroundFileError}</p>
+                    )}
+                    <p className="text-xs text-text-lighter-lm">
+                      After selecting, you’ll see a preview here before confirming.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={closeBackgroundModal}
+                      className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmBackgroundImage}
+                      disabled={!backgroundDraftFile}
+                      className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm disabled:opacity-50"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Edit Profile Modal */}
+        {profileModalOpen && (
+          <>
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: 10000, backgroundColor: "rgba(0,0,0,0.7)" }}
+              onMouseDown={closeProfileModal}
+            />
+            <div
+              className="fixed inset-0 flex items-center justify-center"
+              style={{ zIndex: 10001 }}
+            >
+              <div
+                className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-8 lg:py-6 lg:w-130 lg:relative lg:animate-slide-in max-h-[85vh] overflow-y-auto"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="lg:flex lg:justify-between lg:items-center">
+                  <h4 className="lg:font-header text-text-lm lg:font-medium">Edit Profile</h4>
+                  <button type="button" onClick={closeProfileModal} className="cursor-pointer">
+                    <img src={crossBtnIcon} alt="Close modal" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-5 lg:mt-4">
+                  <div className="flex items-center gap-4">
+                    <div className="size-24 rounded-full overflow-hidden border border-stroke-grey bg-stroke-grey">
+                      <img
+                        src={effectiveProfilePreviewUrl}
+                        className="size-24 object-cover"
+                        alt="Profile preview"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1">
+                      <label className="text-sm font-medium">Replace profile picture</label>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={onPickProfileFile}
+                        className="block w-full text-sm"
+                      />
+                      {profileFileError && (
+                        <p className="text-sm text-accent-lm">{profileFileError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Name</label>
+                      <input
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        className="w-full rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                        placeholder="Your name"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Bio</label>
+                      <textarea
+                        value={bioDraft}
+                        onChange={(e) => setBioDraft(e.target.value)}
+                        className="w-full min-h-24 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                        placeholder="Write a short bio..."
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Contacts</label>
+                      <div className="flex gap-2">
+                        <input
+                          value={newContactDraft}
+                          onChange={(e) => setNewContactDraft(e.target.value)}
+                          className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                          placeholder="Add contact (handle / email / URL)"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const value = newContactDraft.trim();
+                            if (!value) return;
+                            setContactsDraft((prev) =>
+                              prev.includes(value) ? prev : [...prev, value]
+                            );
+                            setNewContactDraft("");
+                          }}
+                          className="rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 hover:bg-hover-lm"
+                          aria-label="Add contact"
+                        >
+                          <LucidePlus className="size-5" />
+                        </button>
+                      </div>
+
+                      {!!contactsDraft.length && (
+                        <div className="flex flex-wrap gap-2">
+                          {contactsDraft.map((c, idx) => (
+                            <div
+                              key={`${c}-${idx}`}
+                              className="inline-flex items-center gap-2 rounded-full border border-stroke-grey bg-primary-lm px-3 py-1"
+                            >
+                              <span className="text-sm">{c}</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setContactsDraft((prev) =>
+                                    prev.filter((_, i) => i !== idx)
+                                  )
+                                }
+                                className="rounded-full p-1 hover:bg-hover-lm"
+                                aria-label="Remove contact"
+                              >
+                                <img src={crossBtnIcon} className="size-4" alt="Remove" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={closeProfileModal}
+                      className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveProfile}
+                      className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* skills */}
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
@@ -930,7 +1402,7 @@ export function UserProfile()
           <div className="flex justify-between items-center">
             <h4 className="font-header">Skills</h4>   
             <div className="space-x-1">
-              <button className="cursor-pointer">
+              <button type="button" onClick={openAddSkillsModal} className="cursor-pointer">
                 <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
               </button>
             </div>
@@ -938,13 +1410,21 @@ export function UserProfile()
 
           {/* list of skills */}
           <div className="flex flex-col lg:gap-2 lg:mt-5">
-            <div className="flex justify-between items-center">
-              <h6>Skill 1</h6>
-              <button>
-                <LucidePencil className="size-5 cursor-pointer hover:bg-accent-lm transition duration-200"></LucidePencil>
-              </button>
-            </div>
-            <hr className="border-stroke-grey"></hr>
+            {skills.length ? (
+              skills.map((skill, index) => (
+                <div key={`${skill}-${index}`}>
+                  <div className="flex justify-between items-center">
+                    <h6>{skill}</h6>
+                    <button type="button">
+                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                    </button>
+                  </div>
+                  <hr className="border-stroke-grey"></hr>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-text-lighter-lm">No skills added yet.</p>
+            )}
           </div>
         </div>
 
@@ -955,7 +1435,7 @@ export function UserProfile()
           <div className="flex justify-between items-center">
             <h4 className="font-header">Interests</h4>   
             <div className="space-x-1">
-              <button className="cursor-pointer">
+              <button type="button" onClick={openAddInterestsModal} className="cursor-pointer">
                 <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
               </button>
             </div>
@@ -963,13 +1443,21 @@ export function UserProfile()
 
           {/* list of skills */}
           <div className="flex flex-col lg:gap-2 lg:mt-5">
-            <div className="flex justify-between items-center">
-              <h6>Interest 1</h6>
-              <button>
-                <LucidePencil className="size-5 cursor-pointer hover:bg-accent-lm transition duration-200"></LucidePencil>
-              </button>
-            </div>
-            <hr className="border-stroke-grey"></hr>
+            {interests.length ? (
+              interests.map((interest, index) => (
+                <div key={`${interest}-${index}`}>
+                  <div className="flex justify-between items-center">
+                    <h6>{interest}</h6>
+                    <button type="button">
+                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                    </button>
+                  </div>
+                  <hr className="border-stroke-grey"></hr>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-text-lighter-lm">No interests added yet.</p>
+            )}
           </div>
         </div>
 
