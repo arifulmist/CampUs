@@ -929,6 +929,7 @@ const MAX_PROFILE_IMAGE_BYTES = 10 * 1024 * 1024;
 function extForMime(mime: string) {
   if (mime === "image/png") return "png";
   if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/jpg") return "jpg";
   return "bin";
 }
 
@@ -989,7 +990,7 @@ function formatBatchLabel(profile: UserInfoRow | null): string {
   return deptName && batchValue ? `${deptName}-${batchValue}` : "";
 }
 
-const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg"] as const;
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg"] as const;
 type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
 function isAllowedImage(file: File): file is File & { type: AllowedImageType } {
@@ -1019,6 +1020,14 @@ export function UserProfile()
 
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
+
+  const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
+  const [editingSkillValue, setEditingSkillValue] = useState<string>("");
+  const [skillEditError, setSkillEditError] = useState<string>("");
+
+  const [editingInterestIndex, setEditingInterestIndex] = useState<number | null>(null);
+  const [editingInterestValue, setEditingInterestValue] = useState<string>("");
+  const [interestEditError, setInterestEditError] = useState<string>("");
 
   const [addLookupModalOpen, setAddLookupModalOpen] = useState(false);
   const [addLookupModalMode, setAddLookupModalMode] = useState<
@@ -1084,10 +1093,14 @@ export function UserProfile()
           setBio("");
           setProfilePictureUrl(null);
           setBackgroundImgUrl(null);
+          setSkills([]);
+          setInterests([]);
+          setEditingSkillIndex(null);
+          setEditingInterestIndex(null);
           return;
         }
 
-        const [userInfoRes, userProfileRes] = await Promise.all([
+        const [userInfoRes, userProfileRes, userSkillsRes, userInterestsRes] = await Promise.all([
           supabase
             .from("user_info")
             .select(
@@ -1100,15 +1113,63 @@ export function UserProfile()
             .select("bio,profile_picture_url,background_img_url")
             .eq("auth_uid", authUid)
             .maybeSingle(),
+          supabase
+            .from("user_skills")
+            .select("skill_id")
+            .eq("auth_uid", authUid),
+          supabase
+            .from("user_interests")
+            .select("interest_id")
+            .eq("auth_uid", authUid),
         ]);
 
         if (!mounted) return;
 
         if (userInfoRes.error) throw userInfoRes.error;
         if (userProfileRes.error) throw userProfileRes.error;
+        if (userSkillsRes.error) throw userSkillsRes.error;
+        if (userInterestsRes.error) throw userInterestsRes.error;
 
         const info = userInfoRes.data as unknown as UserInfoRow | null;
         const profile = userProfileRes.data as unknown as UserProfileRow | null;
+
+        const skillIds: number[] = [];
+        for (const row of (userSkillsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+          const idVal = row.skill_id;
+          if (typeof idVal === "number") skillIds.push(idVal);
+        }
+
+        const interestIds: number[] = [];
+        for (const row of (userInterestsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+          const idVal = row.interest_id;
+          if (typeof idVal === "number") interestIds.push(idVal);
+        }
+
+        const allIds = Array.from(new Set([...skillIds, ...interestIds]));
+        const lookupById = new Map<number, string>();
+        if (allIds.length) {
+          const { data: lookupData, error: lookupError } = await supabase
+            .from("skills_lookup")
+            .select("id, skill")
+            .in("id", allIds);
+          if (lookupError) throw lookupError;
+
+          for (const row of (lookupData ?? []) as unknown as Array<Record<string, unknown>>) {
+            const idVal = row.id;
+            const skillVal = row.skill;
+            if (typeof idVal === "number" && typeof skillVal === "string") {
+              lookupById.set(idVal, skillVal);
+            }
+          }
+        }
+
+        const loadedSkills = skillIds
+          .map((id) => lookupById.get(id))
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+
+        const loadedInterests = interestIds
+          .map((id) => lookupById.get(id))
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
 
         setDisplayName(info?.name?.trim() || "User");
         setStudentId(info?.student_id?.trim() || "");
@@ -1116,6 +1177,8 @@ export function UserProfile()
         setBio(profile?.bio ?? "");
         setProfilePictureUrl(profile?.profile_picture_url ?? null);
         setBackgroundImgUrl(profile?.background_img_url ?? null);
+        setSkills(loadedSkills);
+        setInterests(loadedInterests);
       } catch (e: unknown) {
         if (!mounted) return;
         console.error("Failed to load user_info:", e);
@@ -1125,6 +1188,10 @@ export function UserProfile()
         setBio("");
         setProfilePictureUrl(null);
         setBackgroundImgUrl(null);
+        setSkills([]);
+        setInterests([]);
+        setEditingSkillIndex(null);
+        setEditingInterestIndex(null);
       }
     }
 
@@ -1186,6 +1253,196 @@ export function UserProfile()
   function openAddInterestsModal() {
     setAddLookupModalMode("interests");
     setAddLookupModalOpen(true);
+  }
+
+  function normalizeText(text: string) {
+    return text.trim().toLowerCase();
+  }
+
+  function startEditSkill(index: number) {
+    setSkillEditError("");
+    setEditingSkillIndex(index);
+    setEditingSkillValue(skills[index] ?? "");
+  }
+
+  function cancelEditSkill() {
+    setEditingSkillIndex(null);
+    setEditingSkillValue("");
+    setSkillEditError("");
+  }
+
+  async function saveSkillEdit(index: number) {
+    const nextValue = editingSkillValue.trim();
+    if (!nextValue) {
+      setSkillEditError("Skill cannot be empty.");
+      return;
+    }
+
+    const currentValue = skills[index];
+    if (!currentValue) return;
+    if (normalizeText(currentValue) === normalizeText(nextValue)) {
+      cancelEditSkill();
+      return;
+    }
+
+    const oldLookup = skillsLookup.find(
+      (x) => normalizeText(x.skill) === normalizeText(currentValue)
+    );
+    if (!oldLookup) {
+      setSkillEditError("Could not find this skill in lookup.");
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const authUid = authData.user?.id;
+      if (!authUid) {
+        setSkillEditError("You need to be logged in to update this.");
+        return;
+      }
+
+      let newLookup = skillsLookup.find(
+        (x) => normalizeText(x.skill) === normalizeText(nextValue)
+      );
+
+      if (!newLookup) {
+        const { data: inserted, error: insertLookupError } = await supabase
+          .from("skills_lookup")
+          .insert({ skill: nextValue })
+          .select("id, skill")
+          .single();
+        if (insertLookupError) throw insertLookupError;
+
+        const rec = inserted as unknown as Record<string, unknown>;
+        const idValue = rec.id;
+        const skillValue = rec.skill;
+        if (typeof idValue !== "number" || typeof skillValue !== "string") {
+          throw new Error("Failed to create lookup entry.");
+        }
+        newLookup = { id: idValue, skill: skillValue };
+        setSkillsLookup((prev) =>
+          prev.some((p) => p.id === newLookup!.id) ? prev : [...prev, newLookup!]
+        );
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from("user_skills")
+        .select("id")
+        .eq("auth_uid", authUid)
+        .eq("skill_id", newLookup.id)
+        .limit(1);
+      if (existingError) throw existingError;
+      if (existing && existing.length) {
+        setSkillEditError("You already have this skill.");
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("user_skills")
+        .update({ skill_id: newLookup.id })
+        .eq("auth_uid", authUid)
+        .eq("skill_id", oldLookup.id);
+      if (updateError) throw updateError;
+
+      setSkills((prev) => prev.map((s, i) => (i === index ? newLookup!.skill : s)));
+      cancelEditSkill();
+    } catch (e: unknown) {
+      setSkillEditError(getErrorMessage(e));
+    }
+  }
+
+  function startEditInterest(index: number) {
+    setInterestEditError("");
+    setEditingInterestIndex(index);
+    setEditingInterestValue(interests[index] ?? "");
+  }
+
+  function cancelEditInterest() {
+    setEditingInterestIndex(null);
+    setEditingInterestValue("");
+    setInterestEditError("");
+  }
+
+  async function saveInterestEdit(index: number) {
+    const nextValue = editingInterestValue.trim();
+    if (!nextValue) {
+      setInterestEditError("Interest cannot be empty.");
+      return;
+    }
+
+    const currentValue = interests[index];
+    if (!currentValue) return;
+    if (normalizeText(currentValue) === normalizeText(nextValue)) {
+      cancelEditInterest();
+      return;
+    }
+
+    const oldLookup = skillsLookup.find(
+      (x) => normalizeText(x.skill) === normalizeText(currentValue)
+    );
+    if (!oldLookup) {
+      setInterestEditError("Could not find this interest in lookup.");
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const authUid = authData.user?.id;
+      if (!authUid) {
+        setInterestEditError("You need to be logged in to update this.");
+        return;
+      }
+
+      let newLookup = skillsLookup.find(
+        (x) => normalizeText(x.skill) === normalizeText(nextValue)
+      );
+
+      if (!newLookup) {
+        const { data: inserted, error: insertLookupError } = await supabase
+          .from("skills_lookup")
+          .insert({ skill: nextValue })
+          .select("id, skill")
+          .single();
+        if (insertLookupError) throw insertLookupError;
+
+        const rec = inserted as unknown as Record<string, unknown>;
+        const idValue = rec.id;
+        const skillValue = rec.skill;
+        if (typeof idValue !== "number" || typeof skillValue !== "string") {
+          throw new Error("Failed to create lookup entry.");
+        }
+        newLookup = { id: idValue, skill: skillValue };
+        setSkillsLookup((prev) =>
+          prev.some((p) => p.id === newLookup!.id) ? prev : [...prev, newLookup!]
+        );
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from("user_interests")
+        .select("id")
+        .eq("auth_uid", authUid)
+        .eq("interest_id", newLookup.id)
+        .limit(1);
+      if (existingError) throw existingError;
+      if (existing && existing.length) {
+        setInterestEditError("You already have this interest.");
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("user_interests")
+        .update({ interest_id: newLookup.id })
+        .eq("auth_uid", authUid)
+        .eq("interest_id", oldLookup.id);
+      if (updateError) throw updateError;
+
+      setInterests((prev) => prev.map((s, i) => (i === index ? newLookup!.skill : s)));
+      cancelEditInterest();
+    } catch (e: unknown) {
+      setInterestEditError(getErrorMessage(e));
+    }
   }
 
   function openBackgroundModal() {
@@ -1533,7 +1790,7 @@ export function UserProfile()
                         <input
                           id="background-image-file"
                           type="file"
-                          accept="image/png,image/jpeg"
+                            accept="image/png,image/jpeg,image/jpg"
                           onChange={onPickBackgroundFile}
                           className="hidden"
                         />
@@ -1633,7 +1890,7 @@ export function UserProfile()
                           <input
                             id="profile-image-file"
                             type="file"
-                            accept="image/png,image/jpeg"
+                            accept="image/png,image/jpeg,image/jpg"
                             onChange={onPickProfileFile}
                             className="hidden"
                           />
@@ -1785,16 +2042,50 @@ export function UserProfile()
 
           {/* list of skills */}
           <div className="flex flex-col lg:gap-2 lg:mt-5">
+            {skillEditError && (
+              <p className="text-sm text-accent-lm">{skillEditError}</p>
+            )}
             {skills.length ? (
               skills.map((skill, index) => (
                 <div key={`${skill}-${index}`}>
                   <div className="flex justify-between items-center">
-                    <h6>{skill}</h6>
-                    <button type="button">
+                    {editingSkillIndex === index ? (
+                      <input
+                        value={editingSkillValue}
+                        onChange={(e) => setEditingSkillValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            saveSkillEdit(index);
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelEditSkill();
+                          }
+                        }}
+                        className="flex-1 mr-3 rounded-md border border-stroke-grey bg-primary-lm px-3 py-1"
+                        autoFocus
+                      />
+                    ) : (
+                      <h6>{skill}</h6>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editingSkillIndex === index
+                          ? saveSkillEdit(index)
+                          : startEditSkill(index)
+                      }
+                      aria-label={
+                        editingSkillIndex === index ? "Save skill" : "Edit skill"
+                      }
+                    >
                       <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
                     </button>
                   </div>
-                  <hr className="border-stroke-grey"></hr>
+                  {index !== skills.length - 1 && (
+                    <hr className="border-stroke-grey"></hr>
+                  )}
                 </div>
               ))
             ) : (
@@ -1818,16 +2109,52 @@ export function UserProfile()
 
           {/* list of skills */}
           <div className="flex flex-col lg:gap-2 lg:mt-5">
+            {interestEditError && (
+              <p className="text-sm text-accent-lm">{interestEditError}</p>
+            )}
             {interests.length ? (
               interests.map((interest, index) => (
                 <div key={`${interest}-${index}`}>
                   <div className="flex justify-between items-center">
-                    <h6>{interest}</h6>
-                    <button type="button">
+                    {editingInterestIndex === index ? (
+                      <input
+                        value={editingInterestValue}
+                        onChange={(e) => setEditingInterestValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            saveInterestEdit(index);
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelEditInterest();
+                          }
+                        }}
+                        className="flex-1 mr-3 rounded-md border border-stroke-grey bg-primary-lm px-3 py-1"
+                        autoFocus
+                      />
+                    ) : (
+                      <h6>{interest}</h6>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editingInterestIndex === index
+                          ? saveInterestEdit(index)
+                          : startEditInterest(index)
+                      }
+                      aria-label={
+                        editingInterestIndex === index
+                          ? "Save interest"
+                          : "Edit interest"
+                      }
+                    >
                       <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
                     </button>
                   </div>
-                  <hr className="border-stroke-grey"></hr>
+                  {index !== interests.length - 1 && (
+                    <hr className="border-stroke-grey"></hr>
+                  )}
                 </div>
               ))
             ) : (
