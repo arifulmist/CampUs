@@ -890,6 +890,20 @@ import { supabase } from "../../../../supabase/supabaseClient";
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const rec = error as Record<string, unknown>;
+    const msg = rec.message;
+    const details = rec.details;
+    const hint = rec.hint;
+    const code = rec.code;
+
+    const parts: string[] = [];
+    if (typeof msg === "string" && msg.trim()) parts.push(msg.trim());
+    if (typeof details === "string" && details.trim()) parts.push(details.trim());
+    if (typeof hint === "string" && hint.trim()) parts.push(hint.trim());
+    if (typeof code === "string" && code.trim()) parts.push(`Code: ${code.trim()}`);
+    if (parts.length) return parts.join(" — ");
+  }
   return "Unexpected error";
 }
 
@@ -902,6 +916,71 @@ type UserInfoRow = {
     department_name: string | null;
   } | null;
 };
+
+type UserProfileRow = {
+  bio: string | null;
+  profile_picture_url: string | null;
+  background_img_url: string | null;
+};
+
+const PROFILE_IMAGES_BUCKET = "profile_images";
+const MAX_PROFILE_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function extForMime(mime: string) {
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg") return "jpg";
+  return "bin";
+}
+
+function generateUuidV4() {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+
+  // RFC4122-ish fallback (not cryptographically perfect but fine for filenames)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
+    const r = Math.floor(Math.random() * 16);
+    const v = ch === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+async function uploadProfileImage(
+  authUid: string,
+  file: File
+): Promise<string> {
+  if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+    throw new Error("Image must be 10MB or smaller.");
+  }
+  if (!isAllowedImage(file)) {
+    throw new Error("Only PNG, JPG, and JPEG files are allowed.");
+  }
+
+  const ext = extForMime(file.type);
+  const fileName = `${generateUuidV4()}.${ext}`;
+  const filePath = `${authUid}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(PROFILE_IMAGES_BUCKET)
+    .upload(filePath, file, {
+      upsert: false,
+      contentType: file.type,
+    });
+  if (uploadError) {
+    const msg = String((uploadError as unknown as { message?: unknown })?.message ?? "");
+    if (msg.toLowerCase().includes("row-level security")) {
+      throw new Error(
+        "Upload blocked by Supabase Storage RLS (storage.objects). Add an INSERT policy for bucket 'profile_images' allowing authenticated users to upload their own objects."
+      );
+    }
+    throw uploadError;
+  }
+
+  const { data: publicData } = supabase.storage
+    .from(PROFILE_IMAGES_BUCKET)
+    .getPublicUrl(filePath);
+
+  return publicData.publicUrl;
+}
 
 function formatBatchLabel(profile: UserInfoRow | null): string {
   const deptName =
@@ -948,10 +1027,11 @@ export function UserProfile()
 
   // Background image state
   const [backgroundModalOpen, setBackgroundModalOpen] = useState(false);
-  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
   const [backgroundDraftFile, setBackgroundDraftFile] = useState<File | null>(null);
   const [backgroundFileError, setBackgroundFileError] = useState<string>("");
-  const backgroundImageUrl = useObjectUrl(backgroundImageFile);
+  const [backgroundSaveError, setBackgroundSaveError] = useState<string>("");
+  const [backgroundSaving, setBackgroundSaving] = useState(false);
+  const [backgroundImgUrl, setBackgroundImgUrl] = useState<string | null>(null);
   const backgroundDraftUrl = useObjectUrl(backgroundDraftFile);
 
   // Profile state
@@ -959,6 +1039,10 @@ export function UserProfile()
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profileDraftFile, setProfileDraftFile] = useState<File | null>(null);
   const [profileFileError, setProfileFileError] = useState<string>("");
+  const [profileSaveError, setProfileSaveError] = useState<string>("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [profilePictureRemove, setProfilePictureRemove] = useState(false);
   const profileImageUrl = useObjectUrl(profileImageFile);
   const profileDraftUrl = useObjectUrl(profileDraftFile);
 
@@ -966,7 +1050,7 @@ export function UserProfile()
   const [studentId, setStudentId] = useState<string>("");
   const [batchLabel, setBatchLabel] = useState<string>("");
 
-  const [bio, setBio] = useState<string>("Lorem ipsum fk u");
+  const [bio, setBio] = useState<string>("");
   const [contacts, setContacts] = useState<string[]>(["alksak.skl"]);
 
   const [nameDraft, setNameDraft] = useState<string>(displayName);
@@ -974,8 +1058,11 @@ export function UserProfile()
   const [contactsDraft, setContactsDraft] = useState<string[]>(contacts);
   const [newContactDraft, setNewContactDraft] = useState<string>("");
 
-  const effectiveBackgroundPreviewUrl = backgroundDraftUrl ?? backgroundImageUrl;
-  const effectiveProfilePreviewUrl = profileDraftUrl ?? profileImageUrl ?? placeholderUserImg;
+  const effectiveBackgroundPreviewUrl = backgroundDraftUrl ?? backgroundImgUrl;
+  const effectiveProfilePreviewUrl =
+    profilePictureRemove
+      ? placeholderUserImg
+      : profileDraftUrl ?? profileImageUrl ?? profilePictureUrl ?? placeholderUserImg;
 
   const anyModalOpen = backgroundModalOpen || profileModalOpen;
 
@@ -994,31 +1081,50 @@ export function UserProfile()
           setDisplayName("Guest");
           setStudentId("");
           setBatchLabel("");
+          setBio("");
+          setProfilePictureUrl(null);
+          setBackgroundImgUrl(null);
           return;
         }
 
-        const { data, error } = await supabase
-          .from("user_info")
-          .select(
-            "name,batch,department,student_id,departments_lookup(department_name)"
-          )
-          .eq("auth_uid", authUid)
-          .maybeSingle();
+        const [userInfoRes, userProfileRes] = await Promise.all([
+          supabase
+            .from("user_info")
+            .select(
+              "name,batch,department,student_id,departments_lookup(department_name)"
+            )
+            .eq("auth_uid", authUid)
+            .maybeSingle(),
+          supabase
+            .from("user_profile")
+            .select("bio,profile_picture_url,background_img_url")
+            .eq("auth_uid", authUid)
+            .maybeSingle(),
+        ]);
 
         if (!mounted) return;
 
-        if (error) throw error;
-        const profile = data as unknown as UserInfoRow | null;
+        if (userInfoRes.error) throw userInfoRes.error;
+        if (userProfileRes.error) throw userProfileRes.error;
 
-        setDisplayName(profile?.name?.trim() || "User");
-        setStudentId(profile?.student_id?.trim() || "");
-        setBatchLabel(formatBatchLabel(profile));
+        const info = userInfoRes.data as unknown as UserInfoRow | null;
+        const profile = userProfileRes.data as unknown as UserProfileRow | null;
+
+        setDisplayName(info?.name?.trim() || "User");
+        setStudentId(info?.student_id?.trim() || "");
+        setBatchLabel(formatBatchLabel(info));
+        setBio(profile?.bio ?? "");
+        setProfilePictureUrl(profile?.profile_picture_url ?? null);
+        setBackgroundImgUrl(profile?.background_img_url ?? null);
       } catch (e: unknown) {
         if (!mounted) return;
         console.error("Failed to load user_info:", e);
         setDisplayName("User");
         setStudentId("");
         setBatchLabel("");
+        setBio("");
+        setProfilePictureUrl(null);
+        setBackgroundImgUrl(null);
       }
     }
 
@@ -1085,6 +1191,7 @@ export function UserProfile()
   function openBackgroundModal() {
     setBackgroundDraftFile(null);
     setBackgroundFileError("");
+    setBackgroundSaveError("");
     setBackgroundModalOpen(true);
   }
 
@@ -1092,11 +1199,14 @@ export function UserProfile()
     setBackgroundModalOpen(false);
     setBackgroundDraftFile(null);
     setBackgroundFileError("");
+    setBackgroundSaveError("");
   }
 
   function openProfileModal() {
     setProfileDraftFile(null);
     setProfileFileError("");
+    setProfileSaveError("");
+    setProfilePictureRemove(false);
     setNameDraft(displayName);
     setBioDraft(bio);
     setContactsDraft(contacts);
@@ -1108,6 +1218,8 @@ export function UserProfile()
     setProfileModalOpen(false);
     setProfileDraftFile(null);
     setProfileFileError("");
+    setProfileSaveError("");
+    setProfilePictureRemove(false);
   }
 
   useEffect(() => {
@@ -1134,6 +1246,11 @@ export function UserProfile()
   const onPickBackgroundFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+      setBackgroundFileError("Image must be 10MB or smaller.");
+      setBackgroundDraftFile(null);
+      return;
+    }
     if (!isAllowedImage(file)) {
       setBackgroundFileError("Only PNG, JPG, and JPEG files are allowed.");
       setBackgroundDraftFile(null);
@@ -1146,6 +1263,11 @@ export function UserProfile()
   const onPickProfileFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+      setProfileFileError("Image must be 10MB or smaller.");
+      setProfileDraftFile(null);
+      return;
+    }
     if (!isAllowedImage(file)) {
       setProfileFileError("Only PNG, JPG, and JPEG files are allowed.");
       setProfileDraftFile(null);
@@ -1153,22 +1275,135 @@ export function UserProfile()
     }
     setProfileFileError("");
     setProfileDraftFile(file);
+    setProfilePictureRemove(false);
   };
 
-  const confirmBackgroundImage = () => {
+  const confirmBackgroundImage = async () => {
     if (!backgroundDraftFile) return;
-    setBackgroundImageFile(backgroundDraftFile);
-    closeBackgroundModal();
+    setBackgroundSaving(true);
+    setBackgroundSaveError("");
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const authUid = userData.user?.id;
+      if (!authUid) {
+        setBackgroundSaveError("You need to be logged in to update this.");
+        return;
+      }
+
+      const url = await uploadProfileImage(authUid, backgroundDraftFile);
+
+      const { error: upsertError } = await supabase
+        .from("user_profile")
+        .upsert(
+          {
+            auth_uid: authUid,
+            background_img_url: url,
+          },
+          { onConflict: "auth_uid" }
+        );
+      if (upsertError) throw upsertError;
+
+      setBackgroundImgUrl(url);
+      closeBackgroundModal();
+    } catch (e: unknown) {
+      setBackgroundSaveError(getErrorMessage(e));
+    } finally {
+      setBackgroundSaving(false);
+    }
   };
 
-  const saveProfile = () => {
-    if (profileDraftFile) {
-      setProfileImageFile(profileDraftFile);
+  const removeBackgroundImage = async () => {
+    setBackgroundSaving(true);
+    setBackgroundSaveError("");
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const authUid = userData.user?.id;
+      if (!authUid) {
+        setBackgroundSaveError("You need to be logged in to update this.");
+        return;
+      }
+
+      const { error: upsertError } = await supabase
+        .from("user_profile")
+        .upsert(
+          {
+            auth_uid: authUid,
+            background_img_url: null,
+          },
+          { onConflict: "auth_uid" }
+        );
+      if (upsertError) throw upsertError;
+
+      setBackgroundImgUrl(null);
+      closeBackgroundModal();
+    } catch (e: unknown) {
+      setBackgroundSaveError(getErrorMessage(e));
+    } finally {
+      setBackgroundSaving(false);
     }
-    setDisplayName(nameDraft.trim() || displayName);
-    setBio(bioDraft);
-    setContacts(contactsDraft.filter((c) => c.trim()).map((c) => c.trim()));
-    closeProfileModal();
+  };
+
+  const saveProfile = async () => {
+    const nextName = nameDraft.trim();
+    const nextBio = bioDraft.trim();
+
+    if (!nextName) {
+      setProfileSaveError("Name cannot be empty.");
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileSaveError("");
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      const authUid = userData.user?.id;
+      if (!authUid) {
+        setProfileSaveError("You need to be logged in to save changes.");
+        return;
+      }
+
+      let nextProfilePictureUrl = profilePictureUrl;
+      if (profilePictureRemove) {
+        nextProfilePictureUrl = null;
+      } else if (profileDraftFile) {
+        nextProfilePictureUrl = await uploadProfileImage(authUid, profileDraftFile);
+      }
+
+      const { error: userInfoError } = await supabase
+        .from("user_info")
+        .upsert({ auth_uid: authUid, name: nextName }, { onConflict: "auth_uid" });
+      if (userInfoError) throw userInfoError;
+
+      const { error: userProfileError } = await supabase
+        .from("user_profile")
+        .upsert(
+          {
+            auth_uid: authUid,
+            bio: nextBio ? nextBio : null,
+            profile_picture_url: nextProfilePictureUrl,
+          },
+          { onConflict: "auth_uid" }
+        );
+      if (userProfileError) throw userProfileError;
+
+      setDisplayName(nextName);
+      setBio(nextBio);
+      setProfilePictureUrl(nextProfilePictureUrl ?? null);
+      setContacts(contactsDraft.filter((c) => c.trim()).map((c) => c.trim()));
+
+      if (profileDraftFile) {
+        setProfileImageFile(profileDraftFile);
+      }
+
+      closeProfileModal();
+    } catch (e: unknown) {
+      setProfileSaveError(getErrorMessage(e));
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   return(
@@ -1202,9 +1437,9 @@ export function UserProfile()
           <div
             className="w-full h-[30vh] bg-stroke-grey rounded-t-xl relative overflow-hidden"
             style={
-              backgroundImageUrl
+              backgroundImgUrl
                 ? {
-                    backgroundImage: `url(${backgroundImageUrl})`,
+                    backgroundImage: `url(${backgroundImgUrl})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                   }
@@ -1223,7 +1458,7 @@ export function UserProfile()
           <div className="flex flex-col lg:ml-8">
             <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
               <img
-                src={profileImageUrl ?? placeholderUserImg}
+                src={profileImageUrl ?? profilePictureUrl ?? placeholderUserImg}
                 className="object-cover lg:size-35 rounded-full"
                 alt="Profile"
               />
@@ -1239,7 +1474,7 @@ export function UserProfile()
             <h3 className="font-header">{displayName}</h3>
             {!!studentId && <h6>{studentId}</h6>}
             {!!batchLabel && <h6>{batchLabel}</h6>}
-            <p className="lg:my-3">{bio}</p>
+            {!!bio && <p className="lg:my-3">{bio}</p>}
             <div className="flex lg:gap-3 flex-wrap lg:mb-5">
               {contacts.map((c, idx) => (
                 <div key={`${c}-${idx}`} className="flex lg:gap-2 items-center">
@@ -1275,6 +1510,10 @@ export function UserProfile()
                 </div>
 
                 <div className="flex flex-col gap-4 lg:mt-4">
+                  {backgroundSaveError && (
+                    <p className="text-sm text-accent-lm">{backgroundSaveError}</p>
+                  )}
+
                   <div
                     className="w-full h-56 rounded-xl border border-stroke-grey bg-stroke-grey overflow-hidden"
                     style={
@@ -1309,9 +1548,20 @@ export function UserProfile()
                       type="button"
                       onClick={closeBackgroundModal}
                       className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                      disabled={backgroundSaving}
                     >
                       Cancel
                     </button>
+                    {backgroundImgUrl && (
+                      <button
+                        type="button"
+                        onClick={removeBackgroundImage}
+                        className="px-4 py-2 rounded-md border border-accent-lm text-accent-lm bg-primary-lm"
+                        disabled={backgroundSaving}
+                      >
+                        Remove
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={confirmBackgroundImage}
@@ -1351,6 +1601,10 @@ export function UserProfile()
                 </div>
 
                 <div className="flex flex-col gap-5 lg:mt-4">
+                  {profileSaveError && (
+                    <p className="text-sm text-accent-lm">{profileSaveError}</p>
+                  )}
+
                   <div className="flex items-center gap-4">
                     <div className="size-24 rounded-full overflow-hidden border border-stroke-grey bg-stroke-grey">
                       <img
@@ -1369,6 +1623,21 @@ export function UserProfile()
                       />
                       {profileFileError && (
                         <p className="text-sm text-accent-lm">{profileFileError}</p>
+                      )}
+                      {profilePictureUrl && !profileDraftFile && !profilePictureRemove && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfilePictureRemove(true);
+                            setProfileDraftFile(null);
+                          }}
+                          className="self-start text-sm text-accent-lm border border-accent-lm rounded-full px-3 py-1"
+                        >
+                          Remove current
+                        </button>
+                      )}
+                      {profilePictureRemove && (
+                        <p className="text-sm text-text-lighter-lm">Profile picture will be removed on Save.</p>
                       )}
                     </div>
                   </div>
@@ -1452,6 +1721,7 @@ export function UserProfile()
                       type="button"
                       onClick={closeProfileModal}
                       className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                      disabled={profileSaving}
                     >
                       Cancel
                     </button>
@@ -1459,6 +1729,7 @@ export function UserProfile()
                       type="button"
                       onClick={saveProfile}
                       className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm"
+                      disabled={profileSaving}
                     >
                       Save
                     </button>

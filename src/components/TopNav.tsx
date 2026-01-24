@@ -28,6 +28,10 @@ type UserProfileRow = {
   } | null;
 };
 
+type UserProfileExtrasRow = {
+  profile_picture_url: string | null;
+};
+
 export function TopNav() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +40,7 @@ export function TopNav() {
   const [isMsgOpen, setIsMsgOpen] = useState(false);
   const [userName, setUserName] = useState<string>("Loading...");
   const [userBatch, setUserBatch] = useState<string>("");
+  const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(null);
   const [msgTarget, setMsgTarget] = useState<{
     id: string | null;
     name?: string;
@@ -67,25 +72,37 @@ export function TopNav() {
       if (!authUid) {
         setUserName("Guest");
         setUserBatch("");
+        setUserProfilePicUrl(null);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("user_info")
-        .select("name,batch,department,student_id,departments_lookup(department_name)")
-        .eq("auth_uid", authUid)
-        .maybeSingle();
+      const [infoRes, profileRes] = await Promise.all([
+        supabase
+          .from("user_info")
+          .select(
+            "name,batch,department,student_id,departments_lookup(department_name)"
+          )
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase
+          .from("user_profile")
+          .select("profile_picture_url")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+      ]);
 
       if (!mounted) return;
 
-      if (error) {
-        console.error("Failed to load user profile:", error);
+      if (infoRes.error || profileRes.error) {
+        console.error("Failed to load user profile:", infoRes.error || profileRes.error);
         setUserName("User");
         setUserBatch("");
+        setUserProfilePicUrl(null);
         return;
       }
 
-      const profile = data as unknown as UserProfileRow | null;
+      const profile = infoRes.data as unknown as UserProfileRow | null;
+      const profileExtras = profileRes.data as unknown as UserProfileExtrasRow | null;
 
       const displayName = profile?.name?.trim() || "User";
       const deptName = profile?.departments_lookup?.department_name || profile?.department || "";
@@ -94,6 +111,7 @@ export function TopNav() {
 
       setUserName(displayName);
       setUserBatch(displayBatch);
+      setUserProfilePicUrl(profileExtras?.profile_picture_url ?? null);
     }
 
     loadProfile();
@@ -138,7 +156,11 @@ export function TopNav() {
           onClick={() => setIsOpen((prev) => !prev)}
           className="lg:rounded-full border-[1.5px] border-accent-lm cursor-pointer"
         >
-          <img src={placeholderDP} className="lg:rounded-full lg:size-8" />
+          <img
+            src={userProfilePicUrl ?? placeholderDP}
+            className="lg:rounded-full lg:size-8 object-cover"
+            alt="Profile"
+          />
         </button>
 
         {isOpen && (
@@ -147,6 +169,7 @@ export function TopNav() {
             onClose={() => setIsOpen(false)}
             userName={userName}
             userBatch={userBatch}
+            userImg={userProfilePicUrl ?? placeholderDP}
             onSignOut={async () => {
               try {
                 await supabase.auth.signOut();
@@ -157,6 +180,7 @@ export function TopNav() {
                 setIsOpen(false);
                 setIsNotifOpen(false);
                 setIsMsgOpen(false);
+                setUserProfilePicUrl(null);
                 navigate("/login", { replace: true });
               }
             }}
@@ -182,12 +206,14 @@ function UserClickModal({
   onClose,
   userName,
   userBatch,
+  userImg,
   onSignOut,
 }: {
   isOpen: boolean;
   onClose: () => void;
   userName: string;
   userBatch: string;
+  userImg: string;
   onSignOut: () => void | Promise<void>;
 }) {
     const modalRef = useRef<HTMLDivElement>(null);
@@ -215,7 +241,7 @@ function UserClickModal({
       }`}
     >
       <UserInfo
-        userImg={placeholderDP}
+        userImg={userImg}
         userName={userName}
         userBatch={userBatch}
         disableClick={true}
