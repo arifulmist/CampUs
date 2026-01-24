@@ -1,14 +1,16 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
   // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -16,39 +18,39 @@ serve(async (req) => {
 
     if (!email || !otp || !student_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: "Missing required fields" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     // Your Resend API Key - Store in Supabase Function environment variables
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+
     if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY not configured');
+      console.error("RESEND_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: 'Email service not configured' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: "Email service not configured" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     // Send email using Resend
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: 'Campus Auth <onboarding@resend.dev>',
+        from: "Campus Auth <onboarding@resend.dev>",
         to: [email],
-        subject: 'Your Campus Login OTP',
+        subject: "Your Campus Login OTP",
         html: `
           <!DOCTYPE html>
           <html>
@@ -177,35 +179,34 @@ This is an automated message, please do not reply.
 
     if (!resendResponse.ok) {
       const errorData = await resendResponse.json();
-      console.error('Resend API error:', errorData);
+      console.error("Resend API error:", errorData);
       throw new Error(`Resend API error: ${resendResponse.status}`);
     }
 
     const result = await resendResponse.json();
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'OTP sent successfully',
-        emailId: result.id
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
 
-  } catch (error) {
-    console.error('Error in send-otp function:', error);
-    
     return new Response(
-      JSON.stringify({ 
-        error: 'Failed to send email',
-        details: error.message 
+      JSON.stringify({
+        success: true,
+        message: "OTP sent successfully",
+        emailId: result.id,
       }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  } catch (error: any) {
+    console.error("Error in send-otp function:", error);
+
+    return new Response(
+      JSON.stringify({
+        error: "Failed to send email",
+        details: error.message,
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
