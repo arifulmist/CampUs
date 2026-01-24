@@ -31,10 +31,11 @@ export function PostBody({ title, user, content, tags, category }: PostContent)
     ? category.charAt(0).toUpperCase() + category.slice(1)
     : "";
 
-  const categoryClasses = category ? categoryClassMap[category] ?? "bg-secondary-lm text-text-lm border border-stroke-grey" : "";
+  const categoryClasses = category ? categoryClassMap[category] ?? "bg-secondary-lm border border-stroke-grey" : "";
 
   return(
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
+      
       {category && (
         <div className="lg:mt-1">
           <p
@@ -46,7 +47,7 @@ export function PostBody({ title, user, content, tags, category }: PostContent)
         </div>
       )}
       
-      <h3 className="text-text-lm m-0 lg:font-bold lg:font-[Poppins]">{title}</h3>
+      <h3 className="text-text-lm lg:font-bold lg:font-header">{title}</h3>
       {tags && tags.length > 0 && (
         <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
           {tags.map((t) => (

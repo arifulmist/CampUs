@@ -4,7 +4,7 @@ import type { InterestedItem } from "../backend/interestedStore";
 
 export function InterestedPosts({ items }: { items: InterestedItem[] }) {
   return (
-    <section className="lg:rounded-2xl lg:border border-stroke-grey bg-primary-lm lg:shadow-sm lg:p-7 lg:min-h-50 lg:flex lg:flex-col">
+    <section className="lg:rounded-2xl lg:border border-stroke-grey bg-primary-lm lg:p-7 lg:min-h-50 lg:flex lg:flex-col">
       <div className="lg:mb-4 lg:flex lg:items-center lg:justify-between">
         <h2 className="text-lg lg:font-bold text-text-lm">Interested Posts</h2>
       </div>
