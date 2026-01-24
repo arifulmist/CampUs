@@ -108,19 +108,19 @@ export function TopNav() {
   }, []);
 
   return (
-    <nav className="bg-primary-lm border border-stroke-grey flex justify-between px-10 py-3">
+    <nav className="bg-primary-lm lg:border border-stroke-grey lg:flex lg:justify-between lg:px-10 lg:py-3">
       <Link to="/home">
-        <img src={Logo} className="scale-90"></img>
+        <img src={Logo} className="lg:scale-90"></img>
       </Link>
-      <div className="flex items-center gap-6">
+      <div className="lg:flex lg:items-center lg:gap-6">
         {/* <button>
-          <img src={moonIcon} className="size-6 cursor-pointer"></img>
+          <img src={moonIcon} className="lg:size-6 cursor-pointer"></img>
         </button> */}
 
-        <button onClick={() => setIsNotifOpen(true)} className="relative">
-          <img src={bellIcon} className="size-8 cursor-pointer" />
+        <button onClick={() => setIsNotifOpen(true)} className="lg:relative">
+          <img src={bellIcon} className="lg:size-8 cursor-pointer" />
           {hasUnread && (
-            <span className="absolute -top-0.5 -right-0.5 inline-block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-primary-lm" />
+            <span className="lg:absolute lg:-top-0.5 lg:-right-0.5 lg:inline-block lg:h-2.5 lg:w-2.5 lg:rounded-full bg-red-500 ring-2 ring-primary-lm" />
           )}
         </button>
 
@@ -131,14 +131,14 @@ export function TopNav() {
             setIsMsgOpen(true);
           }}
         >
-          <img src={messageIcon} className="size-6 cursor-pointer" />
+          <img src={messageIcon} className="lg:size-6 cursor-pointer" />
         </button>
 
         <button
           onClick={() => setIsOpen((prev) => !prev)}
-          className="rounded-full border-[1.5px] border-accent-lm cursor-pointer"
+          className="lg:rounded-full border-[1.5px] border-accent-lm cursor-pointer"
         >
-          <img src={placeholderDP} className="rounded-full size-8" />
+          <img src={placeholderDP} className="lg:rounded-full lg:size-8" />
         </button>
 
         {isOpen && (
@@ -220,7 +220,7 @@ function UserClickModal({
         userBatch={userBatch}
         disableClick={true}
       ></UserInfo>
-      <hr className="mt-2 border-stroke-grey"></hr>
+      <hr className="lg:mt-2 border-stroke-grey"></hr>
       <ModalButtons
         icon={userIcon}
         label="Profile"
@@ -251,7 +251,7 @@ function ModalButtons({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 w-full my-1 px-2 py-2 hover:bg-hover-lm hover:rounded-lg"
+      className="lg:flex lg:items-center lg:gap-2 lg:w-full lg:my-1 lg:px-2 lg:py-2 hover:bg-hover-lm hover:rounded-lg"
     >
       <img src={icon}></img>
       <p className="text-accent-lm">{label}</p>

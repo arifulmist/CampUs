@@ -382,22 +382,22 @@ export function LostFound() {
 
   return (
     <>
-      <div className="min-h-screen bg-background-lm animate-fade-in">
-        <main className="mx-auto max-w-4xl px-4 py-6">
+      <div className="lg:min-h-screen bg-background-lm lg:animate-fade-in">
+        <main className="lg:mx-auto lg:max-w-4xl lg:px-4 lg:py-6">
           {/* Posts */}
-          <div className="space-y-4 bg-primary-lm p-10 rounded-xl border-2 border-stroke-grey">
-            <div className="rounded-lg border border-stroke-grey bg-primary-lm mb-6 w-full hover:bg-hover-lm transition">
+          <div className="lg:space-y-4 bg-primary-lm lg:p-10 lg:rounded-xl border-2 border-stroke-grey">
+            <div className="lg:rounded-lg lg:border border-stroke-grey bg-primary-lm lg:mb-6 lg:w-full hover:bg-hover-lm lg:transition">
               <Input
                 placeholder="Tap to announce what has been lost or found"
                 readOnly
                 onClick={openAnnounceModal}
-                className="cursor-pointer rounded-lg border-none placeholder:text-accent-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                className="cursor-pointer lg:rounded-lg border-none placeholder:text-accent-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
               />
             </div>
             {filtered.length === 0 ? (
-              <div className="text-center py-10 text-text-lighter-lm">
-                <p className="text-lg font-medium">No posts available</p>
-                <p className="text-sm mt-1">
+              <div className="text-center lg:py-10 text-text-lighter-lm">
+                <p className="text-lg lg:font-medium">No posts available</p>
+                <p className="text-sm lg:mt-1">
                   Be the first to announce a lost or found item.
                 </p>
               </div>
@@ -434,7 +434,7 @@ export function LostFound() {
                   e.stopPropagation();
                   handleClose();
                 }}
-                className="absolute top-4 right-4 rounded-full bg-white/90 p-2 border border-stroke-grey"
+                className="lg:absolute lg:top-4 lg:right-4 lg:rounded-full bg-white/90 lg:p-2 lg:border border-stroke-grey"
                 aria-label="Close announce dialog"
               >
                 {" "}
@@ -442,7 +442,7 @@ export function LostFound() {
               </DialogClose>
             </DialogHeader>
 
-            <div className="space-y-4 mt-2">
+            <div className="lg:space-y-4 lg:mt-2">
               <div>
                 <label className="text-sm text-text-lighter-lm">Title</label>
                 <Input
@@ -453,10 +453,10 @@ export function LostFound() {
                     if (titleError && e.target.value.trim())
                       setTitleError(false);
                   }}
-                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                  className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
                 {titleError && (
-                  <p className="text-sm text-red-600 mt-1">
+                  <p className="text-sm text-red-600 lg:mt-1">
                     Title is required.
                   </p>
                 )}
@@ -473,18 +473,18 @@ export function LostFound() {
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
                   }
-                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                  className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="lg:grid lg:grid-cols-1 sm:grid-cols-2 lg:gap-3">
                 <div>
                   <label className="text-sm text-text-lighter-lm">Date</label>
                   <Input
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                    className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                   />
                 </div>
                 <div>
@@ -493,13 +493,13 @@ export function LostFound() {
                     type="time"
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
-                    className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                    className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                   />
                 </div>
               </div>
 
               {/* File upload + preview */}
-              <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] items-center gap-3">
+              <div className="lg:grid lg:grid-cols-1 sm:grid-cols-[auto_1fr] lg:items-center lg:gap-3">
                 <Button
                   className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
                   onClick={() => fileInputRef.current?.click()}
@@ -507,7 +507,7 @@ export function LostFound() {
                   Upload Image
                 </Button>
 
-                <div className="flex items-center gap-3">
+                <div className="lg:flex lg:items-center lg:gap-3">
                   <input
                     id="lf-file-input"
                     ref={fileInputRef}
@@ -516,31 +516,31 @@ export function LostFound() {
                     onChange={(e) => {
                       handleFileInput(e);
                     }}
-                    className="hidden"
+                    className="lg:hidden"
                   />
 
-                  <div className="flex-1 border border-stroke-grey rounded-lg px-3 py-2 flex items-center">
+                  <div className="lg:flex-1 lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2 lg:flex lg:items-center">
                     {!imageDataUrl ? (
                       <div className="text-sm text-text-lighter-lm">
                         No file chosen
                       </div>
                     ) : (
-                      <div className="flex items-center gap-3">
+                      <div className="lg:flex lg:items-center lg:gap-3">
                         <button
                           type="button"
                           onClick={() => setPreviewOpen(true)}
-                          className="inline-block rounded-md overflow-hidden border border-stroke-grey"
+                          className="lg:inline-block lg:rounded-md lg:overflow-hidden lg:border border-stroke-grey"
                           aria-label="Open image preview"
                         >
                           <img
                             src={imageDataUrl}
                             alt={imageName ?? "Selected image"}
-                            className="h-20 w-28 object-cover"
+                            className="lg:h-20 lg:w-28 lg:object-cover"
                           />
                         </button>
 
-                        <div className="flex flex-col">
-                          <div className="text-sm font-medium text-text-lm">
+                        <div className="lg:flex lg:flex-col">
+                          <div className="text-sm lg:font-medium text-text-lm">
                             {imageName ?? "Image selected"}
                           </div>
                           <div className="text-xs text-text-lighter-lm">
@@ -554,7 +554,7 @@ export function LostFound() {
               </div>
 
               <Button
-                className="w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
+                className="lg:w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
                 onClick={handlePost}
               >
                 Post
@@ -567,18 +567,18 @@ export function LostFound() {
         {previewOpen && imageDataUrl && (
           <>
             <div
-              className="fixed inset-0 z-60"
+              className="lg:fixed lg:inset-0 lg:z-60"
               onClick={() => setPreviewOpen(false)}
               style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
             />
-            <div className="fixed inset-0 z-70 flex items-center justify-center p-6 pointer-events-none">
+            <div className="lg:fixed lg:inset-0 lg:z-70 lg:flex lg:items-center lg:justify-center lg:p-6 lg:pointer-events-none">
               <div
-                className="pointer-events-auto max-w-[90vw] max-h-[90vh] relative"
+                className="lg:pointer-events-auto lg:max-w-[90vw] lg:max-h-[90vh] lg:relative"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
                   onClick={() => setPreviewOpen(false)}
-                  className="absolute top-2 right-2 z-80 rounded-full bg-white/90 p-2 border border-stroke-grey"
+                  className="lg:absolute lg:top-2 lg:right-2 lg:z-80 lg:rounded-full bg-white/90 lg:p-2 lg:border border-stroke-grey"
                   aria-label="Close preview"
                 >
                   ✕
@@ -586,10 +586,10 @@ export function LostFound() {
                 <img
                   src={imageDataUrl}
                   alt={imageName ?? "Selected image preview"}
-                  className="max-w-full max-h-[80vh] object-contain rounded-md shadow-lg"
+                  className="lg:max-w-full lg:max-h-[80vh] lg:object-contain lg:rounded-md lg:shadow-lg"
                 />
                 {imageName && (
-                  <div className="mt-2 text-sm text-center text-text-lighter-lm">
+                  <div className="lg:mt-2 text-sm text-center text-text-lighter-lm">
                     {imageName}
                   </div>
                 )}
@@ -602,10 +602,10 @@ export function LostFound() {
           open={isCommentsOpen}
           onOpenChange={(v) => setIsCommentsOpen(v)}
         >
-          <DialogOverlay className="bg-stroke-grey z-100"></DialogOverlay>
+          <DialogOverlay className="bg-stroke-grey lg:z-100"></DialogOverlay>
           <DialogContent className="sm:max-w-xl bg-primary-lm border-stroke-grey text-text-lm">
             {activePost && (
-              <div className="space-y-4">
+              <div className="lg:space-y-4">
                 <DialogHeader>
                   <DialogTitle className="text-text-lm">
                     {activePost.author}
@@ -613,10 +613,10 @@ export function LostFound() {
                 </DialogHeader>
 
                 <div>
-                  <h3 className="text-lg font-bold text-text-lm">
+                  <h3 className="text-lg lg:font-bold text-text-lm">
                     {activePost.title}
                   </h3>
-                  <p className="text-text-lighter-lm mt-1">
+                  <p className="text-text-lighter-lm lg:mt-1">
                     {activePost.description}
                   </p>
                 </div>
@@ -645,7 +645,7 @@ export function LostFound() {
             <DialogHeader>
               <DialogTitle>Edit Post</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 mt-2">
+            <div className="lg:space-y-4 lg:mt-2">
               <div>
                 <label className="text-sm text-text-lighter-lm">Title</label>
                 <Input
@@ -654,7 +654,7 @@ export function LostFound() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, title: e.target.value })
                   }
-                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                  className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
               </div>
               <div>
@@ -668,10 +668,10 @@ export function LostFound() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, description: e.target.value })
                   }
-                  className="mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+                  className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="lg:grid lg:grid-cols-2 lg:gap-3">
                 <Button
                   className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
                   onClick={saveEdit}
@@ -695,17 +695,17 @@ export function LostFound() {
           open={isRemoveConfirmOpen}
           onOpenChange={setIsRemoveConfirmOpen}
         >
-          <DialogContent className="sm:max-w-md bg-primary-lm border border-stroke-peach text-text-lm">
+          <DialogContent className="sm:max-w-md bg-primary-lm lg:border border-stroke-peach text-text-lm">
             <DialogHeader>
               <DialogTitle>Hide Post?</DialogTitle>
             </DialogHeader>
-            {/* <div className="mt-1 flex items-center gap-2 rounded-md bg-secondary-lm border border-stroke-peach p-2">
-              <AlertTriangle className="h-4 w-4 text-accent-lm" />
+            {/* <div className="lg:mt-1 lg:flex lg:items-center lg:gap-2 lg:rounded-md bg-secondary-lm lg:border border-stroke-peach lg:p-2">
+              <AlertTriangle className="lg:h-4 lg:w-4 text-accent-lm" />
               <span className="text-sm text-accent-lm">
                 This action cannot be undone.
               </span>
             </div> */}
-            <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="lg:grid lg:grid-cols-2 lg:gap-3 lg:mt-4">
               <Button
                 variant="outline"
                 className="border-stroke-grey text-text-lm hover:bg-secondary-lm"
@@ -777,16 +777,16 @@ function LFPostCard({
   }, [post.description]);
 
   return (
-    <div className="bg-secondary-lm p-6 rounded-xl border border-stroke-grey hover:border-stroke-peach hover:bg-hover-lm transition animate-slide-in">
-      <div className="flex items-start justify-between mb-3">
+    <div className="bg-secondary-lm lg:p-6 lg:rounded-xl lg:border border-stroke-grey hover:border-stroke-peach hover:bg-hover-lm lg:transition lg:animate-slide-in">
+      <div className="lg:flex lg:items-start lg:justify-between lg:mb-3">
         <div>
-          <h3 className="text-xl font-bold text-text-lm">{post.title}</h3>
-          <div className="mt-2 flex items-center gap-2">
-            <Avatar className="h-6 w-6">
+          <h3 className="text-xl lg:font-bold text-text-lm">{post.title}</h3>
+          <div className="lg:mt-2 lg:flex lg:items-center lg:gap-2">
+            <Avatar className="lg:h-6 lg:w-6">
               <AvatarImage src={post.authorAvatar || "/placeholder.svg"} />
               <AvatarFallback>{post.author[0]}</AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium text-text-lm">
+            <span className="text-sm lg:font-medium text-text-lm">
               {post.author}
             </span>
             <span className="text-[12px] text-text-lighter-lm">
@@ -800,15 +800,15 @@ function LFPostCard({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="p-1 rounded hover:bg-secondary-lm"
+              className="lg:p-1 lg:rounded hover:bg-secondary-lm"
               aria-label="Post options"
             >
-              <MoreVertical className="h-5 w-5 text-accent-lm" />
+              <MoreVertical className="lg:h-5 lg:w-5 text-accent-lm" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="bg-primary-lm border border-stroke-grey text-text-lm rounded-lg shadow-md"
+            className="bg-primary-lm lg:border border-stroke-grey text-text-lm lg:rounded-lg lg:shadow-md"
           >
             <DropdownMenuItem
               onClick={onEdit}
@@ -826,7 +826,7 @@ function LFPostCard({
         </DropdownMenu>
       </div>
 
-      <div className="mb-4">
+      <div className="lg:mb-4">
         {/* description container: set a CSS maxHeight when collapsed so we can detect overflow */}
         <div
           ref={descRef}
@@ -835,7 +835,7 @@ function LFPostCard({
               ? { maxHeight: "4.5rem", overflow: "hidden" } // approx 3 lines
               : undefined
           }
-          className="text-text-lm mb-2"
+          className="text-text-lm lg:mb-2"
         >
           {post.description}
         </div>
@@ -844,7 +844,7 @@ function LFPostCard({
         {showReadMore && (
           <Button
             variant="ghost"
-            className="ml-0 h-auto p-0 text-accent-lm"
+            className="lg:ml-0 lg:h-auto lg:p-0 text-accent-lm"
             onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? "Read More" : "Show less"}
@@ -856,11 +856,11 @@ function LFPostCard({
         <img
           src={post.imageUrl}
           alt="Lost item"
-          className="w-full rounded-lg border border-stroke-grey mb-4"
+          className="lg:w-full lg:rounded-lg lg:border border-stroke-grey lg:mb-4"
         />
       )}
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="lg:mt-4 lg:flex lg:items-center lg:gap-3">
         <button
           onClick={onToggleLike}
           className={
@@ -870,21 +870,21 @@ function LFPostCard({
               : "border-stroke-peach bg-secondary-lm text-accent-lm")
           }
         >
-          <Heart className="h-4 w-4" fill={isLiked ? "currentColor" : "none"} />
-          <span className="text-sm font-bold">{post.reactions}</span>
+          <Heart className="lg:h-4 lg:w-4" fill={isLiked ? "currentColor" : "none"} />
+          <span className="text-sm lg:font-bold">{post.reactions}</span>
         </button>
 
         <button
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm"
+          className="lg:flex lg:items-center lg:gap-1.5 lg:px-3 lg:py-1 lg:rounded-full lg:border border-stroke-peach bg-secondary-lm text-accent-lm"
           onClick={onOpenComments}
         >
-          <MessageCircle className="h-4 w-4" />
-          <span className="text-sm font-bold">{post.comments}</span>
+          <MessageCircle className="lg:h-4 lg:w-4" />
+          <span className="text-sm lg:font-bold">{post.comments}</span>
         </button>
 
-        <button className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-stroke-peach bg-secondary-lm text-accent-lm">
-          <Share2 className="h-4 w-4" />
-          <span className="text-sm font-bold">{post.shares}</span>
+        <button className="lg:flex lg:items-center lg:gap-1.5 lg:px-3 lg:py-1 lg:rounded-full lg:border border-stroke-peach bg-secondary-lm text-accent-lm">
+          <Share2 className="lg:h-4 lg:w-4" />
+          <span className="text-sm lg:font-bold">{post.shares}</span>
         </button>
       </div>
     </div>

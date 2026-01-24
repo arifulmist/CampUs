@@ -104,16 +104,16 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
   return (
     <>
       {/* Modal backdrop */}
-      <div className="fixed inset-0 bg-[#cbcbcb95] z-50"/>
+      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50"/>
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center">
         <form
           onSubmit={handleSubmit}
-          className="bg-secondary-lm border-2 border-stroke-grey rounded-xl px-10 py-8 w-130 relative"
+          className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-10 lg:py-8 lg:w-130 lg:relative"
         >
-          <div className="flex justify-between">
-            <h4 className="font-header text-text-lm font-medium">Add File</h4>
+          <div className="lg:flex lg:justify-between">
+            <h4 className="lg:font-header text-text-lm lg:font-medium">Add File</h4>
             <button
             onClick={onClose} className="cursor-pointer"
           >
@@ -121,7 +121,7 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
           </button>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3" onFocusCapture={() => setCourseCodeError("")}>
+          <div className="lg:mt-4 lg:flex lg:flex-col lg:gap-3" onFocusCapture={() => setCourseCodeError("")}>
             <InputField
               label="Title"
               name="title"
@@ -130,7 +130,7 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
               changeHandler={(e) => setTitle(e.target.value)}
             />
 
-            <div className="flex flex-row justify-between">
+            <div className="lg:flex lg:flex-row lg:justify-between">
               <InputField
                 label="Course"
                 name="course"
@@ -139,7 +139,7 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                 value={course}
                 changeHandler={(e) => setCourse(e.target.value)}
               />
-             <div className="relative">
+             <div className="lg:relative">
                 <InputField
                   label="Course Code"
                   name="coursecode"
@@ -149,8 +149,8 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                   changeHandler={handleCourseCodeChange}
                 />
                 {courseCodeError && (
-                  <span className=" flex items-start gap-x-0.5 absolute left-0 top-full mt-1 text-accent-lm text-sm bg-primary-lm px-2 py-0.5 rounded shadow-lg z-10 border border-stroke-grey">
-                    <img src={warningIcon} className="size-4"></img>
+                  <span className="lg:flex lg:items-start lg:gap-x-0.5 lg:absolute lg:left-0 lg:top-full lg:mt-1 text-accent-lm text-sm bg-primary-lm lg:px-2 lg:py-0.5 lg:rounded lg:shadow-lg lg:z-10 lg:border border-stroke-grey">
+                    <img src={warningIcon} className="lg:size-4"></img>
                     {courseCodeError}
                   </span>
                 )}
@@ -159,8 +159,8 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
 
 
             {/* Upload section */}
-            <div className="mt-2">
-              <div className="flex items-center gap-4">
+            <div className="lg:mt-2">
+              <div className="lg:flex lg:items-center lg:gap-4">
                 <ButtonCTA
                   label="Upload File"
                   clickEvent={() => fileInputRef.current?.click()}
@@ -171,33 +171,33 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*,.pdf"
-                  className="hidden"
+                  className="lg:hidden"
                   onChange={handleFileChange}
                 />
 
                 {file && previewUrl && (
-                  <div className="relative flex items-center gap-3 bg-primary-lm w-full rounded-md px-4 py-3">
+                  <div className="lg:relative lg:flex lg:items-center lg:gap-3 bg-primary-lm lg:w-full lg:rounded-md lg:px-4 lg:py-3">
                     {/* Thumbnail */}
                     <div
-                      className="w-16 h-16 border rounded-lg overflow-hidden cursor-pointer"
+                      className="lg:w-16 lg:h-16 lg:border lg:rounded-lg lg:overflow-hidden cursor-pointer"
                       onClick={() => setIsPreviewOpen(true)}
                     >
                       {file.type.startsWith("image") ? (
                         <img
                           src={previewUrl}
                           alt={file.name}
-                          className="w-full h-full object-cover"
+                          className="lg:w-full lg:h-full lg:object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm text-text-lighter-lm">
+                        <div className="lg:w-full lg:h-full lg:flex lg:items-center lg:justify-center text-sm text-text-lighter-lm">
                           PDF
                         </div>
                       )}
                     </div>
 
                     {/* File name */}
-                    <div className="flex flex-col gap-1">
-                      <p className="text-sm text-text-lighter-lm max-w-35 truncate">
+                    <div className="lg:flex lg:flex-col lg:gap-1">
+                      <p className="text-sm text-text-lighter-lm lg:max-w-35 lg:truncate">
                         {file.name}
                       </p>
                       <p className="text-sm text-text-lighter-lm">Click to expand preview</p>
@@ -207,7 +207,7 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                     <button
                       type="button"
                       onClick={removeFile}
-                      className="absolute -top-2 -right-2 bg-white rounded-full size-5 text-sm ring-1 ring-stroke-grey bg-primary-lm hover:bg-stroke-grey"
+                      className="lg:absolute lg:-top-2 lg:-right-2 bg-white lg:rounded-full lg:size-5 text-sm ring-1 ring-stroke-grey bg-primary-lm hover:bg-stroke-grey"
                     >
                       ✖
                     </button>
@@ -217,17 +217,17 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
             </div>
 
             {/* Submit */}
-            <div className="flex justify-end mt-4">
-              <div className="relative">
+            <div className="lg:flex lg:justify-end lg:mt-4">
+              <div className="lg:relative">
                 <button
                   type="submit"
                   disabled={!file && !previewUrl}
-                  className="px-6 py-2 rounded-lg bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="lg:px-6 lg:py-2 lg:rounded-lg bg-accent-lm text-primary-lm hover:bg-hover-btn-lm lg:transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Post
                 </button>
                 {fileRequiredError && (
-                  <span className="absolute right-0 -top-8 bg-primary-lm text-accent-lm text-sm px-2 py-1 rounded shadow z-20 border border-stroke-grey">
+                  <span className="lg:absolute lg:right-0 lg:-top-8 bg-primary-lm text-accent-lm text-sm lg:px-2 lg:py-1 lg:rounded lg:shadow lg:z-20 lg:border border-stroke-grey">
                     {fileRequiredError}
                   </span>
                 )}
@@ -239,9 +239,9 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
 
       {/* Full preview overlay */}
       {isPreviewOpen && previewUrl && (
-        <div className="fixed inset-0 bg-[#cbcbcb95] z-60 flex items-center justify-center">
+        <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-60 lg:flex lg:items-center lg:justify-center">
           <button
-            className="absolute top-6 right-6 text-accent-lm text-2xl"
+            className="lg:absolute lg:top-6 lg:right-6 text-accent-lm text-2xl"
             onClick={() => setIsPreviewOpen(false)}
           >
             ✖
@@ -251,12 +251,12 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
             <img
               src={previewUrl}
               alt={file.name}
-              className="max-w-[90%] max-h-[90%] object-contain"
+              className="lg:max-w-[90%] lg:max-h-[90%] lg:object-contain"
             />
           ) : (
             <iframe
               src={previewUrl}
-              className="w-[80%] h-[90%] bg-white"
+              className="lg:w-[80%] lg:h-[90%] bg-white"
               title="File preview"
             />
           )}

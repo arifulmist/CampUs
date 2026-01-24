@@ -86,7 +86,7 @@ export function Password({
   return (
     <>
       {/* Password Input with Toggle */}
-      <div className="relative">
+      <div className="lg:relative">
        <InputField
           name="password"
           label={label}
@@ -97,14 +97,14 @@ export function Password({
           <button
             type="button"
             onClick={togglePasswordVisibility}
-            className="absolute mt-2 ml-2 focus:outline-none"
+            className="lg:absolute lg:mt-2 lg:ml-2 focus:outline-none"
             aria-label={showPassword ? "Hide password" : "Show password"}
         >
           {showPassword ? (
             // Eye closed icon (hide password)
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5" 
+              className="lg:h-5 lg:w-5" 
               viewBox="0 0 20 20" 
               fill="currentColor"
             >
@@ -115,7 +115,7 @@ export function Password({
             // Eye open icon (show password)
            <svg 
               xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5" 
+              className="lg:h-5 lg:w-5" 
               viewBox="0 0 20 20" 
               fill="currentColor"
             >
@@ -129,8 +129,8 @@ export function Password({
 
        {/*Password strength*/}
       {showStrength && value && (
-        <div className="mt-2 w-full">
-          <div className="flex align-center gap-1 w-full text-sm mb-1">
+        <div className="lg:mt-2 lg:w-full">
+          <div className="lg:flex lg:align-center lg:gap-1 lg:w-full text-sm lg:mb-1">
             <span>
               Password strength: <strong>{passwordStrength.strength}</strong>
             </span>
@@ -138,9 +138,9 @@ export function Password({
           </div>
           
           {/* Strength Bar */}
-          <div className="h-2 w-full bg-stroke-grey rounded-full overflow-hidden">
+          <div className="lg:h-2 lg:w-full bg-stroke-grey lg:rounded-full lg:overflow-hidden">
             <div
-              className="h-full transition-all duration-300"
+              className="lg:h-full lg:transition-all lg:duration-300"
               style={{
                 width: `${(passwordStrength.score / 5) * 100}%`,
                 backgroundColor: getStrengthColor(passwordStrength.score),
@@ -150,7 +150,7 @@ export function Password({
           
           
           {passwordStrength.messages.length > 0 && (
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-600 lg:mt-1">
               Requirements: {passwordStrength.messages.join(", ")}
             </p>
           )}

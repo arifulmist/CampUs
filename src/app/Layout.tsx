@@ -11,7 +11,7 @@ export function Layout() {
 
   return (
     <>
-      <header className="sticky top-0 w-full z-50">
+      <header className="lg:sticky lg:top-0 lg:w-full lg:z-50">
         {!hideNav && <TopNav />}
         {!hideNav && <BotNav />}
       </header>
@@ -20,8 +20,10 @@ export function Layout() {
         className={`${
           hideNav
             ? "min-h-screen h-screen flex items-center justify-center"
-            : "flex items-center justify-center"
-        }`}
+            : "flex items-start justify-center"
+        }`} 
+        data-debug-main
+        style={{outline: "2px dashed rgba(220, 38, 38, 0.6)"}}
       >
         <Outlet />
       </main>

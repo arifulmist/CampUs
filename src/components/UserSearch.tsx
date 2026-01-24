@@ -24,26 +24,26 @@ export function UserSearch() {
   };
 
   return (
-    <div className="relative w-64">
+    <div className="lg:relative lg:w-64">
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search users..."
-        className="w-full h-9 rounded-md border border-stroke-grey bg-primary-lm px-3 text-text-lm placeholder:text-text-lighter-lm"
+        className="lg:w-full lg:h-9 lg:rounded-md lg:border border-stroke-grey bg-primary-lm lg:px-3 text-text-lm placeholder:text-text-lighter-lm"
       />
       {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-md border border-stroke-grey bg-primary-lm shadow">
+        <div className="lg:absolute lg:z-20 lg:mt-1 lg:w-full lg:rounded-md lg:border border-stroke-grey bg-primary-lm lg:shadow">
           {results.map((u) => (
             <button
               key={u.id}
               onClick={() => goToProfile(u.id)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-hover-lm"
+              className="lg:flex lg:w-full lg:items-center lg:gap-2 lg:px-3 lg:py-2 text-left hover:bg-hover-lm"
             >
               <img
                 src={u.avatar}
-                className="h-6 w-6 rounded-full border border-stroke-peach"
+                className="lg:h-6 lg:w-6 lg:rounded-full lg:border border-stroke-peach"
               />
-              <div className="flex-1">
+              <div className="lg:flex-1">
                 <div className="text-sm text-text-lm">{u.name}</div>
                 <div className="text-xs text-text-lighter-lm">
                   {u.department}
@@ -52,7 +52,7 @@ export function UserSearch() {
             </button>
           ))}
           {results.length === 0 && (
-            <div className="px-3 py-2 text-sm text-text-lighter-lm">
+            <div className="lg:px-3 lg:py-2 text-sm text-text-lighter-lm">
               No matches
             </div>
           )}

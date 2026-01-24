@@ -15,13 +15,13 @@ export function Resources() {
 
   return (
     <>
-      <div className="mt-10 w-full h-full p-10 bg-primary-lm border-2 border-stroke-grey rounded-lg">
+      <div className="lg:mt-10 lg:w-full lg:h-full lg:p-10 bg-primary-lm border-2 border-stroke-grey lg:rounded-lg">
         <button 
           onClick={()=>setOpenModal(true)}
-          className="mb-5 w-full bg-primary-lm px-4 py-3 cursor-pointer text-accent-lm border border-stroke-grey rounded-lg text-start">
+          className="lg:mb-5 lg:w-full bg-primary-lm lg:px-4 lg:py-3 cursor-pointer text-accent-lm lg:border border-stroke-grey lg:rounded-lg text-start">
             Upload a Resource Link
         </button>
-        <div className="w-full h-fit">
+        <div className="lg:w-full lg:h-fit">
           {resources.length === 0 ? (
             // if filtering produced no results but base has items, show "Nothing found"
             outlet && outlet.baseResources && outlet.baseResources.length > 0 ? (
@@ -30,7 +30,7 @@ export function Resources() {
               <h5 className="text-text-lighter-lm">No resources for this term yet</h5>
             )
           ) : (
-            <div className="space-y-4">
+            <div className="lg:space-y-4">
               {resources.map((r: ResourceItem) => (
                 <Resource
                   key={r.resourceLink}
@@ -81,9 +81,9 @@ interface ResourceProps
 function Resource({user, title, course, resourceLink}:ResourceProps)
 {
   return (
-    <div className="w-full h-fit p-10 bg-secondary-lm border border-stroke-grey hover:bg-hover-lm rounded-lg">
+    <div className="lg:w-full lg:h-fit lg:p-10 bg-secondary-lm lg:border border-stroke-grey hover:bg-hover-lm lg:rounded-lg">
       <UserInfo userImg={user.imgURL} userName={user.name} userBatch={user.batch} ></UserInfo>
-      <p className="text-text-lm mt-5">{course}_{title}</p>
+      <p className="text-text-lm lg:mt-5">{course}_{title}</p>
       <Link to={resourceLink} className="text-accent-lm hover:underline">{resourceLink}</Link>
     </div>
   );

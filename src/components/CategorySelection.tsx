@@ -15,10 +15,10 @@ const categories: { key: CategoryKey; label: string }[] = [
 
 export default function CategorySelection({ value, onChange }: Props) {
   return (
-    <aside className="w-full max-w-xs">
-      <div className="rounded-lg border border-stroke-grey bg-primary-lm p-4">
-        <h3 className="mb-3 font-semibold text-text-lm text-lg">Categories</h3>
-        <ul className="space-y-2">
+    <aside className="lg:w-full lg:max-w-xs">
+      <div className="lg:rounded-lg lg:border border-stroke-grey bg-primary-lm lg:p-4">
+        <h3 className="lg:mb-3 lg:font-semibold text-text-lm text-lg">Categories</h3>
+        <ul className="lg:space-y-2">
           {categories.map((c) => {
             const active = value === c.key;
             return (

@@ -150,26 +150,26 @@ export function Events() {
   }
 
   return (
-    <div className="min-h-screen bg-background-lm">
-      <div className="flex gap-10 h-full w-full p-10">
+    <div className="lg:min-h-screen bg-background-lm">
+      <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
         {/* LEFT: Posts */}
-        <div className="flex flex-col gap-10 h-full bg-primary-lm p-10 rounded-2xl border-2 border-stroke-grey">
+        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
          { !selectedPost && <button
             onClick={() => setModalOpen(true)}
-            className="w-full rounded-md border border-stroke-grey bg-secondary-lm px-4 py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
+            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
           >
             Click to announce an event here
           </button>}
 
-          <div className="flex items-center justify-center">
-            <div className="w-[60vw]">
+          <div className="lg:flex lg:items-center lg:justify-center">
+            <div className="lg:w-[60vw]">
               {selectedPost ? (
                 // detail view is constrained to same width as the list view
                 <EventPostDetail post={selectedPost} onBack={closeDetail} />
               ) : (
-                <div className="flex flex-col gap-10 h-full">
+                <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full">
                   {filtered.length === 0 ? (
-                    <div className="flex items-center justify-center">
+                    <div className="lg:flex lg:items-center lg:justify-center">
                       <p className="text-text-lighter-lm text-lg">
                         No posts in this category
                       </p>
@@ -191,7 +191,7 @@ export function Events() {
                         <div
                           key={p.id}
                           onClick={() => openDetail(p)}
-                          className="cursor-pointer flex flex-col gap-4"
+                          className="cursor-pointer lg:flex lg:flex-col lg:gap-4"
                         >
                           <PostBody
                             title={p.title}

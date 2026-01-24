@@ -19,8 +19,8 @@ export function SearchAnything() {
   };
 
   return (
-    <div className="relative">
-      <div className="flex px-3 py-1 border border-accent-lm rounded-full bg-primary-lm">
+    <div className="lg:relative">
+      <div className="lg:flex lg:px-3 lg:py-1 lg:border border-accent-lm lg:rounded-full bg-primary-lm">
         <input
           type="text"
           value={query}
@@ -31,9 +31,9 @@ export function SearchAnything() {
         <img src={searchIcon} />
       </div>
       {query && (
-        <div className="absolute left-0 right-0 mt-1 rounded-md border border-stroke-grey bg-primary-lm shadow z-30">
+        <div className="lg:absolute lg:left-0 lg:right-0 lg:mt-1 lg:rounded-md lg:border border-stroke-grey bg-primary-lm lg:shadow lg:z-30">
           {results.length === 0 && (
-            <div className="px-3 py-2 text-sm text-text-lighter-lm">
+            <div className="lg:px-3 lg:py-2 text-sm text-text-lighter-lm">
               No matches
             </div>
           )}
@@ -41,13 +41,13 @@ export function SearchAnything() {
             <button
               key={u.id}
               onClick={() => goToProfile(u.id)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-hover-lm"
+              className="lg:flex lg:w-full lg:items-center lg:gap-2 lg:px-3 lg:py-2 text-left hover:bg-hover-lm"
             >
               <img
                 src={u.avatar}
-                className="h-6 w-6 rounded-full border border-stroke-peach"
+                className="lg:h-6 lg:w-6 lg:rounded-full lg:border border-stroke-peach"
               />
-              <div className="flex-1">
+              <div className="lg:flex-1">
                 <div className="text-sm text-text-lm">{u.name}</div>
                 <div className="text-xs text-text-lighter-lm">
                   {u.department}

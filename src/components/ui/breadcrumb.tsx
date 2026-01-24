@@ -92,8 +92,8 @@ function BreadcrumbEllipsis({
       className={cn("flex size-9 items-center justify-center", className)}
       {...props}
     >
-      <MoreHorizontal className="size-4" />
-      <span className="sr-only">More</span>
+      <MoreHorizontal className="lg:size-4" />
+      <span className="lg:sr-only">More</span>
     </span>
   );
 }

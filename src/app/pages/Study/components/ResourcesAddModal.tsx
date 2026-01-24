@@ -55,17 +55,17 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-[#cbcbcb95] z-50" />
+      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50" />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center">
         <form
           onSubmit={handleSubmit}
-          className="bg-secondary-lm border-2 border-stroke-grey rounded-xl px-10 py-8 w-130 relative animate-slide-in"
+          className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-10 lg:py-8 lg:w-130 lg:relative lg:animate-slide-in"
         >
           {/* Header */}
-          <div className="flex justify-between items-center">
-            <h4 className="font-header text-text-lm font-medium">
+          <div className="lg:flex lg:justify-between lg:items-center">
+            <h4 className="lg:font-header text-text-lm lg:font-medium">
               Add Resource
             </h4>
             <button
@@ -78,7 +78,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
           </div>
 
           {/* Fields */}
-          <div className="mt-4 flex flex-col gap-4" onFocusCapture={() => setCourseCodeError("")}>
+          <div className="lg:mt-4 lg:flex lg:flex-col lg:gap-4" onFocusCapture={() => setCourseCodeError("")}>
             <InputField
               label="Title"
               name="title"
@@ -87,7 +87,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
               changeHandler={(e) => setTitle(e.target.value)}
             />
 
-            <div className="flex justify-between">
+            <div className="lg:flex lg:justify-between">
               <InputField
                 label="Course"
                 name="course"
@@ -97,7 +97,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
                 changeHandler={(e) => setCourse(e.target.value)}
               />
 
-              <div className="relative">
+              <div className="lg:relative">
                 <InputField
                   label="Course Code"
                   name="coursecode"
@@ -107,8 +107,8 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
                   changeHandler={handleCourseCodeChange}
                 />
                 {courseCodeError && (
-                  <span className=" flex items-start gap-x-0.5 absolute left-0 top-full mt-1 text-accent-lm text-sm bg-primary-lm px-2 py-0.5 rounded shadow-lg z-10 border border-stroke-grey">
-                    <img src={warningIcon} className="size-4"></img>
+                  <span className="lg:flex lg:items-start lg:gap-x-0.5 lg:absolute lg:left-0 lg:top-full lg:mt-1 text-accent-lm text-sm bg-primary-lm lg:px-2 lg:py-0.5 lg:rounded lg:shadow-lg lg:z-10 lg:border border-stroke-grey">
+                    <img src={warningIcon} className="lg:size-4"></img>
                     {courseCodeError}
                   </span>
                 )}
@@ -125,7 +125,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
             />
 
             {/* Submit */}
-            <div className="flex justify-end mt-4">
+            <div className="lg:flex lg:justify-end lg:mt-4">
               <ButtonCTA
                 label="Post"
                 type="submit"

@@ -106,21 +106,21 @@ export function CollabHub() {
   };
 
   return (
-    <div className="flex gap-10 h-full w-full p-10 bg-background-lm animate-slide-in">
+    <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
       {/* LEFT: Posts */}
-      <div className="flex-1">
-        <div className="flex flex-col gap-10 h-full bg-primary-lm p-10 rounded-2xl border-2 border-stroke-grey">
+      <div className="lg:flex-1">
+        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
           {/* Announce collaboration */}
           <button
             onClick={() => setModalOpen(true)}
-            className="w-full rounded-md border border-stroke-grey bg-secondary-lm px-4 py-3 text-left text-sm text-accent-lm hover:bg-hover-lm transition "
+            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-hover-lm lg:transition"
           >
             Click to post a collaboration post here.
           </button>
 
           {/* Posts */}
           {filteredPosts.length === 0 ? (
-            <div className="flex items-center justify-center min-h-50 border-stroke-grey">
+            <div className="lg:flex lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
               <p className="text-text-lighter-lm text-lg">
                 No posts in this category
               </p>
@@ -138,7 +138,7 @@ export function CollabHub() {
                   }`}
                 >
                   {/* CATEGORY TAG */}
-                  <span className="absolute top-4 right-4 font-bold bg-accent-lm text-primary-lm px-3 py-1 rounded-full text-m uppercase tracking-wide">
+                  <span className="lg:absolute lg:top-4 lg:right-4 lg:font-bold bg-accent-lm text-primary-lm lg:px-3 lg:py-1 lg:rounded-full text-m lg:uppercase lg:tracking-wide">
                     {p.category}
                   </span>
                   <UserInfo
@@ -146,26 +146,26 @@ export function CollabHub() {
                     userName={p.user.name}
                     userBatch={p.user.batch || "Student"}
                   />
-                  <h3 className="mt-2 font-[Poppins] font-semibold text-xl text-text-lm">
+                  <h3 className="lg:mt-2 lg:font-[Poppins] lg:font-semibold text-xl text-text-lm">
                     {p.title}
                   </h3>
-                  <p className="text-text-lighter-lm text-md leading-relaxed">
+                  <p className="text-text-lighter-lm text-md lg:leading-relaxed">
                     {p.content}
                   </p>
 
-                  <div className="my-4 mb-10 flex gap-2 flex-wrap">
+                  <div className="lg:my-4 lg:mb-10 lg:flex lg:gap-2 lg:flex-wrap">
                     {p.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="font-bold text-accent-lm border border-accent-lm px-3 py-1.5 rounded-full text-sm"
+                        className="lg:font-bold text-accent-lm lg:border border-accent-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex gap-4 items-center">
+                  <div className="lg:flex lg:items-center lg:justify-between lg:mt-2">
+                    <div className="lg:flex lg:gap-4 lg:items-center">
                       <LikeButton />
                       <CommentButton />
                       <ShareButton />

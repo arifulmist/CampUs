@@ -3,10 +3,10 @@ import { NavLink, useLocation } from "react-router";
 export function Sidebar({batch}:{batch:string})
 {
   return(
-    <aside className="flex flex-col fixed bg-primary-lm w-[20vw] h-full px-4 py-3">
-      <h4 className="text-text-lm font-semibold mb-2">{batch}</h4>
+    <aside className="lg:flex lg:flex-col lg:fixed bg-primary-lm lg:w-[20vw] lg:h-full lg:px-4 lg:py-3">
+      <h4 className="text-text-lm lg:font-semibold lg:mb-2">{batch}</h4>
       <hr className="border-stroke-grey"></hr>
-      <div className="flex flex-col gap-2 mt-4">
+      <div className="lg:flex lg:flex-col lg:gap-2 lg:mt-4">
         <LevelButton level={1} term={1}></LevelButton>
         <LevelButton level={1} term={2}></LevelButton>
         <LevelButton level={2} term={1}></LevelButton>

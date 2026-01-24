@@ -44,7 +44,7 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
+      <DialogHeader className="lg:sr-only">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
@@ -67,9 +67,9 @@ function CommandInput({
   return (
     <div
       data-slot="command-input-wrapper"
-      className="flex h-9 items-center gap-2 border-b px-3"
+      className="lg:flex lg:h-9 lg:items-center lg:gap-2 border-b lg:px-3"
     >
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+      <SearchIcon className="lg:size-4 lg:shrink-0 lg:opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
@@ -104,7 +104,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-6 text-center text-sm"
+      className="lg:py-6 text-center text-sm"
       {...props}
     />
   );

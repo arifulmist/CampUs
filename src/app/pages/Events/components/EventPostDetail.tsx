@@ -163,18 +163,18 @@ export default function EventPostDetail({ post, onBack }: Props) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="lg:space-y-6 lg:animate-fade-in">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-accent-lm hover:opacity-80 transition-colors"
+        className="lg:flex lg:items-center lg:gap-2 text-accent-lm hover:opacity-80 lg:transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" />
-        <span className="text-sm font-medium">Go Back</span>
+        <ArrowLeft className="lg:h-4 lg:w-4" />
+        <span className="text-sm lg:font-medium">Go Back</span>
       </button>
 
       {/* Main Post Card */}
-      <div className="bg-primary-lm rounded-xl p-6 shadow-sm border border-stroke-grey animate-slide-in">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey lg:animate-slide-in">
+        <div className="lg:flex lg:items-start lg:justify-between lg:mb-4">
           <Badge
             variant="secondary"
             // use normalizedCategory for the mapping so capitalization mismatches don't break layout
@@ -183,19 +183,19 @@ export default function EventPostDetail({ post, onBack }: Props) {
             {catLabel}
           </Badge>
           <button className="text-accent-lm hover:opacity-80">
-            <MoreVertical className="h-5 w-5" />
+            <MoreVertical className="lg:h-5 lg:w-5" />
           </button>
         </div>
 
-        <h1 className="text-2xl font-bold text-text-lm mb-4">{post.title}</h1>
+        <h1 className="text-2xl lg:font-bold text-text-lm lg:mb-4">{post.title}</h1>
 
         {/* TAGS: added under title, same style as feed */}
         {post.tags && post.tags.length > 0 && (
-          <div className="flex gap-2 flex-wrap mb-4">
+          <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mb-4">
             {post.tags.map((t) => (
               <span
                 key={t}
-                className="border border-accent-lm text-accent-lm rounded-full px-3 py-1 text-sm"
+                className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm"
               >
                 #{t}
               </span>
@@ -203,40 +203,40 @@ export default function EventPostDetail({ post, onBack }: Props) {
           </div>
         )}
 
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar className="h-10 w-10 border border-stroke-grey">
+        <div className="lg:flex lg:items-center lg:gap-3 lg:mb-4">
+          <Avatar className="lg:h-10 lg:w-10 lg:border border-stroke-grey">
             <AvatarImage src={undefined /* placeholder or use actual avatar */} />
             <AvatarFallback>{post.author?.[0] ?? "U"}</AvatarFallback>
           </Avatar>
           <div>
-            <div className="text-sm font-bold text-accent-lm">
+            <div className="text-sm lg:font-bold text-accent-lm">
               {post.author}
             </div>
-            <div className="text-xs text-text-lighter-lm font-medium">
+            <div className="text-xs text-text-lighter-lm lg:font-medium">
               {post.dept ?? ""}
             </div>
           </div>
         </div>
 
-        <p className="text-text-lm leading-relaxed mb-6">
+        <p className="text-text-lm lg:leading-relaxed lg:mb-6">
           {post.body ?? post.excerpt ?? ""}
         </p>
 
         {/* Segments: show each segment as a separate card */}
         {post.segments && post.segments.length > 0 && (
-          <div className="space-y-4 mb-6">
+          <div className="lg:space-y-4 lg:mb-6">
             {post.segments.map((seg) => (
               <div
                 key={seg.id}
-                className="rounded-lg border border-stroke-grey bg-secondary-lm p-4"
+                className="lg:rounded-lg lg:border border-stroke-grey bg-secondary-lm lg:p-4"
               >
-                <h4 className="font-semibold text-text-lm">{seg.name}</h4>
+                <h4 className="lg:font-semibold text-text-lm">{seg.name}</h4>
                 {seg.description && (
-                  <p className="text-sm text-text-lm mt-2">{seg.description}</p>
+                  <p className="text-sm text-text-lm lg:mt-2">{seg.description}</p>
                 )}
-                <div className="text-xs text-text-lighter-lm mt-3">
+                <div className="text-xs text-text-lighter-lm lg:mt-3">
                   {seg.date && (
-                    <span className="mr-4">
+                    <span className="lg:mr-4">
                       {new Date(seg.date).toLocaleDateString(undefined, {
                         day: "2-digit",
                         month: "long",
@@ -253,52 +253,52 @@ export default function EventPostDetail({ post, onBack }: Props) {
 
         {/* Image */}
         {post.image && (
-          <div className="mb-6 w-full h-72 overflow-hidden rounded-md">
+          <div className="lg:mb-6 lg:w-full lg:h-72 lg:overflow-hidden lg:rounded-md">
             <img
               src={post.image}
-              className="object-cover object-center w-full h-full"
+              className="lg:object-cover lg:object-center lg:w-full lg:h-full"
               alt={post.title}
             />
           </div>
         )}
 
-        <div className="flex items-center gap-4 pt-4 border-t border-stroke-grey">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm transition-colors">
-            <Heart className="h-4 w-4" />
-            <span className="text-sm font-bold">{post.likes ?? 0}</span>
+        <div className="lg:flex lg:items-center lg:gap-4 lg:pt-4 border-t border-stroke-grey">
+          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
+            <Heart className="lg:h-4 lg:w-4" />
+            <span className="text-sm lg:font-bold">{post.likes ?? 0}</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm transition-colors">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-sm font-bold">{post.comments ?? 0}</span>
+          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
+            <MessageCircle className="lg:h-4 lg:w-4" />
+            <span className="text-sm lg:font-bold">{post.comments ?? 0}</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm transition-colors">
-            <Share2 className="h-4 w-4" />
-            <span className="text-sm font-bold">{post.shares ?? 0}</span>
+          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
+            <Share2 className="lg:h-4 lg:w-4" />
+            <span className="text-sm lg:font-bold">{post.shares ?? 0}</span>
           </button>
         </div>
       </div>
 
       {/* Add Reply Section */}
-      <div className="bg-primary-lm rounded-xl p-4 shadow-sm border border-stroke-grey">
+      <div className="bg-primary-lm lg:rounded-xl lg:p-4 lg:shadow-sm lg:border border-stroke-grey">
         {!isReplying ? (
           <button
             onClick={() => setIsReplying(true)}
-            className="w-full text-left px-4 py-3 text-text-lighter-lm text-sm hover:bg-hover-lm rounded-lg transition-colors"
+            className="lg:w-full text-left lg:px-4 lg:py-3 text-text-lighter-lm text-sm hover:bg-hover-lm lg:rounded-lg lg:transition-colors"
           >
             Add a reply
           </button>
         ) : (
-          <div className="space-y-4">
+          <div className="lg:space-y-4">
             <Textarea
               placeholder="Add a reply..."
               value={commentText}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 setCommentText(e.target.value)
               }
-              className="min-h-25 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
+              className="lg:min-h-25 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
             />
-            <div className="flex items-center justify-between pt-2 border-t border-stroke-grey">
-              <div className="flex gap-2">
+            <div className="lg:flex lg:items-center lg:justify-between lg:pt-2 border-t border-stroke-grey">
+              <div className="lg:flex lg:gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -309,7 +309,7 @@ export default function EventPostDetail({ post, onBack }: Props) {
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4"
+                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4"
                   onClick={addTopLevelComment}
                 >
                   Comment
@@ -321,17 +321,17 @@ export default function EventPostDetail({ post, onBack }: Props) {
       </div>
 
       {/* Comments List */}
-      <div className="bg-primary-lm rounded-xl p-6 shadow-sm border border-stroke-grey">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2 text-sm font-medium text-text-lighter-lm">
+      <div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey">
+        <div className="lg:flex lg:items-center lg:justify-between lg:mb-6">
+          <div className="lg:flex lg:items-center lg:gap-2 text-sm lg:font-medium text-text-lighter-lm">
             Sort by:
-            <button className="text-accent-lm flex items-center gap-1">
+            <button className="text-accent-lm lg:flex lg:items-center lg:gap-1">
               Best <span className="text-[10px]">▼</span>
             </button>
           </div>
         </div>
 
-        <div className="space-y-8">
+        <div className="lg:space-y-8">
           {comments.map((comment) => (
             <CommentItem key={comment.id} comment={comment} onAddReply={handleAddReply} />
           ))}
@@ -362,36 +362,36 @@ function CommentItem({
   }
 
   return (
-    <div className="relative animate-slide-in">
-      <div className="flex gap-3">
-        <div className="relative flex flex-col items-center">
-          <Avatar className="h-8 w-8 z-10 border-2 border-primary-lm">
+    <div className="lg:relative lg:animate-slide-in">
+      <div className="lg:flex lg:gap-3">
+        <div className="lg:relative lg:flex lg:flex-col lg:items-center">
+          <Avatar className="lg:h-8 lg:w-8 lg:z-10 border-2 border-primary-lm">
             <AvatarImage src={comment.avatar || "/placeholder.svg"} />
             <AvatarFallback>{comment.author[0]}</AvatarFallback>
           </Avatar>
           {!isReply && comment.replies && comment.replies.length > 0 && (
-            <div className="absolute top-8 bottom-0 w-0.5 bg-stroke-grey left-1/2 -translate-x-1/2" />
+            <div className="lg:absolute lg:top-8 lg:bottom-0 lg:w-0.5 bg-stroke-grey lg:left-1/2 lg:-translate-x-1/2" />
           )}
         </div>
-        <div className="flex-1 pb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-bold text-text-lm">
+        <div className="lg:flex-1 lg:pb-2">
+          <div className="lg:flex lg:items-center lg:gap-2 lg:mb-1">
+            <span className="text-sm lg:font-bold text-text-lm">
               {comment.author}
             </span>
-            <span className="text-[10px] text-text-lighter-lm font-medium px-1.5 py-0.5 bg-secondary-lm rounded">
+            <span className="text-[10px] text-text-lighter-lm lg:font-medium lg:px-1.5 lg:py-0.5 bg-secondary-lm lg:rounded">
               {comment.course}
             </span>
           </div>
-          <p className="text-sm text-text-lm mb-2 leading-snug">
+          <p className="text-sm text-text-lm lg:mb-2 lg:leading-snug">
             {comment.content}
           </p>
-          <div className="flex items-center gap-4">
-            <button className="flex items-center gap-1 text-[11px] font-bold text-text-lighter-lm hover:text-accent-lm">
-              <Heart className="h-3 w-3" />
+          <div className="lg:flex lg:items-center lg:gap-4">
+            <button className="lg:flex lg:items-center lg:gap-1 text-[11px] lg:font-bold text-text-lighter-lm hover:text-accent-lm">
+              <Heart className="lg:h-3 lg:w-3" />
               {comment.likes}
             </button>
             <button
-              className="text-[11px] font-bold text-accent-lm hover:underline"
+              className="text-[11px] lg:font-bold text-accent-lm hover:underline"
               onClick={() => setReplying((r) => !r)}
             >
               Reply
@@ -402,14 +402,14 @@ function CommentItem({
 
       {/* Reply form for this comment */}
       {replying && (
-        <div className="ml-4 mt-4 space-y-3">
+        <div className="lg:ml-4 lg:mt-4 lg:space-y-3">
           <Textarea
             placeholder={`Reply to ${comment.author}...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            className="min-h-20 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
+            className="lg:min-h-20 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
           />
-          <div className="flex items-center justify-end gap-2">
+          <div className="lg:flex lg:items-center lg:justify-end lg:gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -420,7 +420,7 @@ function CommentItem({
             >
               Cancel
             </Button>
-            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4" onClick={submitReply}>
+            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4" onClick={submitReply}>
               Comment
             </Button>
           </div>
@@ -429,7 +429,7 @@ function CommentItem({
 
       {/* Nested Replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-4 mt-4 space-y-4 border-l-2 border-stroke-grey pl-6">
+        <div className="lg:ml-4 lg:mt-4 lg:space-y-4 border-l-2 border-stroke-grey lg:pl-6">
           {comment.replies.map((reply) => (
             <CommentItem key={reply.id} comment={reply} isReply onAddReply={onAddReply} />
           ))}

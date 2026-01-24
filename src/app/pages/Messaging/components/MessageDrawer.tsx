@@ -85,28 +85,28 @@ export default function MessageDrawer({
           height: `calc(100vh - ${NAVBAR_HEIGHT + NAVBAR_SPACING}px)`,
         }}
       >
-        <DrawerHeader className="flex-row flex items-center justify-between p-4 border-b border-stroke-grey">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
+        <DrawerHeader className="lg:flex-row lg:flex lg:items-center lg:justify-between lg:p-4 border-b border-stroke-grey">
+          <div className="lg:flex lg:items-center lg:gap-3">
+            <Avatar className="lg:h-8 lg:w-8">
               {avatarSrc ? <AvatarImage src={avatarSrc} /> : null}
               <AvatarFallback>
                 {userName?.[0]?.toUpperCase() ?? "U"}
               </AvatarFallback>
             </Avatar>
-            <DrawerTitle className="text-base font-semibold">
+            <DrawerTitle className="text-base lg:font-semibold">
               {activeThread ? activeThread.userName : "Messages"}
             </DrawerTitle>
           </div>
           <DrawerClose asChild>
             <Button variant="ghost" size="icon" className="text-text-lm">
-              <X className="h-5 w-5" />
+              <X className="lg:h-5 lg:w-5" />
             </Button>
           </DrawerClose>
         </DrawerHeader>
 
-        <div className="flex flex-col h-full">
+        <div className="lg:flex lg:flex-col lg:h-full">
           {!activeThread ? (
-            <div className="p-3 space-y-2 overflow-y-auto">
+            <div className="lg:p-3 lg:space-y-2 lg:overflow-y-auto">
               {threads.length === 0 ? (
                 <div className="text-sm text-text-lighter-lm">
                   No conversations yet
@@ -116,11 +116,11 @@ export default function MessageDrawer({
                   <button
                     key={t.userId}
                     onClick={() => openChatWith(t.userId, t.userName)}
-                    className="w-full text-left px-3 py-2 rounded-md border border-stroke-grey hover:border-stroke-peach hover:bg-secondary-lm"
+                    className="lg:w-full text-left lg:px-3 lg:py-2 lg:rounded-md lg:border border-stroke-grey hover:border-stroke-peach hover:bg-secondary-lm"
                   >
-                    <div className="font-medium text-text-lm">{t.userName}</div>
+                    <div className="lg:font-medium text-text-lm">{t.userName}</div>
                     {t.messages.length > 0 && (
-                      <div className="text-xs text-text-lighter-lm mt-0.5 line-clamp-1">
+                      <div className="text-xs text-text-lighter-lm lg:mt-0.5 lg:line-clamp-1">
                         {t.messages[t.messages.length - 1].text}
                       </div>
                     )}
@@ -130,7 +130,7 @@ export default function MessageDrawer({
             </div>
           ) : (
             <>
-              <div className="flex-1 p-3 space-y-2 overflow-y-auto">
+              <div className="lg:flex-1 lg:p-3 lg:space-y-2 lg:overflow-y-auto">
                 {activeThread.messages.length > 0 ? (
                   activeThread.messages.map((m) => (
                     <div
@@ -144,7 +144,7 @@ export default function MessageDrawer({
                     >
                       {m.text}
                       {"status" in m && m.from === "me" ? (
-                        <div className="mt-1 text-[10px] text-text-lighter-lm">
+                        <div className="lg:mt-1 text-[10px] text-text-lighter-lm">
                           pending
                         </div>
                       ) : null}
@@ -156,7 +156,7 @@ export default function MessageDrawer({
                   </div>
                 )}
               </div>
-              <div className="border-t border-stroke-grey p-3 flex items-center gap-2">
+              <div className="border-t border-stroke-grey lg:p-3 lg:flex lg:items-center lg:gap-2">
                 <Input
                   autoFocus
                   placeholder={`Message ${activeThread.userName}`}

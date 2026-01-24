@@ -46,15 +46,15 @@ export function Messaging() {
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[240px_520px] gap-4 p-4 min-h-[70vh] md:max-w-200 md:ml-auto">
+    <div className="lg:grid lg:grid-cols-1 md:grid-cols-[240px_520px] lg:gap-4 lg:p-4 lg:min-h-[70vh] md:max-w-200 md:ml-auto">
       {/* Sidebar */}
-      <aside className="rounded-xl border border-stroke-grey bg-secondary-lm overflow-hidden">
-        <div className="p-3 border-b border-stroke-grey font-semibold text-accent-lm">
+      <aside className="lg:rounded-xl lg:border border-stroke-grey bg-secondary-lm lg:overflow-hidden">
+        <div className="lg:p-3 border-b border-stroke-grey lg:font-semibold text-accent-lm">
           Messages
         </div>
-        <div className="flex flex-col">
+        <div className="lg:flex lg:flex-col">
           {threads.length === 0 ? (
-            <div className="p-3 text-sm text-text-lighter-lm">
+            <div className="lg:p-3 text-sm text-text-lighter-lm">
               No chats yet.
             </div>
           ) : (
@@ -71,7 +71,7 @@ export function Messaging() {
                   activeUserId === t.userId ? "bg-stroke-peach/20" : ""
                 )}
               >
-                <span className="font-medium text-text-lm truncate">
+                <span className="lg:font-medium text-text-lm lg:truncate">
                   {t.userName}
                 </span>
               </button>
@@ -81,8 +81,8 @@ export function Messaging() {
       </aside>
 
       {/* Right column placeholder */}
-      <section className="rounded-xl border border-stroke-grey bg-primary-lm flex flex-col">
-        <div className="flex-1 p-6 text-sm text-text-lighter-lm">
+      <section className="lg:rounded-xl lg:border border-stroke-grey bg-primary-lm lg:flex lg:flex-col">
+        <div className="lg:flex-1 lg:p-6 text-sm text-text-lighter-lm">
           Select a conversation to open the drawer.
         </div>
       </section>

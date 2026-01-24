@@ -1,5 +1,5 @@
 import { PostBody } from "@/components/PostBody.tsx";
-import { UpcomingEventsHome } from "@/components/UpcomingEventsHome.tsx";
+import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
 
 import { placeholderUser } from "@/mockData/placeholderUser";
 import placeholderPostImg from "@/assets/images/placeholderPostImg.png";
@@ -14,12 +14,13 @@ const user = placeholderUser;
 
 export function Home() {
   return (
-    <div className="flex gap-10 h-full w-full p-10 animate-fade-in">
-      <div className="flex flex-col gap-10 h-full bg-primary-lm p-10 rounded-2xl border-2 border-stroke-grey">
-        <PostBody title={title} content={content} user={user} />
-        <PostBody title={title} content={content} user={user} />
+    <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in justify-center items-start">
+      <div className="bg-primary-lm border border-stroke-grey rounded-lg">
+        <PostBody title={title} user={user} content={content}></PostBody>
       </div>
-      <UpcomingEventsHome />
+      <div className="lg:w-[20vw]">
+      <UpcomingEvents />
+      </div>
     </div>
   );
 }

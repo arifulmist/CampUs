@@ -153,7 +153,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
     <>
       {/* OVERLAY (below modal) */}
       <div
-        className="fixed inset-0 z-40"
+        className="lg:fixed lg:inset-0 lg:z-40"
         onClick={onClose}
         style={{
           backgroundColor: "rgba(14,21,31,0.35)",
@@ -161,10 +161,10 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
       />
 
       {/* MODAL WRAPPER (above overlay) */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:p-6">
         <div
           // Actual modal card: SOLID white, fixed max height and scrollable content
-          className="w-full max-w-3xl p-6 border border-stroke-grey"
+          className="lg:w-full lg:max-w-3xl lg:p-6 lg:border border-stroke-grey"
           onClick={(e) => e.stopPropagation()}
           style={{
             backgroundColor: "#ffffff",
@@ -175,8 +175,8 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             overflowY: "auto",
           }}
         >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-text-lm">Announce Event</h2>
+          <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
+            <h2 className="text-xl lg:font-semibold text-text-lm">Announce Event</h2>
             <button
               onClick={onClose}
               className="text-text-lighter-lm text-2xl hover:text-gray-900"
@@ -186,11 +186,11 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="lg:space-y-6">
             {/* Category */}
-            <div className="flex gap-6">
+            <div className="lg:flex lg:gap-6">
               {["Workshop", "Seminar", "Course", "Competition"].map(c => (
-                <label key={c} className="flex items-center gap-2">
+                <label key={c} className="lg:flex lg:items-center lg:gap-2">
                   <input
                     type="radio"
                     name="category"
@@ -206,7 +206,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
             {/* Title */}
             <div>
-              <h3 className="mb-2 text-lg font-medium">Title</h3>
+              <h3 className="lg:mb-2 text-lg lg:font-medium">Title</h3>
               <input
                 className={`w-full border border-stroke-grey rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#C23D00] ${
                   titleError ? "border-red-500" : ""
@@ -216,25 +216,25 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                 onChange={handleTitleChange}
               />
               {titleError && (
-                <p className="text-sm text-red-600 mt-1">Title field is mandatory.</p>
+                <p className="text-sm text-red-600 lg:mt-1">Title field is mandatory.</p>
               )}
             </div>
 
             {/* Segment list */}
             <div>
-              <div className="flex items-center mb-4">
-                <div className="flex-1 h-px bg-gray-300" />
-                <h3 className="px-4 text-lg text-text-lm font-medium">Segment</h3>
-                <div className="flex-1 h-px bg-gray-300" />
+              <div className="lg:flex lg:items-center lg:mb-4">
+                <div className="lg:flex-1 lg:h-px bg-gray-300" />
+                <h3 className="lg:px-4 text-lg text-text-lm lg:font-medium">Segment</h3>
+                <div className="lg:flex-1 lg:h-px bg-gray-300" />
               </div>
 
               {segments.map((seg, idx) => (
                 <div
                   key={seg.id}
-                  className="mb-4 border border-stroke-grey bg-secondary-lm rounded-lg p-4"
+                  className="lg:mb-4 lg:border border-stroke-grey bg-secondary-lm lg:rounded-lg lg:p-4"
                 >
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center text-text-lm">
+                  <div className="lg:mb-3">
+                    <div className="lg:flex lg:justify-between lg:items-center text-text-lm">
                       <strong>Name</strong>
                       {segments.length > 1 && (
                         <button
@@ -246,16 +246,16 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                       )}
                     </div>
                     <input
-                      className="w-full border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 mt-1"
+                      className="lg:w-full lg:border border-stroke-grey bg-primary-lm lg:rounded-lg lg:px-3 lg:py-2 lg:mt-1"
                       value={seg.name}
                       onChange={e => updateSegment(seg.id, { name: e.target.value })}
                     />
                   </div>
 
-                  <div className="mb-3">
+                  <div className="lg:mb-3">
                     <strong>Description</strong>
                     <textarea
-                      className="w-full border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 mt-1"
+                      className="lg:w-full lg:border border-stroke-grey bg-primary-lm lg:rounded-lg lg:px-3 lg:py-2 lg:mt-1"
                       rows={3}
                       value={seg.description}
                       onChange={e =>
@@ -264,12 +264,12 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                     />
                   </div>
 
-                  <div className="border border-stroke-grey bg-primary-lm rounded-lg overflow-hidden">
-                    <table className="w-full">
+                  <div className="lg:border border-stroke-grey bg-primary-lm lg:rounded-lg lg:overflow-hidden">
+                    <table className="lg:w-full">
                       <thead className="text-text-lm">
                         <tr>
-                          <th className="px-4 py-2 border-r">Date</th>
-                          <th className="px-4 py-2">Time</th>
+                          <th className="lg:px-4 lg:py-2 border-r">Date</th>
+                          <th className="lg:px-4 lg:py-2">Time</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -277,7 +277,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                           <td className="border-r">
                             <input
                               type="date"
-                              className="w-full px-4 py-2"
+                              className="lg:w-full lg:px-4 lg:py-2"
                               value={seg.date}
                               onChange={e =>
                                 updateSegment(seg.id, { date: e.target.value })
@@ -287,7 +287,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                           <td>
                             <input
                               type="time"
-                              className="w-full px-4 py-2"
+                              className="lg:w-full lg:px-4 lg:py-2"
                               value={seg.time}
                               onChange={e =>
                                 updateSegment(seg.id, { time: e.target.value })
@@ -304,7 +304,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               <div className="text-right">
                 <button
                   onClick={addSegment}
-                  className="bg-accent-lm text-primary-lm px-5 py-2 rounded-full"
+                  className="bg-accent-lm text-primary-lm lg:px-5 lg:py-2 lg:rounded-full"
                   style={{ color: "white" }}
                 >
                   + Add segment
@@ -316,28 +316,28 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
             {/* Tags */}
             <div>
-              <h3 className="mb-2 text-lg text-text-lm font-medium">Tags</h3>
-              <div className="flex gap-2 mb-3">
+              <h3 className="lg:mb-2 text-lg text-text-lm lg:font-medium">Tags</h3>
+              <div className="lg:flex lg:gap-2 lg:mb-3">
                 {tags.length > 0 &&
                   tags.map(t => (
                     <span
                       key={t}
-                      className="border border-accent-lm text-accent-lm rounded-full px-3 py-1 text-sm"
+                      className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm"
                     >
                       #{t}
                     </span>
                   ))}
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="lg:flex lg:gap-2 lg:items-center">
                 <input
                   value={tagInput}
                   onChange={e => setTagInput(e.target.value)}
-                  className="flex-1 border border-stroke-grey rounded-lg px-3 py-2"
+                  className="lg:flex-1 lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                   placeholder="Add tag (press Add)"
                 />
                 <button
                   onClick={addTag}
-                  className="bg-accent-lm text-primary-lm px-3 py-2 rounded-lg"
+                  className="bg-accent-lm text-primary-lm lg:px-3 lg:py-2 lg:rounded-lg"
                   style={{ color: "white" }}
                 >
                   Add
@@ -347,43 +347,43 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
             {/* Upload */}
             <div>
-              <label className="block mb-2 font-medium">Upload Image</label>
-              <div className="flex gap-3 items-center">
+              <label className="lg:block lg:mb-2 lg:font-medium">Upload Image</label>
+              <div className="lg:flex lg:gap-3 lg:items-center">
                 <label
-                  className="bg-accent-lm text-primary-lm px-5 py-2 rounded-lg cursor-pointer"
+                  className="bg-accent-lm text-primary-lm lg:px-5 lg:py-2 lg:rounded-lg cursor-pointer"
                   style={{ color: "white" }}
                 >
                   Choose File
                   <input
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    className="lg:hidden"
                     onChange={handleImage}
                   />
                 </label>
 
                 {/* preview area */}
-                <div className="flex-1 border border-stroke-grey rounded-lg px-3 py-2 flex items-center">
+                <div className="lg:flex-1 lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2 lg:flex lg:items-center">
                   {!imageDataUrl ? (
                     <div className="text-sm text-text-lighter-lm">No file chosen</div>
                   ) : (
-                    <div className="flex items-center gap-3">
+                    <div className="lg:flex lg:items-center lg:gap-3">
                       {/* clickable thumbnail */}
                       <button
                         type="button"
                         onClick={() => setPreviewOpen(true)}
-                        className="inline-block rounded-md overflow-hidden border border-stroke-grey"
+                        className="lg:inline-block lg:rounded-md lg:overflow-hidden lg:border border-stroke-grey"
                         aria-label="Open image preview"
                       >
                         <img
                           src={imageDataUrl}
                           alt={imageName ?? "Selected image"}
-                          className="h-20 w-28 object-cover"
+                          className="lg:h-20 lg:w-28 lg:object-cover"
                         />
                       </button>
 
-                      <div className="flex flex-col">
-                        <div className="text-sm font-medium text-text-lm">
+                      <div className="lg:flex lg:flex-col">
+                        <div className="text-sm lg:font-medium text-text-lm">
                           {imageName ?? "Image selected"}
                         </div>
                         <div className="text-xs text-text-lighter-lm">Click to expand</div>
@@ -394,10 +394,10 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               </div>
             </div>
 
-            <div className="text-right pt-4">
+            <div className="text-right lg:pt-4">
               <button
                 onClick={handlePost}
-                className="bg-[#C23D00] text-white px-6 py-2 rounded-full"
+                className="bg-[#C23D00] text-white lg:px-6 lg:py-2 lg:rounded-full"
                 style={{ color: "white" }}
               >
                 Post
@@ -411,18 +411,18 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
       {previewOpen && imageDataUrl && (
         <>
           <div
-            className="fixed inset-0 z-60"
+            className="lg:fixed lg:inset-0 lg:z-60"
             onClick={() => setPreviewOpen(false)}
             style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
           />
-          <div className="fixed inset-0 z-70 flex items-center justify-center p-6 pointer-events-none">
+          <div className="lg:fixed lg:inset-0 lg:z-70 lg:flex lg:items-center lg:justify-center lg:p-6 lg:pointer-events-none">
             <div
-              className="pointer-events-auto max-w-[90vw] max-h-[90vh] relative"
+              className="lg:pointer-events-auto lg:max-w-[90vw] lg:max-h-[90vh] lg:relative"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setPreviewOpen(false)}
-                className="absolute top-2 right-2 z-80 rounded-full bg-white/90 p-2 border border-stroke-grey"
+                className="lg:absolute lg:top-2 lg:right-2 lg:z-80 lg:rounded-full bg-white/90 lg:p-2 lg:border border-stroke-grey"
                 aria-label="Close preview"
               >
                 ✕
@@ -430,10 +430,10 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               <img
                 src={imageDataUrl}
                 alt={imageName ?? "Selected image preview"}
-                className="max-w-full max-h-[80vh] object-contain rounded-md shadow-lg"
+                className="lg:max-w-full lg:max-h-[80vh] lg:object-contain lg:rounded-md lg:shadow-lg"
               />
               {imageName && (
-                <div className="mt-2 text-sm text-center text-text-lighter-lm">
+                <div className="lg:mt-2 text-sm text-center text-text-lighter-lm">
                   {imageName}
                 </div>
               )}

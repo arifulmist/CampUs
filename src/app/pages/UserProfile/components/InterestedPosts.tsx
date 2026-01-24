@@ -4,9 +4,9 @@ import type { InterestedItem } from "../backend/interestedStore";
 
 export function InterestedPosts({ items }: { items: InterestedItem[] }) {
   return (
-    <section className="rounded-2xl border border-stroke-grey bg-primary-lm shadow-sm p-7 min-h-50 flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-text-lm">Interested Posts</h2>
+    <section className="lg:rounded-2xl lg:border border-stroke-grey bg-primary-lm lg:shadow-sm lg:p-7 lg:min-h-50 lg:flex lg:flex-col">
+      <div className="lg:mb-4 lg:flex lg:items-center lg:justify-between">
+        <h2 className="text-lg lg:font-bold text-text-lm">Interested Posts</h2>
       </div>
 
       {items.length === 0 ? (
@@ -14,25 +14,25 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
           <p className="text-sm text-text-lighter-lm">
             No interested posts yet.
           </p>
-          <div className="flex justify-end pt-3 mt-auto">
+          <div className="lg:flex lg:justify-end lg:pt-3 lg:mt-auto">
             <Link to="/collab">
               <ButtonCTA label={"Add More"} />
             </Link>
           </div>
         </>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="lg:flex lg:flex-col lg:gap-4">
           {items
             .slice()
             .sort((a, b) => b.createdAt - a.createdAt)
             .map((item) => (
               <div
                 key={item.id}
-                className="rounded-xl border border-stroke-grey bg-secondary-lm px-4 py-3"
+                className="lg:rounded-xl lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3"
               >
-                <div className="flex items-center justify-between">
+                <div className="lg:flex lg:items-center lg:justify-between">
                   <div>
-                    <div className="font-semibold text-text-lm">
+                    <div className="lg:font-semibold text-text-lm">
                       {item.title}
                     </div>
                     <div className="text-xs text-text-lighter-lm">
@@ -40,11 +40,11 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                       {item.userName ? ` • by ${item.userName}` : ""}
                     </div>
                     {item.tags && item.tags.length > 0 && (
-                      <div className="mt-2 flex gap-2 flex-wrap">
+                      <div className="lg:mt-2 lg:flex lg:gap-2 lg:flex-wrap">
                         {item.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="font-bold bg-[#C23D00] text-[#FFFFFF] px-2 py-0.5 rounded-full text-xs"
+                            className="lg:font-bold bg-[#C23D00] text-[#FFFFFF] lg:px-2 lg:py-0.5 lg:rounded-full text-xs"
                           >
                             {tag}
                           </span>
@@ -58,7 +58,7 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                 </div>
               </div>
             ))}
-          <div className="flex justify-end pt-3 mt-auto">
+          <div className="lg:flex lg:justify-end lg:pt-3 lg:mt-auto">
             <Link to="/collab">
               <ButtonCTA label={"Add More"} />
             </Link>

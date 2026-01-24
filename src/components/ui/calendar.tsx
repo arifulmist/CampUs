@@ -159,7 +159,7 @@ function Calendar({
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
-              <div className="flex size-(--cell-size) items-center justify-center text-center">
+              <div className="lg:flex lg:size-(--cell-size) lg:items-center lg:justify-center text-center">
                 {children}
               </div>
             </td>

@@ -203,14 +203,14 @@ function QAPageContent() {
   return (
     // add qna-reset-scrollbar class so our injected CSS affects this component only
     <div
-      className="qna-reset-scrollbar min-h-screen bg-background-lm animate-fade-in"
+      className="lg:qna-reset-scrollbar lg:min-h-screen bg-background-lm lg:animate-fade-in"
       style={{
         minHeight: "100vh",
         overflowY: "auto", // allow native scrollbars when needed (auto instead of forced scroll)
       }}
     >
       <main
-        className="mx-auto max-w-4xl px-4 py-6 w-full box-border"
+        className="lg:mx-auto lg:max-w-4xl lg:px-4 lg:py-6 lg:w-full lg:box-border"
         style={{ boxSizing: "border-box" }}
       >
         {selectedPost ? (
@@ -221,22 +221,22 @@ function QAPageContent() {
         ) : (
           <>
             {/* Search + New Post */}
-            <div className="mb-6 flex items-center gap-3">
-              <div className="relative flex-1 min-w-0 w-[60vw] rounded-md bg-primary-lm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 text-accent-lm" />
+            <div className="lg:mb-6 lg:flex lg:items-center lg:gap-3">
+              <div className="lg:relative lg:flex-1 lg:min-w-0 lg:w-[60vw] lg:rounded-md bg-primary-lm">
+                <Search className="lg:absolute lg:left-3 lg:top-1/2 lg:-translate-y-1/2 lg:h-4 text-accent-lm" />
                 <Input
                   placeholder="Search anything"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-10 w-full min-w-0 pl-9 rounded-full bg-primary-lm border border-stroke-grey placeholder:text-text-lighter-lm focus:ring-2 focus:ring-accent-lm focus:border-accent-lm"
+                  className="lg:h-10 lg:w-full lg:min-w-0 lg:pl-9 lg:rounded-full bg-primary-lm lg:border border-stroke-grey placeholder:text-text-lighter-lm focus:ring-2 focus:ring-accent-lm focus:border-accent-lm"
                 />
               </div>
 
               {/* New Post button kept same width to avoid reflow */}
-              <div className="shrink-0">
+              <div className="lg:shrink-0">
                 <Button
                   onClick={() => setIsNewPostOpen(true)}
-                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4"
+                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4"
                 >
                   New Post
                 </Button>
@@ -244,7 +244,7 @@ function QAPageContent() {
             </div>
 
             {/* Tabs: centered and fixed button widths so switching doesn't reflow */}
-            <div className="flex gap-2 mb-6 justify-center">
+            <div className="lg:flex lg:gap-2 lg:mb-6 lg:justify-center">
               {(["All", "Question", "Advice", "Resource"] as const).map(
                 (tab) => (
                   <button
@@ -265,9 +265,9 @@ function QAPageContent() {
             </div>
 
             {/* Posts: reserve a minimum height so switching to empty doesn't collapse layout */}
-            <div className="space-y-4 min-h-48">
+            <div className="lg:space-y-4 lg:min-h-48">
               {filteredPosts.length === 0 ? (
-                <div className="flex items-center justify-center min-h-48">
+                <div className="lg:flex lg:items-center lg:justify-center lg:min-h-48">
                   <p className="text-text-lighter-lm text-lg">
                     No posts in this category
                   </p>
@@ -292,19 +292,19 @@ function QAPageContent() {
 
       {/* New Post Dialog */}
       <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
-        <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm lg:max-h-[80vh] lg:overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Post</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 px-0">
+          <div className="lg:space-y-4 lg:px-0">
             <Input
               placeholder="Title"
               value={newPost.title}
               onChange={(e) =>
                 setNewPost({ ...newPost, title: e.target.value })
               }
-              className="w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+              className="lg:w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
             />
 
             <Textarea
@@ -314,11 +314,11 @@ function QAPageContent() {
               onChange={(e) =>
                 setNewPost({ ...newPost, description: e.target.value })
               }
-              className="w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+              className="lg:w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
             />
 
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
+            <div className="lg:space-y-2">
+              <div className="lg:flex lg:flex-wrap lg:gap-2">
                 {(["Question", "Advice", "Resource"] as const).map((cat) => (
                   <button
                     key={cat}
@@ -337,9 +337,9 @@ function QAPageContent() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="lg:pt-2">
               <Button
-                className="w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
+                className="lg:w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
                 onClick={submitNewPost}
               >
                 Post
@@ -394,14 +394,7 @@ function PostCard({
         // Avoid navigating to detail while composing a reply
         if (!replying) onOpenDetail();
       }}
-      className="
-        relative
-        bg-secondary-lm p-8 rounded-2xl
-        border-2 border-stroke-grey
-        hover:bg-hover-lm hover:border-stroke-peach
-        transition cursor-pointer w-full box-border
-        min-h-56 flex flex-col justify-between
-      "
+      className="lg:relative bg-secondary-lm lg:p-8 lg:rounded-2xl border-2 border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach lg:transition cursor-pointer lg:w-full lg:box-border lg:min-h-56 lg:flex lg:flex-col lg:justify-between"
     >
       <span
         className={`
@@ -421,16 +414,16 @@ function PostCard({
           userBatch={post.authorCourse}
         />
 
-        <h5 className="font-[Poppins] font-semibold text-text-lm mt-2">
+        <h5 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mt-2">
           {post.title}
         </h5>
       </div>
 
       {/* Middle: content + tags (flex-grow so footer stays at bottom) */}
-      <div className="grow mt-3">
+      <div className="lg:grow lg:mt-3">
         <div
           ref={contentRef}
-          className="text-text-lighter-lm text-md leading-relaxed"
+          className="text-text-lighter-lm text-md lg:leading-relaxed"
           style={collapsed ? { maxHeight: "6rem", overflow: "hidden" } : {}}
         >
           {post.content}
@@ -443,20 +436,20 @@ function PostCard({
               setCollapsed((c) => !c);
               if (collapsed) setReplying(true);
             }}
-            className="text-accent-lm text-sm font-medium mt-1"
+            className="text-accent-lm text-sm lg:font-medium lg:mt-1"
           >
             {collapsed ? "Read more" : "Show less"}
           </button>
         )}
 
-        <div className="flex gap-2 flex-wrap mt-3">
-          <span className="font-bold bg-[#C23D00] text-primary-lm px-3 py-1.5 rounded-full text-sm">
+        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-3">
+          <span className="lg:font-bold bg-[#C23D00] text-primary-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm">
             #{post.category}
           </span>
           {post.tags.map((tag) => (
             <span
               key={tag}
-              className="font-bold bg-[#C23D00] text-primary-lm px-3 py-1.5 rounded-full text-sm"
+              className="lg:font-bold bg-[#C23D00] text-primary-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm"
             >
               #{tag}
             </span>
@@ -466,7 +459,7 @@ function PostCard({
 
       {/* Footer: actions + timestamp + inline reply area (if expanded) */}
       <div>
-        <div className="flex gap-4 items-center mt-4">
+        <div className="lg:flex lg:gap-4 lg:items-center lg:mt-4">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -495,30 +488,30 @@ function PostCard({
           </button>
         </div>
 
-        <p className="text-xs text-text-lighter-lm mt-2">{post.timestamp}</p>
+        <p className="text-xs text-text-lighter-lm lg:mt-2">{post.timestamp}</p>
 
         {/* INLINE REPLY (kept in footer but reserves space only when visible) */}
         {!collapsed && (
-          <div className="mt-4 bg-secondary-lm rounded-2xl p-6 border-2 border-stroke-grey">
+          <div className="lg:mt-4 bg-secondary-lm lg:rounded-2xl lg:p-6 border-2 border-stroke-grey">
             {!replying ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setReplying(true);
                 }}
-                className="w-full text-left px-4 py-3 text-text-lighter-lm text-sm hover:bg-hover-lm rounded-lg transition"
+                className="lg:w-full text-left lg:px-4 lg:py-3 text-text-lighter-lm text-sm hover:bg-hover-lm lg:rounded-lg lg:transition"
               >
                 Add a reply
               </button>
             ) : (
-              <div className="space-y-4">
+              <div className="lg:space-y-4">
                 <Textarea
                   placeholder="Add a reply..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   className="border-none bg-secondary-lm text-text-lm focus-visible:ring-0"
                 />
-                <div className="flex justify-end gap-2">
+                <div className="lg:flex lg:justify-end lg:gap-2">
                   <Button
                     variant="ghost"
                     onClick={() => {

@@ -67,12 +67,12 @@ export default function CreateCollabPost({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm lg:max-h-[80vh] lg:overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Collaboration</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 px-0">
+        <div className="lg:space-y-4 lg:px-0">
          {/* Title */}
 <Input
   placeholder="Title"
@@ -110,12 +110,12 @@ export default function CreateCollabPost({
 
 
           {/* Tags */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-lm">
-              <TagIcon className="h-4 w-4 text-accent-lm" />
-              <span className="text-sm font-medium text-text-lm">Tag</span>
+          <div className="lg:space-y-2">
+            <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+              <TagIcon className="lg:h-4 lg:w-4 text-accent-lm" />
+              <span className="text-sm lg:font-medium text-text-lm">Tag</span>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="lg:flex lg:gap-2 lg:items-center">
               <Input
                 placeholder="Add tag"
                 value={tagInput}
@@ -133,13 +133,13 @@ export default function CreateCollabPost({
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="lg:flex lg:flex-wrap lg:gap-2">
               {tags.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTags(tags.filter((x) => x !== t))}
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm border bg-primary-lm"
+                  className="lg:inline-flex lg:items-center lg:gap-2 lg:rounded-full lg:px-3 lg:py-1 text-sm lg:border bg-primary-lm"
                 >
                   #{t}
                 </button>
@@ -148,11 +148,11 @@ export default function CreateCollabPost({
           </div>
 
           {/* Categories */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-lm">
-              <span className="text-sm font-medium">Category</span>
+          <div className="lg:space-y-2">
+            <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+              <span className="text-sm lg:font-medium">Category</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="lg:flex lg:flex-wrap lg:gap-2">
               {(["research", "competition", "project"] as const).map((cat) => (
                 <button
                   key={cat}
@@ -165,7 +165,7 @@ export default function CreateCollabPost({
                       : "border-stroke-grey bg-primary-lm text-text-lm hover:bg-hover-lm"
                   }`}
                 >
-                  {category === cat && <Check className="h-3.5 w-3.5 text-accent-lm" />}
+                  {category === cat && <Check className="lg:h-3.5 lg:w-3.5 text-accent-lm" />}
                   {cat}
                 </button>
               ))}
@@ -174,7 +174,7 @@ export default function CreateCollabPost({
 
           {/* Submit */}
           <Button
-            className="w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
+            className="lg:w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
             onClick={handlePost}
           >
             Post

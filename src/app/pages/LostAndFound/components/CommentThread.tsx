@@ -94,31 +94,31 @@ export default function CommentThread({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="lg:space-y-6">
       {/* Add Reply Section (top-level) */}
-      <div className="bg-primary-lm rounded-xl p-4 shadow-sm border border-stroke-grey">
+      <div className="bg-primary-lm lg:rounded-xl lg:p-4 lg:shadow-sm lg:border border-stroke-grey">
         {!isReplying ? (
           <button
             onClick={() => setIsReplying(true)}
-            className="w-full text-left px-4 py-3 text-text-lighter-lm text-sm hover:bg-hover-lm rounded-lg transition-colors"
+            className="lg:w-full text-left lg:px-4 lg:py-3 text-text-lighter-lm text-sm hover:bg-hover-lm lg:rounded-lg lg:transition-colors"
           >
             Add a reply
           </button>
         ) : (
-          <div className="space-y-4">
+          <div className="lg:space-y-4">
             <Textarea
               placeholder="Add a reply..."
               value={topCommentText}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                 setTopCommentText(e.target.value)
               }
-              className="min-h-25 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
+              className="lg:min-h-25 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
             />
-            <div className="flex items-center justify-between pt-2 border-t border-stroke-grey">
-              <span className="text-xs text-text-lighter-lm italic">
+            <div className="lg:flex lg:items-center lg:justify-between lg:pt-2 border-t border-stroke-grey">
+              <span className="text-xs text-text-lighter-lm lg:italic">
                 Replying as {currentUser.name}
               </span>
-              <div className="flex gap-2">
+              <div className="lg:flex lg:gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -132,7 +132,7 @@ export default function CommentThread({
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4"
+                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4"
                   onClick={addTopLevelComment}
                 >
                   Comment
@@ -144,17 +144,17 @@ export default function CommentThread({
       </div>
 
       {/* Comments List */}
-      <div className="bg-primary-lm rounded-xl p-6 shadow-sm border border-stroke-grey">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2 text-sm font-medium text-text-lighter-lm">
+      <div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey">
+        <div className="lg:flex lg:items-center lg:justify-between lg:mb-6">
+          <div className="lg:flex lg:items-center lg:gap-2 text-sm lg:font-medium text-text-lighter-lm">
             Sort by:
-            <button className="text-accent-lm flex items-center gap-1">
+            <button className="text-accent-lm lg:flex lg:items-center lg:gap-1">
               Best <span className="text-[10px]">▼</span>
             </button>
           </div>
         </div>
 
-        <div className="space-y-8">
+        <div className="lg:space-y-8">
           {comments.map((c) => (
             <CommentNode key={c.id} comment={c} onReply={addReply} />
           ))}
@@ -185,36 +185,36 @@ function CommentNode({
   }
 
   return (
-    <div className="relative animate-slide-in">
-      <div className="flex gap-3">
-        <div className="relative flex flex-col items-center">
-          <Avatar className="h-8 w-8 z-10 border-2 border-primary-lm">
+    <div className="lg:relative lg:animate-slide-in">
+      <div className="lg:flex lg:gap-3">
+        <div className="lg:relative lg:flex lg:flex-col lg:items-center">
+          <Avatar className="lg:h-8 lg:w-8 lg:z-10 border-2 border-primary-lm">
             <AvatarImage src={comment.avatar || "/placeholder.svg"} />
             <AvatarFallback>{comment.author[0]}</AvatarFallback>
           </Avatar>
           {!isReply && comment.replies && comment.replies.length > 0 && (
-            <div className="absolute top-8 bottom-0 w-0.5 bg-stroke-grey left-1/2 -translate-x-1/2" />
+            <div className="lg:absolute lg:top-8 lg:bottom-0 lg:w-0.5 bg-stroke-grey lg:left-1/2 lg:-translate-x-1/2" />
           )}
         </div>
 
-        <div className="flex-1 pb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-bold text-text-lm">{comment.author}</span>
-            <span className="text-[10px] text-text-lighter-lm font-medium px-1.5 py-0.5 bg-secondary-lm rounded">
+        <div className="lg:flex-1 lg:pb-2">
+          <div className="lg:flex lg:items-center lg:gap-2 lg:mb-1">
+            <span className="text-sm lg:font-bold text-text-lm">{comment.author}</span>
+            <span className="text-[10px] text-text-lighter-lm lg:font-medium lg:px-1.5 lg:py-0.5 bg-secondary-lm lg:rounded">
               {comment.course}
             </span>
           </div>
 
-          <p className="text-sm text-text-lm mb-2 leading-snug">{comment.content}</p>
+          <p className="text-sm text-text-lm lg:mb-2 lg:leading-snug">{comment.content}</p>
 
-          <div className="flex items-center gap-4">
-            <button className="flex items-center gap-1 text-[11px] font-bold text-text-lighter-lm hover:text-accent-lm">
-              <Heart className="h-3 w-3" />
+          <div className="lg:flex lg:items-center lg:gap-4">
+            <button className="lg:flex lg:items-center lg:gap-1 text-[11px] lg:font-bold text-text-lighter-lm hover:text-accent-lm">
+              <Heart className="lg:h-3 lg:w-3" />
               {comment.likes}
             </button>
 
             <button
-              className="text-[11px] font-bold text-accent-lm hover:underline"
+              className="text-[11px] lg:font-bold text-accent-lm hover:underline"
               onClick={() => setReplying((r) => !r)}
             >
               Reply
@@ -225,14 +225,14 @@ function CommentNode({
 
       {/* Reply form for this comment */}
       {replying && (
-        <div className="ml-4 mt-4 space-y-3">
+        <div className="lg:ml-4 lg:mt-4 lg:space-y-3">
           <Textarea
             placeholder={`Reply to ${comment.author}...`}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            className="min-h-20 border-none focus-visible:ring-0 p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
+            className="lg:min-h-20 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
           />
-          <div className="flex items-center justify-end gap-2">
+          <div className="lg:flex lg:items-center lg:justify-end lg:gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -243,7 +243,7 @@ function CommentNode({
             >
               Cancel
             </Button>
-            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm px-4" onClick={submitReply}>
+            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4" onClick={submitReply}>
               Comment
             </Button>
           </div>
@@ -252,7 +252,7 @@ function CommentNode({
 
       {/* Nested Replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-4 mt-4 space-y-4 border-l-2 border-stroke-grey pl-6">
+        <div className="lg:ml-4 lg:mt-4 lg:space-y-4 border-l-2 border-stroke-grey lg:pl-6">
           {comment.replies.map((r) => (
             <CommentNode key={r.id} comment={r} onReply={onReply} isReply />
           ))}

@@ -43,7 +43,7 @@ export default function EventPost({ post, onClick }: Props) {
 
   return (
     <article
-      className="rounded-xl border border-stroke-grey bg-primary-lm p-6 shadow-sm"
+      className="lg:rounded-xl lg:border border-stroke-grey bg-primary-lm lg:p-6 lg:shadow-sm"
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}

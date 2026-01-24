@@ -86,14 +86,14 @@ export default function UserProfileUpdate({
   return (
     <>
       <div
-        className="fixed inset-0 z-40"
+        className="lg:fixed lg:inset-0 lg:z-40"
         onClick={onClose}
         style={{ backgroundColor: "rgba(14,21,31,0.35)" }}
       />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:p-6">
         <div
-          className="w-full max-w-md p-6 border border-stroke-grey"
+          className="lg:w-full lg:max-w-md lg:p-6 lg:border border-stroke-grey"
           onClick={(e) => e.stopPropagation()}
           style={{
             backgroundColor: "#ffffff",
@@ -103,8 +103,8 @@ export default function UserProfileUpdate({
             overflowY: "auto",
           }}
         >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-text-lm">
+          <div className="lg:flex lg:justify-between lg:items-center lg:mb-4">
+            <h3 className="text-lg lg:font-semibold text-text-lm">
               {mode === "skill"
                 ? "Add Skill"
                 : mode === "interest"
@@ -120,11 +120,11 @@ export default function UserProfileUpdate({
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="lg:space-y-4">
             {mode === "skill" ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="lg:block text-sm lg:font-medium lg:mb-1">
                     Skill
                   </label>
                   <input
@@ -134,19 +134,19 @@ export default function UserProfileUpdate({
                       setTitle(e.target.value);
                       if (error) setError("");
                     }}
-                    className="w-full border border-stroke-grey rounded-lg px-3 py-2"
+                    className="lg:w-full lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                     placeholder="e.g. UI/UX or Java"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="lg:block text-sm lg:font-medium lg:mb-1">
                     Detail (optional)
                   </label>
                   <input
                     value={detail}
                     onChange={(e) => setDetail(e.target.value)}
-                    className="w-full border border-stroke-grey rounded-lg px-3 py-2"
+                    className="lg:w-full lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                     placeholder="e.g. Club or Course"
                   />
                 </div>
@@ -154,7 +154,7 @@ export default function UserProfileUpdate({
             ) : mode === "interest" ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="lg:block text-sm lg:font-medium lg:mb-1">
                     Interest
                   </label>
                   <input
@@ -164,7 +164,7 @@ export default function UserProfileUpdate({
                       setInterest(e.target.value);
                       if (error) setError("");
                     }}
-                    className="w-full border border-stroke-grey rounded-lg px-3 py-2"
+                    className="lg:w-full lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                     placeholder="e.g. ML, CTF"
                   />
                 </div>
@@ -172,7 +172,7 @@ export default function UserProfileUpdate({
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="lg:block text-sm lg:font-medium lg:mb-1">
                     Platform
                   </label>
                   <select
@@ -180,7 +180,7 @@ export default function UserProfileUpdate({
                     onChange={(e) =>
                       setContactType(e.target.value as Contact["type"])
                     }
-                    className="w-full border border-stroke-grey rounded-lg px-3 py-2"
+                    className="lg:w-full lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                   >
                     <option value="gmail">Gmail</option>
                     <option value="linkedin">LinkedIn</option>
@@ -190,7 +190,7 @@ export default function UserProfileUpdate({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">ID</label>
+                  <label className="lg:block text-sm lg:font-medium lg:mb-1">ID</label>
                   <input
                     id="up-contact-id"
                     value={contactId}
@@ -198,7 +198,7 @@ export default function UserProfileUpdate({
                       setContactId(e.target.value);
                       if (error) setError("");
                     }}
-                    className="w-full border border-stroke-grey rounded-lg px-3 py-2"
+                    className="lg:w-full lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2"
                     placeholder="e.g. username or email"
                   />
                 </div>
@@ -207,16 +207,16 @@ export default function UserProfileUpdate({
 
             {error && <div className="text-sm text-red-600">{error}</div>}
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="lg:flex lg:justify-end lg:gap-3 lg:pt-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm"
                 style={{ color: "white" }}
               >
                 Save

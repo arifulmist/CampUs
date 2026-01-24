@@ -18,8 +18,8 @@ interface CategoryFilterProps {
 
 export function CategoryFilter({ categories, selected, onChange }: CategoryFilterProps) {
   return (
-    <div className="flex flex-col gap-4 w-80 h-fit bg-primary-lm p-4 rounded-2xl border-2 border-stroke-grey">
-      <h6 className="font-[Poppins] font-semibold text-text-lm mb-2">
+    <div className="lg:flex lg:flex-col lg:gap-4 lg:w-80 lg:h-fit bg-primary-lm lg:p-4 lg:rounded-2xl border-2 border-stroke-grey">
+      <h6 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mb-2">
         Categories
       </h6>
       {categories.map((cat) => (

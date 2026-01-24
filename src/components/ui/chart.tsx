@@ -201,7 +201,7 @@ function ChartTooltipContent({
       )}
     >
       {!nestLabel ? tooltipLabel : null}
-      <div className="grid gap-1.5">
+      <div className="lg:grid lg:gap-1.5">
         {items.map((item: TooltipPayloadItem, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
@@ -249,14 +249,14 @@ function ChartTooltipContent({
                       nestLabel ? "items-end" : "items-center"
                     )}
                   >
-                    <div className="grid gap-1.5">
+                    <div className="lg:grid lg:gap-1.5">
                       {nestLabel ? tooltipLabel : null}
                       <span className="text-muted-foreground">
                         {itemConfig?.label || item.name}
                       </span>
                     </div>
                     {item.value && (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
+                      <span className="text-foreground lg:font-mono lg:font-medium lg:tabular-nums">
                         {item.value.toLocaleString()}
                       </span>
                     )}
@@ -323,7 +323,7 @@ function ChartLegendContent({
               <itemConfig.icon />
             ) : (
               <div
-                className="h-2 w-2 shrink-0 rounded-xs"
+                className="lg:h-2 lg:w-2 lg:shrink-0 lg:rounded-xs"
                 style={{
                   backgroundColor: item.color,
                 }}

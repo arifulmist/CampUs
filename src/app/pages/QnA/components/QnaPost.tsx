@@ -56,7 +56,7 @@ export default function QnaPost({
           <DialogTitle>New Post</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="lg:space-y-4">
           <Input
             placeholder="Title"
             value={title}
@@ -76,12 +76,12 @@ export default function QnaPost({
             className="bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
           />
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-lm">
-              <TagIcon className="h-4 w-4 text-accent-lm" />
-              <span className="text-sm font-medium text-text-lm">Tag</span>
+          <div className="lg:space-y-2">
+            <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+              <TagIcon className="lg:h-4 lg:w-4 text-accent-lm" />
+              <span className="text-sm lg:font-medium text-text-lm">Tag</span>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="lg:flex lg:gap-2 lg:items-center">
               <Input
                 placeholder="Add tag"
                 value={tagInput}
@@ -99,20 +99,20 @@ export default function QnaPost({
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="lg:flex lg:flex-wrap lg:gap-2">
               {tags.map((t) => (
-                <button key={t} type="button" onClick={() => removeTag(t)} className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm border bg-primary-lm">
+                <button key={t} type="button" onClick={() => removeTag(t)} className="lg:inline-flex lg:items-center lg:gap-2 lg:rounded-full lg:px-3 lg:py-1 text-sm lg:border bg-primary-lm">
                   #{t}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-lm">
-              <span className="text-sm font-medium">Category</span>
+          <div className="lg:space-y-2">
+            <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+              <span className="text-sm lg:font-medium">Category</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="lg:flex lg:flex-wrap lg:gap-2">
               {(["Question", "Advice", "Resource"] as const).map((cat) => (
                 <button
                   key={cat}
@@ -123,14 +123,14 @@ export default function QnaPost({
                     category === cat ? "border-stroke-peach bg-secondary-lm text-accent-lm shadow-sm ring-2 ring-accent-lm" : "border-stroke-grey bg-primary-lm text-text-lm hover:bg-hover-lm"
                   }`}
                 >
-                  {category === cat && <Check className="h-3.5 w-3.5 text-accent-lm" />}
+                  {category === cat && <Check className="lg:h-3.5 lg:w-3.5 text-accent-lm" />}
                   {cat}
                 </button>
               ))}
             </div>
           </div>
 
-          <Button className="w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm" onClick={handlePost}>
+          <Button className="lg:w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm" onClick={handlePost}>
             Post
           </Button>
         </div>

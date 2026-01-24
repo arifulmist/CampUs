@@ -65,15 +65,15 @@ export function StudyLayout() {
   }
   
   return(
-    <main className="w-full h-screen flex ">
+    <main className="lg:w-full lg:h-screen lg:flex">
       <Sidebar batch={batch} />
-      <div className="w-full h-full flex flex-col ml-[20vw] px-10 animate-slide-in">
-        <div className="flex w-full gap-5 justify-center mt-6">
+      <div className="lg:w-full lg:h-full lg:flex lg:flex-col lg:ml-[20vw] lg:px-10 lg:animate-slide-in">
+        <div className="lg:flex lg:w-full lg:gap-5 lg:justify-center lg:mt-6">
           <TabLink linktxt="Notes" dest={notesPath} />
           <TabLink linktxt="Resources" dest={resourcesPath} />
         </div>
-        <div className="mt-6 flex flex-row gap-x-4">
-          <p className="text-accent-lm font-medium">Filter by</p>
+        <div className="lg:mt-6 lg:flex lg:flex-row lg:gap-x-4">
+          <p className="text-accent-lm lg:font-medium">Filter by</p>
           {(() => {
             return (
               <>
@@ -82,7 +82,7 @@ export function StudyLayout() {
                   id="course"
                   value={selectedCourse ?? "Course"}
                   onChange={(e) => setSelectedCourse(e.target.value === "Course" ? null : e.target.value)}
-                  className="bg-primary-lm border border-stroke-grey rounded-sm px-2 py-0.5 text-stroke-peach focus:border focus:border-stroke-peach"
+                  className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach focus:border focus:border-stroke-peach"
                 >
                   <option value={"Course"} disabled>
                     Course
@@ -99,7 +99,7 @@ export function StudyLayout() {
                   id="uploadedby"
                   value={selectedUploader ?? "Uploaded by"}
                   onChange={(e) => setSelectedUploader(e.target.value === "Uploaded by" ? null : e.target.value)}
-                  className="bg-primary-lm border border-stroke-grey rounded-sm px-2 py-0.5 text-stroke-peach"
+                  className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach"
                 >
                   <option value={"Uploaded by"} disabled>
                     Uploaded by
@@ -115,7 +115,7 @@ export function StudyLayout() {
                     setSelectedCourse(null);
                     setSelectedUploader(null);
                   }}
-                  className="ml-2 px-3 py-1 rounded bg-secondary-lm text-accent-lm border border-stroke-grey cursor-pointer hover:bg-stroke-grey transition"
+                  className="lg:ml-2 lg:px-3 lg:py-1 lg:rounded bg-secondary-lm text-accent-lm lg:border border-stroke-grey cursor-pointer hover:bg-stroke-grey lg:transition"
                 >
                   Reset
                 </button>
@@ -123,7 +123,7 @@ export function StudyLayout() {
             );
           })()}
         </div>
-        <div className="flex flex-col items-center">
+        <div className="lg:flex lg:flex-col lg:items-center">
           <Outlet context={{
             filteredNotes,
             filteredResources,

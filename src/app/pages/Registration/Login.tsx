@@ -84,22 +84,22 @@ export function Login() {
 
   return (
     <SignupLoginBox title="Login">
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+      <form onSubmit={handleSubmit} className="lg:space-y-4 lg:max-w-xl">
         {/* Error Message */}
         {error && (
-          <div className="mb-4 px-3 py-1 bg-accent-lm/15 rounded-lg flex gap-1 items-center">
-            <LucideXCircle className="text-accent-lm size-4"></LucideXCircle>
+          <div className="lg:mb-4 lg:px-3 lg:py-1 bg-accent-lm/15 lg:rounded-lg lg:flex lg:gap-1 lg:items-center">
+            <LucideXCircle className="text-accent-lm lg:size-4"></LucideXCircle>
             <p className="text-base text-accent-lm">{error}</p>
           </div>
         )}
 
         {/* Development OTP Display
         {devOTP && import.meta.env.DEV && (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="lg:mb-4 lg:p-3 bg-yellow-50 lg:border border-yellow-200 lg:rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Development Mode:</strong> OTP is: <span className="font-mono font-bold">{devOTP}</span>
+              <strong>Development Mode:</strong> OTP is: <span className="lg:font-mono lg:font-bold">{devOTP}</span>
             </p>
-            <p className="text-xs text-yellow-600 mt-1">
+            <p className="text-xs text-yellow-600 lg:mt-1">
               This would be sent to: {userEmail}
             </p>
           </div>
@@ -123,7 +123,7 @@ export function Login() {
           onChange={setPassword} 
         />
                 {/* Forgot Password Link */}
-        <div className="-mt-3">
+        <div className="lg:-mt-3">
           <Link 
             to="/forgot-password" 
             className="text-sm text-accent-lm hover:underline cursor-pointer"
@@ -133,7 +133,7 @@ export function Login() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-4 mt-10">
+        <div className="lg:flex lg:items-center lg:gap-4 lg:mt-10">
           <button 
             type="submit" 
             disabled={isLoading}
@@ -142,7 +142,7 @@ export function Login() {
           >
             {isLoading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <div className="lg:animate-spin lg:rounded-full lg:h-4 lg:w-4 border-b-2 border-white"></div>
                 Verifying...
               </>
             ) : (
@@ -152,7 +152,7 @@ export function Login() {
 
           <p className="text-sm text-text-lighter-lm">
             Don't have an account?{" "}
-            <Link to="/signup" className="underline text-accent-lm cursor-pointer">
+            <Link to="/signup" className="lg:underline text-accent-lm cursor-pointer">
               Sign Up
             </Link>
           </p>
@@ -161,7 +161,7 @@ export function Login() {
 
         {/* Development Note
         {import.meta.env.DEV && (
-          <div className="mt-4 p-2 bg-gray-100 rounded text-center">
+          <div className="lg:mt-4 lg:p-2 bg-gray-100 lg:rounded text-center">
             <p className="text-xs text-gray-600">
               Development mode: Check console for OTP
             </p>

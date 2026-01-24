@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router";
 import { SearchAnything } from "./SearchAnything";
 export function BotNav() {
   return (
-    <nav className="bg-primary-lm border-t-0 border-b border-stroke-grey flex items-center justify-center gap-2 h-14">
+    <nav className="bg-primary-lm border-t-0 border-b border-stroke-grey lg:flex lg:items-center lg:justify-center lg:gap-2 lg:h-14">
       <NavbarLinks linktxt="Home" dest="/home" />
       <NavbarLinks linktxt="CollabHub" dest="/collab" />
       <NavbarLinks linktxt="Events" dest="/events" />

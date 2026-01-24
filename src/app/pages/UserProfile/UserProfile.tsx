@@ -319,44 +319,44 @@ export function UserProfile() {
   const ContactIcon = ({ type }: { type: Contact["type"] }) => {
     switch (type) {
       case "gmail":
-        return <Mail className="h-4 w-4" />;
+        return <Mail className="lg:h-4 lg:w-4" />;
       case "linkedin":
-        return <Linkedin className="h-4 w-4" />;
+        return <Linkedin className="lg:h-4 lg:w-4" />;
       case "github":
-        return <Github className="h-4 w-4" />;
+        return <Github className="lg:h-4 lg:w-4" />;
       case "facebook":
-        return <Facebook className="h-4 w-4" />;
+        return <Facebook className="lg:h-4 lg:w-4" />;
       default:
         return null;
     }
   };
   return (
-    <div className="min-h-screen  w-full bg-background-lm text-text-lm animate-fade-in pb-8">
+    <div className="lg:min-h-screen lg:w-full bg-background-lm text-text-lm lg:animate-fade-in lg:pb-8">
       {/* Page-level Navbar to match the provided design */}
-      <div className="container mx-auto px-4">
-        {/* <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(0,1fr)_350px]"> */}
-        <div className="flex gap-6 items-start justify-center" >
+      <div className="lg:container lg:mx-auto lg:px-4">
+        {/* <div className="lg:grid lg:grid-cols-1 lg:gap-6 lg:items-start lg:grid-cols-[minmax(0,1fr)_350px]"> */}
+        <div className="lg:flex lg:gap-6 lg:items-start lg:justify-center" >
           {/* Main profile card */}
-          <section className="rounded-2xl border border-stroke-grey bg-primary-lm shadow-sm animate-slide-in">
+          <section className="lg:rounded-2xl lg:border border-stroke-grey bg-primary-lm lg:shadow-sm lg:animate-slide-in">
             {/* Header */}
-            <div className="flex items-start gap-6 border-b border-stroke-grey p-6">
-              <div className="relative">
-                <div className="rounded-full border-4 border-stroke-peach p-1">
-                  <Avatar className="h-24 w-24">
+            <div className="lg:flex lg:items-start lg:gap-6 border-b border-stroke-grey lg:p-6">
+              <div className="lg:relative">
+                <div className="lg:rounded-full border-4 border-stroke-peach lg:p-1">
+                  <Avatar className="lg:h-24 lg:w-24">
                     <AvatarImage src={viewedUser.avatar || userImg} />
                     <AvatarFallback>TT</AvatarFallback>
                   </Avatar>
                 </div>
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-extrabold tracking-tight text-text-lm">
+              <div className="lg:flex-1">
+                <div className="lg:flex lg:items-center lg:gap-3">
+                  <h1 className="text-xl lg:font-extrabold lg:tracking-tight text-text-lm">
                     {viewedUser.name}
                   </h1>
                   {viewedUser.id !== loggedIn.id && (
                     <Button
                       size="sm"
-                      className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                      className="lg:h-8 lg:rounded-full bg-accent-lm lg:px-3 text-primary-lm hover:bg-hover-btn-lm"
                       onClick={() => {
                         openChatWith(viewedUser.id, viewedUser.name);
                         setChatTarget({
@@ -370,36 +370,36 @@ export function UserProfile() {
                     </Button>
                   )}
                 </div>
-                <div className="mt-1 text-sm text-text-lighter-lm">
+                <div className="lg:mt-1 text-sm text-text-lighter-lm">
                   {viewedUser.department}
                 </div>
                 <div className="text-sm text-text-lighter-lm">LEVEL-3</div>
-                <div className="mt-3">
+                <div className="lg:mt-3">
                   {/* Header row: title + add button */}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-text-lm">
+                  <div className="lg:flex lg:items-center lg:justify-between">
+                    <h3 className="text-base lg:font-semibold text-text-lm">
                       Badge
                     </h3>
                     <Button
                       size="sm"
                       onClick={() => openBadgeEditor(null)}
-                      className="h-8 rounded-full border border-stroke-peach bg-primary-lm px-3 text-accent-lm hover:bg-hover-btn-lm"
+                      className="lg:h-8 lg:rounded-full lg:border border-stroke-peach bg-primary-lm lg:px-3 text-accent-lm hover:bg-hover-btn-lm"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="lg:h-4 lg:w-4" />
                       Add
                     </Button>
                   </div>
                   {/* Content row: badges or empty state left-aligned */}
-                  <div className="mt-2">
+                  <div className="lg:mt-2">
                     {badges.length ? (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="lg:flex lg:flex-wrap lg:items-center lg:gap-2">
                         {badges.map((text, idx) => (
                           <div
                             key={`${text}-${idx}`}
-                            className="inline-flex items-center gap-2"
+                            className="lg:inline-flex lg:items-center lg:gap-2"
                           >
                             <Badge
-                              className="bg-secondary-lm text-accent-lm border border-stroke-peach rounded-full px-3 py-2 cursor-pointer"
+                              className="bg-secondary-lm text-accent-lm lg:border border-stroke-peach lg:rounded-full lg:px-3 lg:py-2 cursor-pointer"
                               onClick={() =>
                                 setActiveBadgeIndex(
                                   activeBadgeIndex === idx ? null : idx
@@ -413,18 +413,18 @@ export function UserProfile() {
                                 <Button
                                   size="icon-sm"
                                   onClick={() => openBadgeEditor(idx)}
-                                  className="rounded-full border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
+                                  className="lg:rounded-full lg:border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
                                   aria-label="Edit badge"
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="lg:h-4 lg:w-4" />
                                 </Button>
                                 <Button
                                   size="icon-sm"
                                   onClick={() => removeBadge(idx)}
-                                  className="rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                                  className="lg:rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
                                   aria-label="Remove badge"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="lg:h-4 lg:w-4" />
                                 </Button>
                               </>
                             )}
@@ -432,45 +432,45 @@ export function UserProfile() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-text-lighter-lm italic">
+                      <p className="text-sm text-text-lighter-lm lg:italic">
                         No badges yet.
                       </p>
                     )}
                   </div>
                 </div>
                 {/* Bio Section */}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-text-lm">
+                <div className="lg:mt-4">
+                  <div className="lg:flex lg:items-center lg:justify-between">
+                    <h3 className="text-base lg:font-semibold text-text-lm">
                       Bio
                     </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="lg:flex lg:items-center lg:gap-2">
                       <Button
                         size="sm"
                         onClick={openBioEditor}
-                        className="h-8 rounded-full border border-stroke-peach bg-primary-lm px-3 text-accent-lm hover:bg-hover-btn-lm"
+                        className="lg:h-8 lg:rounded-full lg:border border-stroke-peach bg-primary-lm lg:px-3 text-accent-lm hover:bg-hover-btn-lm"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="lg:h-4 lg:w-4" />
                         {bio ? "Edit" : "Add"}
                       </Button>
                       {bio && (
                         <Button
                           size="sm"
                           onClick={removeBio}
-                          className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                          className="lg:h-8 lg:rounded-full bg-accent-lm lg:px-3 text-primary-lm hover:bg-hover-btn-lm"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="lg:h-4 lg:w-4" />
                           Remove
                         </Button>
                       )}
                     </div>
                   </div>
                   {bio ? (
-                    <p className="mt-2 text-sm text-text-lighter-lm whitespace-pre-wrap">
+                    <p className="lg:mt-2 text-sm text-text-lighter-lm lg:whitespace-pre-wrap">
                       {bio}
                     </p>
                   ) : (
-                    <p className="mt-2 text-sm text-text-lighter-lm italic">
+                    <p className="lg:mt-2 text-sm text-text-lighter-lm lg:italic">
                       No bio yet.
                     </p>
                   )}
@@ -478,27 +478,27 @@ export function UserProfile() {
               </div>
             </div>
             {/* Skills */}
-            <div className="border-b border-stroke-grey p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-text-lm">Skills</h2>
+            <div className="border-b border-stroke-grey lg:p-6">
+              <div className="lg:mb-4 lg:flex lg:items-center lg:justify-between">
+                <h2 className="text-lg lg:font-bold text-text-lm">Skills</h2>
                 <Button
                   onClick={openAddSkill}
-                  className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                  className="lg:h-8 lg:rounded-full bg-accent-lm lg:px-3 text-primary-lm hover:bg-hover-btn-lm"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="lg:h-4 lg:w-4" />
                 </Button>
               </div>
-              <div className="divide-y divide-stroke-grey rounded-xl border border-stroke-grey bg-secondary-lm">
+              <div className="divide-y divide-stroke-grey lg:rounded-xl lg:border border-stroke-grey bg-secondary-lm">
                 {skills.map((sk, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between gap-4 px-4 py-4 cursor-pointer"
+                    className="lg:flex lg:items-center lg:justify-between lg:gap-4 lg:px-4 lg:py-4 cursor-pointer"
                     onClick={() =>
                       setActiveSkillIndex(activeSkillIndex === idx ? null : idx)
                     }
                   >
                     <div>
-                      <div className="font-semibold text-text-lm">
+                      <div className="lg:font-semibold text-text-lm">
                         {sk.title}
                       </div>
                       {sk.detail && (
@@ -507,7 +507,7 @@ export function UserProfile() {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="lg:flex lg:items-center lg:gap-2">
                       {activeSkillIndex === idx && (
                         <>
                           <Button
@@ -516,10 +516,10 @@ export function UserProfile() {
                               e.stopPropagation();
                               openSkillEditor(idx);
                             }}
-                            className="rounded-full border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
+                            className="lg:rounded-full lg:border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
                             aria-label="Edit skill"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="lg:h-4 lg:w-4" />
                           </Button>
                           <Button
                             size="icon-sm"
@@ -527,10 +527,10 @@ export function UserProfile() {
                               e.stopPropagation();
                               removeSkill(idx);
                             }}
-                            className="rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                            className="lg:rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
                             aria-label="Remove skill"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="lg:h-4 lg:w-4" />
                           </Button>
                         </>
                       )}
@@ -540,26 +540,26 @@ export function UserProfile() {
               </div>
             </div>
             {/* Interested In */}
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-text-lm">
+            <div className="lg:p-6">
+              <div className="lg:mb-4 lg:flex lg:items-center lg:justify-between">
+                <h2 className="text-lg lg:font-bold text-text-lm">
                   Interested In
                 </h2>
                 <Button
                   onClick={openAddInterest}
-                  className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                  className="lg:h-8 lg:rounded-full bg-accent-lm lg:px-3 text-primary-lm hover:bg-hover-btn-lm"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="lg:h-4 lg:w-4" />
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="lg:flex lg:flex-wrap lg:gap-3">
                 {interests.map((tag, idx) => (
                   <div
                     key={`${tag}-${idx}`}
-                    className="inline-flex items-center gap-2"
+                    className="lg:inline-flex lg:items-center lg:gap-2"
                   >
                     <span
-                      className="rounded-full border border-stroke-peach bg-primary-lm px-4 py-1.5 text-sm font-semibold text-accent-lm shadow-sm cursor-pointer"
+                      className="lg:rounded-full lg:border border-stroke-peach bg-primary-lm lg:px-4 lg:py-1.5 text-sm lg:font-semibold text-accent-lm lg:shadow-sm cursor-pointer"
                       onClick={() =>
                         setActiveInterestIndex(
                           activeInterestIndex === idx ? null : idx
@@ -576,10 +576,10 @@ export function UserProfile() {
                             e.stopPropagation();
                             openInterestEditor(idx);
                           }}
-                          className="rounded-full border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
+                          className="lg:rounded-full lg:border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
                           aria-label="Edit interest"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="lg:h-4 lg:w-4" />
                         </Button>
                         <Button
                           size="icon-sm"
@@ -587,10 +587,10 @@ export function UserProfile() {
                             e.stopPropagation();
                             removeInterest(idx);
                           }}
-                          className="rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                          className="lg:rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
                           aria-label="Remove interest"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="lg:h-4 lg:w-4" />
                         </Button>
                       </>
                     )}
@@ -599,29 +599,29 @@ export function UserProfile() {
               </div>
             </div>
             {/* Contact */}
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-text-lm">Contact</h2>
+            <div className="lg:p-6">
+              <div className="lg:mb-4 lg:flex lg:items-center lg:justify-between">
+                <h2 className="text-lg lg:font-bold text-text-lm">Contact</h2>
                 <Button
                   onClick={openAddContact}
-                  className="h-8 rounded-full bg-accent-lm px-3 text-primary-lm hover:bg-hover-btn-lm"
+                  className="lg:h-8 lg:rounded-full bg-accent-lm lg:px-3 text-primary-lm hover:bg-hover-btn-lm"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="lg:h-4 lg:w-4" />
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="lg:flex lg:flex-wrap lg:gap-3">
                 {contacts
                   .filter((c) => c.id.trim())
                   .map((c, idx) => (
                     <div
                       key={`${c.type}-${c.id}-${idx}`}
-                      className="inline-flex items-center gap-2"
+                      className="lg:inline-flex lg:items-center lg:gap-2"
                     >
                       <a
                         href={contactLink(c)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-stroke-peach bg-primary-lm px-4 py-1.5 text-sm font-semibold text-accent-lm shadow-sm hover:bg-hover-btn-lm cursor-pointer"
+                        className="lg:inline-flex lg:items-center lg:gap-2 lg:rounded-full lg:border border-stroke-peach bg-primary-lm lg:px-4 lg:py-1.5 text-sm lg:font-semibold text-accent-lm lg:shadow-sm hover:bg-hover-btn-lm cursor-pointer"
                         aria-label={`${c.type} profile`}
                         onClick={(e) => {
                           e.preventDefault();
@@ -641,10 +641,10 @@ export function UserProfile() {
                               e.stopPropagation();
                               openContactEditor(idx);
                             }}
-                            className="rounded-full border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
+                            className="lg:rounded-full lg:border border-stroke-peach bg-primary-lm text-accent-lm hover:bg-hover-btn-lm"
                             aria-label="Edit contact"
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="lg:h-4 lg:w-4" />
                           </Button>
                           <Button
                             size="icon-sm"
@@ -652,10 +652,10 @@ export function UserProfile() {
                               e.stopPropagation();
                               removeContact(idx);
                             }}
-                            className="rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                            className="lg:rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
                             aria-label="Remove contact"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="lg:h-4 lg:w-4" />
                           </Button>
                         </>
                       )}
@@ -665,7 +665,7 @@ export function UserProfile() {
             </div>
           </section>
           {/* Sidebar: Upcoming Events (shared component) + Interested Posts */}
-          <div className="lg:flex lg:flex-col flex flex-col gap-6 w-[350px] lg:sticky lg:top-[96px] mt-4 lg:max-h-[calc(100vh-96px)] lg:overflow-hidden">
+          <div className="lg:flex lg:flex-col lg:gap-6 lg:w-87.5 lg:sticky lg:top-24 lg:mt-4 lg:max-h-[calc(100vh-96px)] lg:overflow-hidden">
             <UpcomingEvents />
             <InterestedPosts items={interestedPosts} />
           </div>
@@ -682,7 +682,7 @@ export function UserProfile() {
 
         {/* Bio Edit Dialog */}
         <Dialog open={bioOpen} onOpenChange={setBioOpen}>
-          <DialogContent className="bg-primary-lm border border-stroke-grey text-text-lm">
+          <DialogContent className="bg-primary-lm lg:border border-stroke-grey text-text-lm">
             <DialogHeader>
               <DialogTitle>{bio ? "Edit Bio" : "Add Bio"}</DialogTitle>
             </DialogHeader>
@@ -697,13 +697,13 @@ export function UserProfile() {
             <DialogFooter>
               <Button
                 onClick={() => setBioOpen(false)}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm text-text-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm text-text-lm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveBio}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
               >
                 Save
               </Button>
@@ -713,7 +713,7 @@ export function UserProfile() {
 
         {/* Badge Edit Dialog */}
         <Dialog open={badgeOpen} onOpenChange={setBadgeOpen}>
-          <DialogContent className="bg-primary-lm border border-stroke-grey text-text-lm">
+          <DialogContent className="bg-primary-lm lg:border border-stroke-grey text-text-lm">
             <DialogHeader>
               <DialogTitle>
                 {editingBadgeIndex !== null ? "Edit Badge" : "Add Badge"}
@@ -730,13 +730,13 @@ export function UserProfile() {
             <DialogFooter>
               <Button
                 onClick={() => setBadgeOpen(false)}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm text-text-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm text-text-lm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveBadge}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
               >
                 Save
               </Button>
@@ -746,11 +746,11 @@ export function UserProfile() {
 
         {/* Skill Edit Dialog */}
         <Dialog open={skillOpen} onOpenChange={setSkillOpen}>
-          <DialogContent className="bg-primary-lm border border-stroke-grey text-text-lm">
+          <DialogContent className="bg-primary-lm lg:border border-stroke-grey text-text-lm">
             <DialogHeader>
               <DialogTitle>{"Edit Skill"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="lg:space-y-3">
               <Input
                 value={skillDraftTitle}
                 onChange={(e) => setSkillDraftTitle(e.target.value)}
@@ -767,13 +767,13 @@ export function UserProfile() {
             <DialogFooter>
               <Button
                 onClick={() => setSkillOpen(false)}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm text-text-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm text-text-lm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveSkillEdit}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
               >
                 Save
               </Button>
@@ -783,7 +783,7 @@ export function UserProfile() {
 
         {/* Interest Edit Dialog */}
         <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
-          <DialogContent className="bg-primary-lm border border-stroke-grey text-text-lm">
+          <DialogContent className="bg-primary-lm lg:border border-stroke-grey text-text-lm">
             <DialogHeader>
               <DialogTitle>{"Edit Interest"}</DialogTitle>
             </DialogHeader>
@@ -798,13 +798,13 @@ export function UserProfile() {
             <DialogFooter>
               <Button
                 onClick={() => setInterestOpen(false)}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm text-text-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm text-text-lm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveInterestEdit}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
               >
                 Save
               </Button>
@@ -814,11 +814,11 @@ export function UserProfile() {
 
         {/* Contact Edit Dialog */}
         <Dialog open={contactOpen} onOpenChange={setContactOpen}>
-          <DialogContent className="bg-primary-lm border border-stroke-grey text-text-lm">
+          <DialogContent className="bg-primary-lm lg:border border-stroke-grey text-text-lm">
             <DialogHeader>
               <DialogTitle>{"Edit Contact"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="lg:space-y-3">
               <Select
                 value={contactDraftType}
                 onValueChange={(v: Contact["type"]) => setContactDraftType(v)}
@@ -826,7 +826,7 @@ export function UserProfile() {
                 <SelectTrigger className="border-stroke-grey bg-primary-lm text-text-lm">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent className="bg-primary-lm text-text-lm border border-stroke-grey">
+                <SelectContent className="bg-primary-lm text-text-lm lg:border border-stroke-grey">
                   <SelectItem value="gmail">Gmail</SelectItem>
                   <SelectItem value="linkedin">LinkedIn</SelectItem>
                   <SelectItem value="github">GitHub</SelectItem>
@@ -843,13 +843,13 @@ export function UserProfile() {
             <DialogFooter>
               <Button
                 onClick={() => setContactOpen(false)}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm text-text-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md lg:border border-stroke-grey bg-primary-lm text-text-lm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={saveContactEdit}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm"
               >
                 Save
               </Button>

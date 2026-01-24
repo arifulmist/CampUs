@@ -224,15 +224,15 @@ export function Login2FA() {
 
   return (
     <SignupLoginBox title="Enter Verification Code">
-      <div className="space-y-6 max-w-xl">
+      <div className="lg:space-y-6 lg:max-w-xl">
         {/* Header */}
         <div className="text-center">
-          {/* <h3 className="text-lg font-medium text-text-lm mb-2">
+          {/* <h3 className="text-lg lg:font-medium text-text-lm lg:mb-2">
             Enter Verification Code
           </h3> */}
           <p className="text-text-lighter-lm">
             We sent a 6-digit code to{" "}
-            <span className="font-medium text-accent-lm">
+            <span className="lg:font-medium text-accent-lm">
               {userEmail || "your email"}
             </span>
           </p>
@@ -240,19 +240,19 @@ export function Login2FA() {
 
         {/* Success Message */}
         {success && (
-          <div className="p-3 bg-online-indicator/15 rounded-lg">
+          <div className="lg:p-3 bg-online-indicator/15 lg:rounded-lg">
             <p className="text-base text-online-indicator">{success}</p>
           </div>
         )}
 
         {/* Development OTP Display */}
         {devOTP && import.meta.env.DEV && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="lg:p-3 bg-blue-50 lg:border border-blue-200 lg:rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Development Mode:</strong> OTP is:{" "}
-              <span className="font-mono font-bold text-lg">{devOTP}</span>
+              <span className="lg:font-mono lg:font-bold text-lg">{devOTP}</span>
             </p>
-            <p className="text-xs text-blue-600 mt-1">
+            <p className="text-xs text-blue-600 lg:mt-1">
               This would be sent to {userEmail}
             </p>
           </div>
@@ -261,15 +261,15 @@ export function Login2FA() {
         {/* Timer */}
         <div className="text-center">
           {timeLeft > 0 ? (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
+            <div className="lg:inline-flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 bg-gray-100 lg:rounded-lg">
               <span className="text-gray-600">Code expires in:</span>
-              <span className="font-mono font-bold text-accent-lm">
+              <span className="lg:font-mono lg:font-bold text-accent-lm">
                 {minutes}:{seconds.toString().padStart(2, "0")}
               </span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 rounded-lg">
-              <span className="text-red-600 font-medium">Code expired</span>
+            <div className="lg:inline-flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 bg-red-50 lg:rounded-lg">
+              <span className="text-red-600 lg:font-medium">Code expired</span>
             </div>
           )}
         </div>
@@ -277,7 +277,7 @@ export function Login2FA() {
         {/* OTP Input Form */}
         <form onSubmit={handleSubmit}>
           {/* OTP Input Boxes */}
-          <div className="flex justify-center gap-2 mb-6" onPaste={handlePaste}>
+          <div className="lg:flex lg:justify-center lg:gap-2 lg:mb-6" onPaste={handlePaste}>
             {values.map((val, i) => (
               <input
                 key={i}
@@ -289,7 +289,7 @@ export function Login2FA() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                className="w-12 h-14 text-center text-2xl font-bold border-2 border-stroke-grey rounded-lg bg-primary-lm focus:border-accent-lm focus:outline-none transition-all"
+                className="lg:w-12 lg:h-14 text-center text-2xl lg:font-bold border-2 border-stroke-grey lg:rounded-lg bg-primary-lm focus:border-accent-lm focus:outline-none lg:transition-all"
                 disabled={verifying}
               />
             ))}
@@ -297,7 +297,7 @@ export function Login2FA() {
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="lg:mb-4 lg:p-3 bg-red-50 lg:border border-red-200 lg:rounded-lg">
               <p className="text-sm text-red-700 text-center">{error}</p>
             </div>
           )}
@@ -311,7 +311,7 @@ export function Login2FA() {
           >
             {verifying ? (
               <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <div className="lg:animate-spin lg:rounded-full lg:h-5 lg:w-5 border-b-2 border-white"></div>
                 Verifying...
               </>
             ) : (
@@ -321,11 +321,11 @@ export function Login2FA() {
         </form>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-4">
+        <div className="lg:flex lg:justify-between lg:items-center lg:pt-4">
           <button
             type="button"
             onClick={handleBack}
-            className="text-base font-medium text-accent-lm hover:text-hover-btn-lm transition flex items-center gap-1"
+            className="text-base lg:font-medium text-accent-lm hover:text-hover-btn-lm lg:transition lg:flex lg:items-center lg:gap-1"
           >
             ← Back to Login
           </button>
@@ -342,7 +342,7 @@ export function Login2FA() {
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+                <div className="lg:animate-spin lg:rounded-full lg:h-3 lg:w-3 border-b-2 border-current"></div>
                 Resending...
               </>
             ) : (
@@ -352,7 +352,7 @@ export function Login2FA() {
         </div>
 
         {/* Help Text */}
-        <div className="text-center text-sm text-text-lighter-lm pt-4">
+        <div className="text-center text-sm text-text-lighter-lm lg:pt-4">
           <p>Didn't receive the code? Check your spam folder.</p>
         </div>
       </div>

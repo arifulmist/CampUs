@@ -339,7 +339,7 @@ export function Signup() {
       {step === 1 &&
       <>
         <h5>Upload your ID</h5>
-        <div className="flex items-center gap-2">
+        <div className="lg:flex lg:items-center lg:gap-2">
           <ButtonCTA label="Choose File" clickEvent={chooseFile}></ButtonCTA>
           <p className="text-sm text-text-lighter-lm">
             {fileName ?? "Upload ID (image/pdf)"}
@@ -351,21 +351,21 @@ export function Signup() {
           type="file"
           accept="image/*,application/pdf"
           onChange={onFileChange}
-          className="hidden"
+          className="lg:hidden"
         />
-        <h6 className="mb-1 mt-2 text-text-lighter-lm font-light">
+        <h6 className="lg:mb-1 lg:mt-2 text-text-lighter-lm lg:font-light">
           Or fill up the form below:</h6>
       </>}
 
       <form onSubmit={handleSubmit} className="">
         {signupError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="lg:mb-4 lg:p-3 bg-red-50 lg:border border-red-200 lg:rounded-lg">
             <p className="text-sm text-red-700">{signupError}</p>
           </div>
         )}
         
         {step === 1 && (
-          <div className="space-y-3 animate-fade-in">
+          <div className="lg:space-y-3 lg:animate-fade-in">
             <InputField
               label="Name"
               name="name"
@@ -375,7 +375,7 @@ export function Signup() {
               required
             />
 
-            <div className="flex flex-col">
+            <div className="lg:flex lg:flex-col">
               <InputField
                 label="Student ID"
                 name="studentId"
@@ -385,18 +385,18 @@ export function Signup() {
                 required
               />
               {!studentIdValid && (
-                <p className="text-sm text-accent-lm mt-1">Student ID must be exactly 9 digits.</p>
+                <p className="text-sm text-accent-lm lg:mt-1">Student ID must be exactly 9 digits.</p>
               )}
             </div>
   
-            <div className="flex flex-row w-full align-middle justify-between">
-              <div className="flex flex-col">
-                <label htmlFor="dept" className="text-text-lm text-md font-medium my-0">Department</label>
+            <div className="lg:flex lg:flex-row lg:w-full lg:align-middle lg:justify-between">
+              <div className="lg:flex lg:flex-col">
+                <label htmlFor="dept" className="text-text-lm text-md lg:font-medium lg:my-0">Department</label>
                 <select
                   name="dept"
                   value={formData.dept}
                   onChange={handleInputChange}
-                  className="px-2 bg-primary-lm border border-stroke-grey rounded-lg w-32 h-10 text-base text-text-lighter-lm font-normal focus:outline-accent-lm"
+                  className="lg:px-2 bg-primary-lm lg:border border-stroke-grey lg:rounded-lg lg:w-32 lg:h-10 text-base text-text-lighter-lm lg:font-normal focus:outline-accent-lm"
                   required
                 >
                   <option value="" className="text-text-lighter-lm">
@@ -409,15 +409,15 @@ export function Signup() {
                   ))}
                 </select>
                 {!deptOptionsLoading && !deptOptionsError && deptOptions.length === 0 && (
-                  <p className="text-xs text-text-lighter-lm mt-1">No departments found.</p>
+                  <p className="text-xs text-text-lighter-lm lg:mt-1">No departments found.</p>
                 )}
                 {deptOptionsError && (
-                  <div className="mt-1 flex items-start gap-2">
-                    <p className="text-xs text-accent-lm wrap-break-word">{deptOptionsError}</p>
+                  <div className="lg:mt-1 lg:flex lg:items-start lg:gap-2">
+                    <p className="text-xs text-accent-lm lg:wrap-break-word">{deptOptionsError}</p>
                     <button
                       type="button"
                       onClick={() => window.location.reload()}
-                      className="text-xs underline text-accent-lm whitespace-nowrap"
+                      className="text-xs lg:underline text-accent-lm lg:whitespace-nowrap"
                     >
                       Retry
                     </button>
@@ -425,13 +425,13 @@ export function Signup() {
                 )}
               </div>
 
-              <div className="flex flex-col">
-                <label htmlFor="level" className="text-text-lm text-md font-medium my-0">Level</label>
+              <div className="lg:flex lg:flex-col">
+                <label htmlFor="level" className="text-text-lm text-md lg:font-medium lg:my-0">Level</label>
                 <select
                   name="level"
                   value={formData.level}
                   onChange={handleInputChange}
-                  className="px-2 bg-primary-lm border border-stroke-grey rounded-lg w-32 h-10 text-base text-text-lighter-lm font-normal focus:outline-accent-lm"
+                  className="lg:px-2 bg-primary-lm lg:border border-stroke-grey lg:rounded-lg lg:w-32 lg:h-10 text-base text-text-lighter-lm lg:font-normal focus:outline-accent-lm"
                   required
                 >
                   <option value="" className="text-text-lighter-lm">Select Level</option>
@@ -439,21 +439,21 @@ export function Signup() {
                 </select>
               </div>
               
-              <div className="flex flex-col">
-                <label htmlFor="batch" className="text-text-lm text-md font-medium my-0">Batch</label>
+              <div className="lg:flex lg:flex-col">
+                <label htmlFor="batch" className="text-text-lm text-md lg:font-medium lg:my-0">Batch</label>
                 <input
                   name="batch"
                   type="text"
                   value={formData.batch} 
                   onChange={handleInputChange}
                   placeholder="e.g 23"
-                  className="px-2 bg-primary-lm border border-stroke-grey rounded-lg w-32 h-10 text-base text-text-lighter-lm font-normal focus:outline-accent-lm"
+                  className="lg:px-2 bg-primary-lm lg:border border-stroke-grey lg:rounded-lg lg:w-32 lg:h-10 text-base text-text-lighter-lm lg:font-normal focus:outline-accent-lm"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="lg:flex lg:justify-end lg:pt-4">
               <button
                 type="button"
                 onClick={() => setStep(2)}
@@ -466,7 +466,7 @@ export function Signup() {
         )}
 
         {step === 2 && (
-          <div className="space-y-2 animate-fade-in">
+          <div className="lg:space-y-2 lg:animate-fade-in">
             <button
               type="button"
               onClick={() => setStep(1)}
@@ -475,7 +475,7 @@ export function Signup() {
               ← Back
             </button>
 
-            <div className="flex flex-col">
+            <div className="lg:flex lg:flex-col">
               <InputField 
                 label="Email"
                 name="email"
@@ -486,7 +486,7 @@ export function Signup() {
                 required
               />
               {!emailValid && (
-                <p className="text-sm text-accent-lm mt-1">Please enter a valid email address.</p>
+                <p className="text-sm text-accent-lm lg:mt-1">Please enter a valid email address.</p>
               )}
             </div>
     
@@ -514,7 +514,7 @@ export function Signup() {
               onMatchChange={setPasswordsMatch}
             />
 
-            <div className="flex items-center gap-4">
+            <div className="lg:flex lg:items-center lg:gap-4">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -523,7 +523,7 @@ export function Signup() {
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <div className="lg:animate-spin lg:rounded-full lg:h-4 lg:w-4 border-b-2 border-white"></div>
                     Signing Up...
                   </>
                 ) : (
@@ -533,7 +533,7 @@ export function Signup() {
 
               <span className="text-sm text-text-lighter-lm">
                 Already have an account?{" "}
-                <Link to="/login" className="underline text-accent-lm">
+                <Link to="/login" className="lg:underline text-accent-lm">
                   Login
                 </Link>
               </span>

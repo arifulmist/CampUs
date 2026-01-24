@@ -21,16 +21,16 @@ export function Notes() {
   if (!notes.length) {
     // if filtering produced no results but base has items, show "Nothing found"
     if (outlet && outlet.baseNotes && outlet.baseNotes.length > 0) {
-      return <h5 className="mt-10 text-text-lighter-lm ">Nothing found</h5>;
+      return <h5 className="lg:mt-10 text-text-lighter-lm">Nothing found</h5>;
     }
-    return <h5 className="mt-10 text-text-lighter-lm ">No notes for this term yet.</h5>;
+    return <h5 className="lg:mt-10 text-text-lighter-lm">No notes for this term yet.</h5>;
   }
 
   return (
     <>
-      <div className="flex flex-col gap-y-1 mt-10">
+      <div className="lg:flex lg:flex-col lg:gap-y-1 lg:mt-10">
         <ButtonCTA label={"Add File"} clickEvent={()=>setOpenAddModal(true)}></ButtonCTA>
-        <div className="grid grid-cols-3 gap-20 mt-8">
+        <div className="lg:grid lg:grid-cols-3 lg:gap-20 lg:mt-8">
           {notes.map((n) => (
             <NoteItem key={n.id} {...n} />
           ))}
@@ -82,11 +82,11 @@ function NoteItem({title, uploadedBy, courseCode, uploadDate, uploadTime, fileLi
 
   return (
     <a href={fileLink} target="_blank" rel="noopener noreferrer">
-      <div className="flex flex-col w-70 h-90 rounded-xl bg-primary-lm hover:scale-102 transition duration-300 hover:drop-shadow-lg">
-        <img src={previewImage} className="object-center object-contain w-full h-2/3 rounded-t-xl rounded-tl-xl" alt={title} />
-        <div className="h-full w-full px-5 py-4 bg-linear-to-t from-[#DFE1E5] from-30% via-[#C3A99761] via-100% rounded-b-xl rounded-bl-xl">
-          <p className="text-text-lm font-semibold text-md">{title}_{courseCode}</p>
-          <p className="text-text-lm font-medium text-base">{uploadedBy}</p>
+      <div className="lg:flex lg:flex-col lg:w-70 lg:h-90 lg:rounded-xl bg-primary-lm hover:scale-102 lg:transition lg:duration-300 hover:drop-shadow-lg">
+        <img src={previewImage} className="lg:object-center lg:object-contain lg:w-full lg:h-2/3 lg:rounded-t-xl lg:rounded-tl-xl" alt={title} />
+        <div className="lg:h-full lg:w-full lg:px-5 lg:py-4 bg-linear-to-t from-[#DFE1E5] from-30% lg:via-[#C3A99761] lg:via-100% lg:rounded-b-xl lg:rounded-bl-xl">
+          <p className="text-text-lm lg:font-semibold text-md">{title}_{courseCode}</p>
+          <p className="text-text-lm lg:font-medium text-base">{uploadedBy}</p>
           <p className="text-text-lighter-lm text-base">Uploaded : {uploadDate} {uploadTime}</p>
         </div>
       </div>

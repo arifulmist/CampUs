@@ -34,9 +34,9 @@ export function PostBody({ title, user, content, tags, category }: PostContent)
   const categoryClasses = category ? categoryClassMap[category] ?? "bg-secondary-lm text-text-lm border border-stroke-grey" : "";
 
   return(
-    <div className="flex flex-col gap-3 bg-secondary-lm hover:bg-hover-lm transition border-2 border-stroke-grey hover:border-stroke-peach p-8 rounded-2xl animate-slide-in">
+    <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in">
       {category && (
-        <div className="mt-1">
+        <div className="lg:mt-1">
           <p
             className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${categoryClasses}`}
             aria-label={`Category: ${categoryLabel}`}
@@ -46,13 +46,13 @@ export function PostBody({ title, user, content, tags, category }: PostContent)
         </div>
       )}
       
-      <h3 className="text-text-lm font-bold font-[Poppins]">{title}</h3>
+      <h3 className="text-text-lm lg:font-bold lg:font-[Poppins]">{title}</h3>
       {tags && tags.length > 0 && (
-        <div className="flex gap-2 flex-wrap mt-2">
+        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
           {tags.map((t) => (
             <p
               key={t}
-              className="border border-accent-lm text-accent-lm rounded-full px-3 py-1 text-sm"
+              className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm"
             >
               #{t}
             </p>
@@ -67,16 +67,16 @@ export function PostBody({ title, user, content, tags, category }: PostContent)
       ></UserInfo>
       <p>{content.text}</p>
       {content.img && (
-        <div className="w-full h-120 overflow-hidden mt-4">
+        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
           <img
             src={content.img}
             alt="post"
-            className="object-cover object-center w-full h-full rounded-lg"
+            className="lg:object-cover lg:object-center lg:w-full lg:h-full lg:rounded-lg"
           />
         </div>
       )}
 
-      <div className="flex gap-3 justify-start">
+      <div className="lg:flex lg:gap-3 lg:justify-start">
         <LikeButton />
         <CommentButton />
         <ShareButton />
