@@ -39,3 +39,21 @@ create policy "allow authenticated read user_posts"
   for select
   to authenticated
   using (true);
+
+-- Contacts join table
+alter table public.user_contacts enable row level security;
+drop policy if exists "allow authenticated read user_contacts" on public.user_contacts;
+create policy "allow authenticated read user_contacts"
+  on public.user_contacts
+  for select
+  to authenticated
+  using (true);
+
+-- Contacts platform lookup (for dropdown)
+alter table public.contacts_platform_lookup enable row level security;
+drop policy if exists "allow authenticated read contacts_platform_lookup" on public.contacts_platform_lookup;
+create policy "allow authenticated read contacts_platform_lookup"
+  on public.contacts_platform_lookup
+  for select
+  to authenticated
+  using (true);

@@ -879,6 +879,13 @@ import type { InterestedItem } from "./backend/interestedStore";
 import crossBtnIcon from "@/assets/icons/cross_btn.svg";
 
 import Github from "@/assets/icons/github_icon.svg";
+import Facebook from "@/assets/icons/facebook_icon.svg";
+import Instagram from "@/assets/icons/instagram_icon.png";
+import Whatsapp from "@/assets/icons/whatsapp_icon.svg";
+import LinkedIn from "@/assets/icons/linkedin_icon.svg";
+import Email from "@/assets/icons/email_icon.png";
+import Discord from "@/assets/icons/discord_icon.svg";
+
 import { LucidePencil, LucidePlus } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import AddLookupItemModal, {
@@ -929,6 +936,23 @@ type UserPostItem = {
   title: string;
   description: string;
   createdAt: number;
+};
+
+type ContactPlatformRow = {
+  id: number;
+  platform: string;
+};
+
+type UserContactItem = {
+  platformId: number;
+  platform: string;
+  contactLink: string;
+};
+
+type UserContactDraftItem = {
+  key: string;
+  platformId: number;
+  contactLink: string;
 };
 
 const PROFILE_IMAGES_BUCKET = "profile_images";
@@ -1017,6 +1041,49 @@ function useObjectUrl(file: File | null): string | null {
   return url;
 }
 
+function normalizePlatform(text: string) {
+  return text.trim().toLowerCase();
+}
+
+function getPlatformIconSrc(platform: string): string {
+  const p = normalizePlatform(platform);
+
+  // Exact values from contacts_platform_lookup (case-insensitive)
+  if (p === "facebook") return Facebook;
+  if (p === "instagram") return Instagram;
+  if (p === "github") return Github;
+  if (p === "email") return Email;
+  if (p === "whatsapp") return Whatsapp;
+  if (p === "discord") return Discord;
+  if (p === "linkedin") return LinkedIn;
+
+  // Tolerate common variants
+  if (p.includes("github")) return Github;
+  if (p.includes("linked") || p.includes("linkedin")) return LinkedIn;
+  if (p.includes("facebook")) return Facebook;
+  if (p.includes("instagram")) return Instagram;
+  if (p.includes("whatsapp") || p.includes("wa")) return Whatsapp;
+  if (p.includes("discord")) return Discord;
+  if (p.includes("mail") || p.includes("email") || p.includes("gmail")) return Email;
+
+  // Safe fallback
+  return Github;
+}
+
+function displayContactLinkText(link: string) {
+  const trimmed = link.trim();
+  if (!trimmed) return "";
+  try {
+    const u = new URL(trimmed);
+    // Show hostname + last path segment where possible
+    const segments = u.pathname.split("/").filter(Boolean);
+    const tail = segments.length ? `/${segments[segments.length - 1]}` : "";
+    return `${u.hostname}${tail}`;
+  } catch {
+    return trimmed;
+  }
+}
+
 
 export function UserProfile()
 {
@@ -1031,6 +1098,12 @@ export function UserProfile()
 
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
+
+  const [contactPlatforms, setContactPlatforms] = useState<ContactPlatformRow[]>([]);
+  const [contactPlatformsLoading, setContactPlatformsLoading] = useState(false);
+  const [contactPlatformsError, setContactPlatformsError] = useState<string>("");
+
+  const [contacts, setContacts] = useState<UserContactItem[]>([]);
 
   const [userPosts, setUserPosts] = useState<UserPostItem[]>([]);
   const [userPostsLoading, setUserPostsLoading] = useState(false);
@@ -1078,12 +1151,14 @@ export function UserProfile()
   const [viewedAuthUid, setViewedAuthUid] = useState<string | null>(null);
 
   const [bio, setBio] = useState<string>("");
-  const [contacts, setContacts] = useState<string[]>(["alksak.skl"]);
+  
+  const [selectedContactPlatformId, setSelectedContactPlatformId] = useState<string>("");
+  const [contactPickerOpen, setContactPickerOpen] = useState<boolean>(false);
+  const [contactsDraft, setContactsDraft] = useState<UserContactDraftItem[]>([]);
+  const [contactsDraftError, setContactsDraftError] = useState<string>("");
 
   const [nameDraft, setNameDraft] = useState<string>(displayName);
   const [bioDraft, setBioDraft] = useState<string>(bio);
-  const [contactsDraft, setContactsDraft] = useState<string[]>(contacts);
-  const [newContactDraft, setNewContactDraft] = useState<string>("");
 
   const effectiveBackgroundPreviewUrl = backgroundDraftUrl ?? backgroundImgUrl;
   const effectiveProfilePreviewUrl =
@@ -1127,6 +1202,10 @@ export function UserProfile()
           setEditingInterestIndex(null);
           setUserPosts([]);
           setUserPostsError("");
+          setContacts([]);
+          setContactsDraft([]);
+          setContactsDraftError("");
+          setSelectedContactPlatformId("");
           setViewedAuthUid(null);
           return;
         }
@@ -1171,6 +1250,7 @@ export function UserProfile()
             setInterests([]);
             setUserPosts([]);
             setUserPostsError("");
+            setContacts([]);
             setEditingSkillIndex(null);
             setEditingInterestIndex(null);
             return;
@@ -1190,7 +1270,7 @@ export function UserProfile()
         setUserPostsLoading(true);
         setUserPostsError("");
 
-        const [userInfoRes, userProfileRes, userSkillsRes, userInterestsRes] = await Promise.all([
+        const [userInfoRes, userProfileRes, userSkillsRes, userInterestsRes, userContactsRes] = await Promise.all([
           supabase
             .from("user_info")
             .select(
@@ -1211,6 +1291,10 @@ export function UserProfile()
             .from("user_interests")
             .select("interest_id")
             .eq("auth_uid", targetAuthUid),
+          supabase
+            .from("user_contacts")
+            .select("platform_id,contact_link,contacts_platform_lookup(platform)")
+            .eq("auth_uid", targetAuthUid),
         ]);
 
         if (!mounted) return;
@@ -1219,6 +1303,7 @@ export function UserProfile()
         if (userProfileRes.error) throw userProfileRes.error;
         if (userSkillsRes.error) throw userSkillsRes.error;
         if (userInterestsRes.error) throw userInterestsRes.error;
+        if (userContactsRes.error) throw userContactsRes.error;
 
         const info = userInfoRes.data as unknown as UserInfoRow | null;
         const profile = userProfileRes.data as unknown as UserProfileRow | null;
@@ -1260,6 +1345,22 @@ export function UserProfile()
         const loadedInterests = interestIds
           .map((id) => lookupById.get(id))
           .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+
+        const loadedContacts: UserContactItem[] = [];
+        for (const row of (userContactsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+          const platformIdVal = row.platform_id;
+          const linkVal = row.contact_link;
+          const lookupObj = row.contacts_platform_lookup as Record<string, unknown> | null | undefined;
+          const platformVal = lookupObj?.platform;
+
+          if (typeof platformIdVal === "number" && typeof linkVal === "string") {
+            loadedContacts.push({
+              platformId: platformIdVal,
+              platform: typeof platformVal === "string" ? platformVal : "",
+              contactLink: linkVal,
+            });
+          }
+        }
 
         const { data: postsRows, error: postsError } = await supabase
           .from("user_posts")
@@ -1304,6 +1405,7 @@ export function UserProfile()
         setBackgroundImgUrl(profile?.background_img_url ?? null);
         setSkills(loadedSkills);
         setInterests(loadedInterests);
+        setContacts(loadedContacts);
         setUserPosts(loadedPosts.sort((a, b) => b.createdAt - a.createdAt));
       } catch (e: unknown) {
         if (!mounted) return;
@@ -1320,6 +1422,7 @@ export function UserProfile()
         setEditingInterestIndex(null);
         setUserPosts([]);
         setUserPostsError(getErrorMessage(e));
+        setContacts([]);
         setViewedAuthUid(null);
       } finally {
         if (mounted) setUserPostsLoading(false);
@@ -1336,6 +1439,43 @@ export function UserProfile()
       sub.subscription.unsubscribe();
     };
   }, [navigate, routeStudentId]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadContactPlatforms() {
+      setContactPlatformsLoading(true);
+      setContactPlatformsError("");
+      try {
+        const { data, error } = await supabase
+          .from("contacts_platform_lookup")
+          .select("id, platform")
+          .order("platform", { ascending: true });
+
+        if (error) throw error;
+        if (!alive) return;
+
+        const parsed: ContactPlatformRow[] = [];
+        for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+          const idVal = row.id;
+          const platformVal = row.platform;
+          if (typeof idVal === "number" && typeof platformVal === "string") {
+            parsed.push({ id: idVal, platform: platformVal });
+          }
+        }
+        setContactPlatforms(parsed);
+      } catch (e: unknown) {
+        if (alive) setContactPlatformsError(getErrorMessage(e));
+      } finally {
+        if (alive) setContactPlatformsLoading(false);
+      }
+    }
+
+    loadContactPlatforms();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -1617,8 +1757,16 @@ export function UserProfile()
     setProfilePictureRemove(false);
     setNameDraft(displayName);
     setBioDraft(bio);
-    setContactsDraft(contacts);
-    setNewContactDraft("");
+    setContactsDraftError("");
+    setSelectedContactPlatformId("");
+    setContactPickerOpen(false);
+    setContactsDraft(
+      contacts.map((c) => ({
+        key: generateUuidV4(),
+        platformId: c.platformId,
+        contactLink: c.contactLink,
+      }))
+    );
     setProfileModalOpen(true);
   }
 
@@ -1776,6 +1924,7 @@ export function UserProfile()
 
     setProfileSaving(true);
     setProfileSaveError("");
+    setContactsDraftError("");
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
@@ -1809,10 +1958,42 @@ export function UserProfile()
         );
       if (userProfileError) throw userProfileError;
 
+      // Sync contacts into user_contacts
+      const cleanedContacts = contactsDraft
+        .map((c) => ({
+          platformId: c.platformId,
+          contactLink: c.contactLink.trim(),
+        }))
+        .filter((c) => Number.isFinite(c.platformId) && c.contactLink.length > 0);
+
+      const { error: deleteContactsError } = await supabase
+        .from("user_contacts")
+        .delete()
+        .eq("auth_uid", authUid);
+      if (deleteContactsError) throw deleteContactsError;
+
+      if (cleanedContacts.length) {
+        const { error: insertContactsError } = await supabase
+          .from("user_contacts")
+          .insert(
+            cleanedContacts.map((c) => ({
+              platform_id: c.platformId,
+              contact_link: c.contactLink,
+            }))
+          );
+        if (insertContactsError) throw insertContactsError;
+      }
+
       setDisplayName(nextName);
       setBio(nextBio);
       setProfilePictureUrl(nextProfilePictureUrl ?? null);
-      setContacts(contactsDraft.filter((c) => c.trim()).map((c) => c.trim()));
+      setContacts(
+        cleanedContacts.map((c) => ({
+          platformId: c.platformId,
+          platform: contactPlatforms.find((p) => p.id === c.platformId)?.platform ?? "",
+          contactLink: c.contactLink,
+        }))
+      );
 
       if (profileDraftFile) {
         setProfileImageFile(profileDraftFile);
@@ -1900,12 +2081,21 @@ export function UserProfile()
             {!!batchLabel && <h6>{batchLabel}</h6>}
             {!!bio && <p className="lg:my-3">{bio}</p>}
             <div className="flex lg:gap-3 flex-wrap lg:mb-5">
-              {contacts.map((c, idx) => (
-                <div key={`${c}-${idx}`} className="flex lg:gap-2 items-center">
-                  <img src={Github} className="size-8" alt="Contact" />
-                  <p>{c}</p>
-                </div>
-              ))}
+              {contacts
+                .filter((c) => c.contactLink.trim())
+                .map((c, idx) => (
+                  <a
+                    key={`${c.platformId}-${c.contactLink}-${idx}`}
+                    href={c.contactLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex lg:gap-2 items-center hover:opacity-80"
+                    aria-label={c.platform ? `${c.platform} contact` : "Contact"}
+                  >
+                    <img src={getPlatformIconSrc(c.platform)} className="size-8" alt="Contact" />
+                    <p className="max-w-[18rem] truncate">{displayContactLinkText(c.contactLink)}</p>
+                  </a>
+                ))}
             </div>
           </div>
         </div>
@@ -2118,53 +2308,119 @@ export function UserProfile()
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="font-medium">Contacts</label>
-                      <div className="flex gap-2">
-                        <input
-                          value={newContactDraft}
-                          onChange={(e) => setNewContactDraft(e.target.value)}
-                          className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
-                          placeholder="Add contact (handle / email / URL)"
-                        />
+                      <div className="flex items-center justify-between">
+                        <label className="font-medium">Contacts</label>
                         <button
                           type="button"
                           onClick={() => {
-                            const value = newContactDraft.trim();
-                            if (!value) return;
-                            setContactsDraft((prev) =>
-                              prev.includes(value) ? prev : [...prev, value]
-                            );
-                            setNewContactDraft("");
+                            setContactsDraftError("");
+                            setSelectedContactPlatformId("");
+                            setContactPickerOpen(true);
                           }}
                           className="rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 hover:bg-hover-lm"
                           aria-label="Add contact"
+                          disabled={contactPlatformsLoading}
                         >
                           <LucidePlus className="size-5" />
                         </button>
                       </div>
-
+                      {contactsDraftError && (
+                        <p className="text-sm text-accent-lm">{contactsDraftError}</p>
+                      )}
+                      {contactPlatformsError && (
+                        <p className="text-sm text-accent-lm">{contactPlatformsError}</p>
+                      )}
                       {!!contactsDraft.length && (
-                        <div className="flex flex-wrap gap-2">
-                          {contactsDraft.map((c, idx) => (
-                            <div
-                              key={`${c}-${idx}`}
-                              className="inline-flex items-center gap-2 rounded-full border border-stroke-grey bg-primary-lm px-3 py-1"
-                            >
-                              <span>{c}</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setContactsDraft((prev) =>
-                                    prev.filter((_, i) => i !== idx)
-                                  )
-                                }
-                                className="rounded-full p-1 hover:bg-hover-lm"
-                                aria-label="Remove contact"
+                        <div className="flex flex-col gap-2">
+                          {contactsDraft.map((c) => {
+                            const platformName =
+                              contactPlatforms.find((p) => p.id === c.platformId)?.platform ??
+                              contacts.find((x) => x.platformId === c.platformId)?.platform ??
+                              "";
+                            return (
+                              <div
+                                key={c.key}
+                                className="flex items-center gap-2 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
                               >
-                                <img src={crossBtnIcon} className="size-4" alt="Remove" />
-                              </button>
-                            </div>
-                          ))}
+                                <img
+                                  src={getPlatformIconSrc(platformName)}
+                                  className="size-6"
+                                  alt={platformName ? `${platformName} icon` : "Platform icon"}
+                                />
+                                <input
+                                  value={c.contactLink}
+                                  onChange={(e) => {
+                                    const next = e.target.value;
+                                    setContactsDraft((prev) =>
+                                      prev.map((row) =>
+                                        row.key === c.key ? { ...row, contactLink: next } : row
+                                      )
+                                    );
+                                  }}
+                                  className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
+                                  placeholder="Enter URL"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    {
+                                      setContactsDraft((prev) =>
+                                        prev.filter((row) => row.key !== c.key)
+                                      );
+                                      // Reset so user can re-select the same platform again later
+                                      setSelectedContactPlatformId("");
+                                      setContactsDraftError("");
+                                    }
+                                  }
+                                  className="rounded-full p-1 hover:bg-hover-lm"
+                                  aria-label="Remove contact"
+                                >
+                                  <img src={crossBtnIcon} className="size-4" alt="Remove" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {contactPickerOpen && (
+                        <div className="flex gap-2 items-center">
+                          <select
+                            value={selectedContactPlatformId}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setSelectedContactPlatformId(raw);
+                              setContactsDraftError("");
+                              const platformId = Number(raw);
+                              if (!Number.isFinite(platformId)) return;
+
+                              // Prevent duplicates for the same platform by default
+                              if (contactsDraft.some((c) => c.platformId === platformId)) {
+                                setContactsDraftError("You already added this platform.");
+                                // Reset so selecting the same value again works
+                                setSelectedContactPlatformId("");
+                                return;
+                              }
+
+                              setContactsDraft((prev) => [
+                                ...prev,
+                                { key: generateUuidV4(), platformId, contactLink: "" },
+                              ]);
+
+                              // Hide the picker after one selection; user can click + to add another.
+                              setSelectedContactPlatformId("");
+                              setContactPickerOpen(false);
+                            }}
+                            className="rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
+                            disabled={contactPlatformsLoading}
+                          >
+                            <option value="">Select platform…</option>
+                            {contactPlatforms.map((p) => (
+                              <option key={p.id} value={String(p.id)}>
+                                {p.platform}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       )}
                     </div>
