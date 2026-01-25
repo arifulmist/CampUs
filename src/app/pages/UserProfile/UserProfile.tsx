@@ -2362,9 +2362,9 @@ export function UserProfile()
         </div>
 
       </div>
-      <div className="flex lg:flex-col lg:gap-5 lg:w-[20vw]">
-        <UpcomingEvents></UpcomingEvents>
-        <InterestedPosts items={interestedPosts}/>
+      <div className="flex flex-col lg:gap-5 lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <UpcomingEvents />
+        <InterestedPosts items={interestedPosts} />
       </div>
     </div>
   );
