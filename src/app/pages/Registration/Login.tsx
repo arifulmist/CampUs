@@ -63,7 +63,7 @@ export function Login() {
       // If in development or email failed, show OTP
       if (emailResult.devOTP) {
         setDevOTP(emailResult.devOTP);
-        console.log(`Development OTP for ${userId}: ${emailResult.devOTP}`);
+        // console.log(`Development OTP for ${userId}: ${emailResult.devOTP}`);
       }
 
       // 5. Navigate to 2FA page with state
