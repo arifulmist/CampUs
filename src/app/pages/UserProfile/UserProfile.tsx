@@ -1073,6 +1073,7 @@ function getPlatformIconSrc(platform: string): string {
 function displayContactLinkText(link: string) {
   const trimmed = link.trim();
   if (!trimmed) return "";
+  if (/^mailto:/i.test(trimmed)) return trimmed.replace(/^mailto:/i, "");
   try {
     const u = new URL(trimmed);
     // Show hostname + last path segment where possible
@@ -1082,6 +1083,24 @@ function displayContactLinkText(link: string) {
   } catch {
     return trimmed;
   }
+}
+
+function toExternalContactHref(platform: string, link: string) {
+  const raw = link.trim();
+  if (!raw) return "#";
+
+  const p = normalizePlatform(platform);
+  if (p === "email") {
+    if (/^mailto:/i.test(raw)) return raw;
+    return `mailto:${raw}`;
+  }
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^mailto:/i.test(raw)) return raw;
+
+  // Prevent relative navigation like http://localhost:5173/github.com/...
+  const noLeadingSlashes = raw.replace(/^\/+/, "");
+  return `https://${noLeadingSlashes}`;
 }
 
 
@@ -2083,19 +2102,24 @@ export function UserProfile()
             <div className="flex lg:gap-3 flex-wrap lg:mb-5">
               {contacts
                 .filter((c) => c.contactLink.trim())
-                .map((c, idx) => (
-                  <a
-                    key={`${c.platformId}-${c.contactLink}-${idx}`}
-                    href={c.contactLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex lg:gap-2 items-center hover:opacity-80"
-                    aria-label={c.platform ? `${c.platform} contact` : "Contact"}
-                  >
-                    <img src={getPlatformIconSrc(c.platform)} className="size-8" alt="Contact" />
-                    <p className="max-w-[18rem] truncate">{displayContactLinkText(c.contactLink)}</p>
-                  </a>
-                ))}
+                .map((c, idx) => {
+                  const href = toExternalContactHref(c.platform, c.contactLink);
+                  const isEmail = normalizePlatform(c.platform) === "email";
+
+                  return (
+                    <a
+                      key={`${c.platformId}-${c.contactLink}-${idx}`}
+                      href={href}
+                      target={isEmail ? undefined : "_blank"}
+                      rel={isEmail ? undefined : "noreferrer"}
+                      className="flex lg:gap-2 items-center hover:opacity-80"
+                      aria-label={c.platform ? `${c.platform} contact` : "Contact"}
+                    >
+                      <img src={getPlatformIconSrc(c.platform)} className="size-8" alt="Contact" />
+                      <p className="max-w-[18rem] truncate">{displayContactLinkText(href)}</p>
+                    </a>
+                  );
+                })}
             </div>
           </div>
         </div>
