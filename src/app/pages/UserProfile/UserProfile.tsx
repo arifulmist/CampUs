@@ -880,7 +880,7 @@ import crossBtnIcon from "@/assets/icons/cross_btn.svg";
 
 import Github from "@/assets/icons/github_icon.svg";
 import { LucidePencil, LucidePlus } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import AddLookupItemModal, {
   type SkillsLookupItem,
 } from "./components/AddLookupItemModal";
@@ -1020,6 +1020,9 @@ function useObjectUrl(file: File | null): string | null {
 
 export function UserProfile()
 {
+  const navigate = useNavigate();
+  const { studentId: routeStudentId } = useParams();
+
   const [interestedPosts] = useState<InterestedItem[]>([]);
 
   const [skillsLookup, setSkillsLookup] = useState<SkillsLookupItem[]>([]);
@@ -1071,6 +1074,9 @@ export function UserProfile()
   const [studentId, setStudentId] = useState<string>("");
   const [batchLabel, setBatchLabel] = useState<string>("");
 
+  const [currentAuthUid, setCurrentAuthUid] = useState<string | null>(null);
+  const [viewedAuthUid, setViewedAuthUid] = useState<string | null>(null);
+
   const [bio, setBio] = useState<string>("");
   const [contacts, setContacts] = useState<string[]>(["alksak.skl"]);
 
@@ -1085,16 +1091,26 @@ export function UserProfile()
       ? placeholderUserImg
       : profileDraftUrl ?? profileImageUrl ?? profilePictureUrl ?? placeholderUserImg;
 
+  const canEdit = !!currentAuthUid && !!viewedAuthUid && currentAuthUid === viewedAuthUid;
+
   const anyModalOpen = backgroundModalOpen || profileModalOpen;
 
   useEffect(() => {
     let mounted = true;
+
+    function isUuid(value: string) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value
+      );
+    }
 
     async function loadUserInfo() {
       try {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
         const authUid = userData.user?.id;
+
+        setCurrentAuthUid(authUid ?? null);
 
         if (!mounted) return;
 
@@ -1111,7 +1127,64 @@ export function UserProfile()
           setEditingInterestIndex(null);
           setUserPosts([]);
           setUserPostsError("");
+          setViewedAuthUid(null);
           return;
+        }
+
+        let targetAuthUid = authUid;
+        if (routeStudentId) {
+          const routeValue = routeStudentId.trim();
+          // Prefer resolving via student_id, fallback to auth_uid if the param looks like a UUID.
+          const { data: byStudent } = await supabase
+            .from("user_info")
+            .select("auth_uid")
+            .eq("student_id", routeValue)
+            .maybeSingle();
+
+          let resolvedAuthUid = (byStudent as unknown as { auth_uid?: unknown } | null)?.auth_uid;
+
+          if (!resolvedAuthUid && isUuid(routeValue)) {
+            const { data: byAuth } = await supabase
+              .from("user_info")
+              .select("auth_uid")
+              .eq("auth_uid", routeValue)
+              .maybeSingle();
+            resolvedAuthUid = (byAuth as unknown as { auth_uid?: unknown } | null)?.auth_uid;
+          }
+
+          if (typeof resolvedAuthUid === "string" && resolvedAuthUid) {
+            targetAuthUid = resolvedAuthUid;
+            if (targetAuthUid === authUid) {
+              // Don't allow viewing your own profile through the param route.
+              navigate("/profile", { replace: true });
+            }
+          } else {
+            // Unknown user — show empty profile with edits disabled.
+            setViewedAuthUid(null);
+            setDisplayName("User not found");
+            setStudentId(routeValue);
+            setBatchLabel("");
+            setBio("");
+            setProfilePictureUrl(null);
+            setBackgroundImgUrl(null);
+            setSkills([]);
+            setInterests([]);
+            setUserPosts([]);
+            setUserPostsError("");
+            setEditingSkillIndex(null);
+            setEditingInterestIndex(null);
+            return;
+          }
+        }
+
+        setViewedAuthUid(targetAuthUid);
+
+        if (targetAuthUid !== authUid) {
+          setBackgroundModalOpen(false);
+          setProfileModalOpen(false);
+          setAddLookupModalOpen(false);
+          setEditingSkillIndex(null);
+          setEditingInterestIndex(null);
         }
 
         setUserPostsLoading(true);
@@ -1123,21 +1196,21 @@ export function UserProfile()
             .select(
               "name,batch,department,student_id,departments_lookup(department_name)"
             )
-            .eq("auth_uid", authUid)
+            .eq("auth_uid", targetAuthUid)
             .maybeSingle(),
           supabase
             .from("user_profile")
             .select("bio,profile_picture_url,background_img_url")
-            .eq("auth_uid", authUid)
+            .eq("auth_uid", targetAuthUid)
             .maybeSingle(),
           supabase
             .from("user_skills")
             .select("skill_id")
-            .eq("auth_uid", authUid),
+            .eq("auth_uid", targetAuthUid),
           supabase
             .from("user_interests")
             .select("interest_id")
-            .eq("auth_uid", authUid),
+            .eq("auth_uid", targetAuthUid),
         ]);
 
         if (!mounted) return;
@@ -1193,7 +1266,7 @@ export function UserProfile()
           .select(
             "post_id, all_posts!user_posts_post_id_fkey(post_id,type,title,description,created_at)"
           )
-          .eq("auth_uid", authUid);
+          .eq("auth_uid", targetAuthUid);
         if (postsError) throw postsError;
 
         const loadedPosts: UserPostItem[] = [];
@@ -1247,6 +1320,7 @@ export function UserProfile()
         setEditingInterestIndex(null);
         setUserPosts([]);
         setUserPostsError(getErrorMessage(e));
+        setViewedAuthUid(null);
       } finally {
         if (mounted) setUserPostsLoading(false);
       }
@@ -1261,7 +1335,7 @@ export function UserProfile()
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate, routeStudentId]);
 
   useEffect(() => {
     let alive = true;
@@ -1303,11 +1377,13 @@ export function UserProfile()
   }, []);
 
   function openAddSkillsModal() {
+    if (!canEdit) return;
     setAddLookupModalMode("skills");
     setAddLookupModalOpen(true);
   }
 
   function openAddInterestsModal() {
+    if (!canEdit) return;
     setAddLookupModalMode("interests");
     setAddLookupModalOpen(true);
   }
@@ -1323,6 +1399,7 @@ export function UserProfile()
   }
 
   function startEditSkill(index: number) {
+    if (!canEdit) return;
     setSkillEditError("");
     setEditingSkillIndex(index);
     setEditingSkillValue(skills[index] ?? "");
@@ -1335,6 +1412,10 @@ export function UserProfile()
   }
 
   async function saveSkillEdit(index: number) {
+    if (!canEdit) {
+      setSkillEditError("You can only edit your own profile.");
+      return;
+    }
     const nextValue = editingSkillValue.trim();
     if (!nextValue) {
       setSkillEditError("Skill cannot be empty.");
@@ -1416,6 +1497,7 @@ export function UserProfile()
   }
 
   function startEditInterest(index: number) {
+    if (!canEdit) return;
     setInterestEditError("");
     setEditingInterestIndex(index);
     setEditingInterestValue(interests[index] ?? "");
@@ -1428,6 +1510,10 @@ export function UserProfile()
   }
 
   async function saveInterestEdit(index: number) {
+    if (!canEdit) {
+      setInterestEditError("You can only edit your own profile.");
+      return;
+    }
     const nextValue = editingInterestValue.trim();
     if (!nextValue) {
       setInterestEditError("Interest cannot be empty.");
@@ -1509,6 +1595,7 @@ export function UserProfile()
   }
 
   function openBackgroundModal() {
+    if (!canEdit) return;
     setBackgroundDraftFile(null);
     setBackgroundFileError("");
     setBackgroundSaveError("");
@@ -1523,6 +1610,7 @@ export function UserProfile()
   }
 
   function openProfileModal() {
+    if (!canEdit) return;
     setProfileDraftFile(null);
     setProfileFileError("");
     setProfileSaveError("");
@@ -1599,6 +1687,10 @@ export function UserProfile()
   };
 
   const confirmBackgroundImage = async () => {
+    if (!canEdit) {
+      setBackgroundSaveError("You can only edit your own profile.");
+      return;
+    }
     if (!backgroundDraftFile) return;
     setBackgroundSaving(true);
     setBackgroundSaveError("");
@@ -1634,6 +1726,10 @@ export function UserProfile()
   };
 
   const removeBackgroundImage = async () => {
+    if (!canEdit) {
+      setBackgroundSaveError("You can only edit your own profile.");
+      return;
+    }
     setBackgroundSaving(true);
     setBackgroundSaveError("");
     try {
@@ -1666,6 +1762,10 @@ export function UserProfile()
   };
 
   const saveProfile = async () => {
+    if (!canEdit) {
+      setProfileSaveError("You can only edit your own profile.");
+      return;
+    }
     const nextName = nameDraft.trim();
     const nextBio = bioDraft.trim();
 
@@ -1766,14 +1866,16 @@ export function UserProfile()
                 : undefined
             }
           >
-            <button
-              type="button"
-              onClick={openBackgroundModal}
-              aria-label="Edit background image"
-              className="absolute lg:top-3 lg:right-3 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-2 border border-stroke-grey cursor-pointer"
-            >
-              <LucidePencil className="size-5" />
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={openBackgroundModal}
+                aria-label="Edit background image"
+                className="absolute lg:top-3 lg:right-3 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-2 border border-stroke-grey cursor-pointer"
+              >
+                <LucidePencil className="size-5" />
+              </button>
+            )}
           </div>
           <div className="flex flex-col lg:ml-8">
             <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
@@ -1782,14 +1884,16 @@ export function UserProfile()
                 className="object-cover lg:size-35 rounded-full"
                 alt="Profile"
               />
-              <button
-                type="button"
-                onClick={openProfileModal}
-                aria-label="Edit profile"
-                className="absolute lg:top-2 lg:-right-1 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-1.5 border border-stroke-grey cursor-pointer"
-              >
-                <LucidePencil className="size-5" />
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={openProfileModal}
+                  aria-label="Edit profile"
+                  className="absolute lg:top-2 lg:-right-1 rounded-full bg-primary-lm hover:bg-secondary-lm transition lg:p-1.5 border border-stroke-grey cursor-pointer"
+                >
+                  <LucidePencil className="size-5" />
+                </button>
+              )}
             </div>
             <h3 className="font-header">{displayName}</h3>
             {!!studentId && <h6>{studentId}</h6>}
@@ -2097,9 +2201,11 @@ export function UserProfile()
           <div className="flex justify-between items-center">
             <h4 className="font-header">Skills</h4>   
             <div className="space-x-1">
-              <button type="button" onClick={openAddSkillsModal} className="cursor-pointer">
-                <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
-              </button>
+              {canEdit && (
+                <button type="button" onClick={openAddSkillsModal} className="cursor-pointer">
+                  <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
+                </button>
+              )}
             </div>
           </div>
 
@@ -2132,19 +2238,21 @@ export function UserProfile()
                     ) : (
                       <h6>{skill}</h6>
                     )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        editingSkillIndex === index
-                          ? saveSkillEdit(index)
-                          : startEditSkill(index)
-                      }
-                      aria-label={
-                        editingSkillIndex === index ? "Save skill" : "Edit skill"
-                      }
-                    >
-                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editingSkillIndex === index
+                            ? saveSkillEdit(index)
+                            : startEditSkill(index)
+                        }
+                        aria-label={
+                          editingSkillIndex === index ? "Save skill" : "Edit skill"
+                        }
+                      >
+                        <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                      </button>
+                    )}
                   </div>
                   {index !== skills.length - 1 && (
                     <hr className="border-stroke-grey"></hr>
@@ -2164,9 +2272,11 @@ export function UserProfile()
           <div className="flex justify-between items-center">
             <h4 className="font-header">Interests</h4>   
             <div className="space-x-1">
-              <button type="button" onClick={openAddInterestsModal} className="cursor-pointer">
-                <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
-              </button>
+              {canEdit && (
+                <button type="button" onClick={openAddInterestsModal} className="cursor-pointer">
+                  <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
+                </button>
+              )}
             </div>
           </div>
 
@@ -2199,21 +2309,23 @@ export function UserProfile()
                     ) : (
                       <h6>{interest}</h6>
                     )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        editingInterestIndex === index
-                          ? saveInterestEdit(index)
-                          : startEditInterest(index)
-                      }
-                      aria-label={
-                        editingInterestIndex === index
-                          ? "Save interest"
-                          : "Edit interest"
-                      }
-                    >
-                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
-                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editingInterestIndex === index
+                            ? saveInterestEdit(index)
+                            : startEditInterest(index)
+                        }
+                        aria-label={
+                          editingInterestIndex === index
+                            ? "Save interest"
+                            : "Edit interest"
+                        }
+                      >
+                        <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                      </button>
+                    )}
                   </div>
                   {index !== interests.length - 1 && (
                     <hr className="border-stroke-grey"></hr>

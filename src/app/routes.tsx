@@ -59,7 +59,7 @@ export const router = createBrowserRouter([
       { path: "/lost-and-found", element: <LostFound /> },
       { path: "/lost-and-found/:postId", element: <PostView type="lost-and-found" /> },
       { path: "/profile", element: <UserProfile /> },
-      { path: "/profile/:userId", element: <UserProfile /> },
+      { path: "/profile/:studentId", element: <UserProfile /> },
       { path: "/messages", element: <Messaging /> },
       { path: "*", element: <NotFound /> }
     ],
