@@ -1057,7 +1057,6 @@ function getPlatformIconSrc(platform: string): string {
   if (p === "discord") return Discord;
   if (p === "linkedin") return LinkedIn;
 
-  // Tolerate common variants
   if (p.includes("github")) return Github;
   if (p.includes("linked") || p.includes("linkedin")) return LinkedIn;
   if (p.includes("facebook")) return Facebook;
@@ -1067,7 +1066,7 @@ function getPlatformIconSrc(platform: string): string {
   if (p.includes("mail") || p.includes("email") || p.includes("gmail")) return Email;
 
   // Safe fallback
-  return Github;
+  return Email;
 }
 
 function displayContactLinkText(link: string) {

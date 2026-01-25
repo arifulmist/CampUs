@@ -57,3 +57,21 @@ create policy "allow authenticated read contacts_platform_lookup"
   for select
   to authenticated
   using (true);
+
+-- user_info (for user search + profile header)
+alter table public.user_info enable row level security;
+drop policy if exists "allow authenticated read user_info" on public.user_info;
+create policy "allow authenticated read user_info"
+  on public.user_info
+  for select
+  to authenticated
+  using (true);
+
+-- departments_lookup (so searches can show department_name)
+alter table public.departments_lookup enable row level security;
+drop policy if exists "allow authenticated read departments_lookup" on public.departments_lookup;
+create policy "allow authenticated read departments_lookup"
+  on public.departments_lookup
+  for select
+  to authenticated
+  using (true);
