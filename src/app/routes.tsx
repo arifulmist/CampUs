@@ -17,6 +17,7 @@ import { LostFound } from "./pages/LostAndFound/LostFound";
 import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Error_NotFound";
 import { Messaging } from "./pages/Messaging/Messaging";
+import PostView from "./pages/PostView/PostView";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/signup" replace /> },
@@ -40,8 +41,11 @@ export const router = createBrowserRouter([
     children: [
       { path: "/home", element: <Home />},
       { path: "/collab", element: <CollabHub /> },
+      { path: "/collab/:postId", element: <PostView type="collab" /> },
       { path: "/events", element: <Events /> },
+      { path: "/events/:postId", element: <PostView type="events" /> },
       { path: "/qna", element: <QnA /> },
+      { path: "/qna/:postId", element: <PostView type="qna" /> },
       {
         path: "/study/:level/:term",
         element: <StudyLayout />,
@@ -53,6 +57,7 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "/lost-and-found", element: <LostFound /> },
+      { path: "/lost-and-found/:postId", element: <PostView type="lost-and-found" /> },
       { path: "/profile", element: <UserProfile /> },
       { path: "/profile/:userId", element: <UserProfile /> },
       { path: "/messages", element: <Messaging /> },

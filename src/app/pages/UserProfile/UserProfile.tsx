@@ -923,6 +923,14 @@ type UserProfileRow = {
   background_img_url: string | null;
 };
 
+type UserPostItem = {
+  postId: string;
+  type: string;
+  title: string;
+  description: string;
+  createdAt: number;
+};
+
 const PROFILE_IMAGES_BUCKET = "profile_images";
 const MAX_PROFILE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -1021,6 +1029,10 @@ export function UserProfile()
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
 
+  const [userPosts, setUserPosts] = useState<UserPostItem[]>([]);
+  const [userPostsLoading, setUserPostsLoading] = useState(false);
+  const [userPostsError, setUserPostsError] = useState<string>("");
+
   const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
   const [editingSkillValue, setEditingSkillValue] = useState<string>("");
   const [skillEditError, setSkillEditError] = useState<string>("");
@@ -1097,8 +1109,13 @@ export function UserProfile()
           setInterests([]);
           setEditingSkillIndex(null);
           setEditingInterestIndex(null);
+          setUserPosts([]);
+          setUserPostsError("");
           return;
         }
+
+        setUserPostsLoading(true);
+        setUserPostsError("");
 
         const [userInfoRes, userProfileRes, userSkillsRes, userInterestsRes] = await Promise.all([
           supabase
@@ -1171,6 +1188,41 @@ export function UserProfile()
           .map((id) => lookupById.get(id))
           .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
 
+        const { data: postsRows, error: postsError } = await supabase
+          .from("user_posts")
+          .select(
+            "post_id, all_posts!user_posts_post_id_fkey(post_id,type,title,description,created_at)"
+          )
+          .eq("auth_uid", authUid);
+        if (postsError) throw postsError;
+
+        const loadedPosts: UserPostItem[] = [];
+        for (const row of (postsRows ?? []) as unknown as Array<Record<string, unknown>>) {
+          const postObj = row.all_posts as Record<string, unknown> | null | undefined;
+          const postId = postObj?.post_id;
+          const type = postObj?.type;
+          const title = postObj?.title;
+          const description = postObj?.description;
+          const createdAtRaw = postObj?.created_at;
+
+          if (
+            typeof postId === "string" &&
+            typeof type === "string" &&
+            typeof title === "string" &&
+            typeof description === "string"
+          ) {
+            const createdAt =
+              typeof createdAtRaw === "string" ? Date.parse(createdAtRaw) : 0;
+            loadedPosts.push({
+              postId,
+              type,
+              title,
+              description,
+              createdAt: Number.isFinite(createdAt) ? createdAt : 0,
+            });
+          }
+        }
+
         setDisplayName(info?.name?.trim() || "User");
         setStudentId(info?.student_id?.trim() || "");
         setBatchLabel(formatBatchLabel(info));
@@ -1179,6 +1231,7 @@ export function UserProfile()
         setBackgroundImgUrl(profile?.background_img_url ?? null);
         setSkills(loadedSkills);
         setInterests(loadedInterests);
+        setUserPosts(loadedPosts.sort((a, b) => b.createdAt - a.createdAt));
       } catch (e: unknown) {
         if (!mounted) return;
         console.error("Failed to load user_info:", e);
@@ -1192,6 +1245,10 @@ export function UserProfile()
         setInterests([]);
         setEditingSkillIndex(null);
         setEditingInterestIndex(null);
+        setUserPosts([]);
+        setUserPostsError(getErrorMessage(e));
+      } finally {
+        if (mounted) setUserPostsLoading(false);
       }
     }
 
@@ -1253,6 +1310,12 @@ export function UserProfile()
   function openAddInterestsModal() {
     setAddLookupModalMode("interests");
     setAddLookupModalOpen(true);
+  }
+
+  function postPath(type: string, postId: string) {
+    const t = type.trim().toLowerCase();
+    const base = t === "lostfound" ? "lost-and-found" : t;
+    return `/${base}/${postId}`;
   }
 
   function normalizeText(text: string) {
@@ -2166,7 +2229,23 @@ export function UserProfile()
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
           <h4 className="font-header">Posts</h4>
           <div className="flex flex-col lg:gap-5 lg:mt-4">
-            <UserPosts></UserPosts>
+            {userPostsLoading ? (
+              <p className="text-sm text-text-lighter-lm">Loading…</p>
+            ) : userPostsError ? (
+              <p className="text-sm text-accent-lm">{userPostsError}</p>
+            ) : userPosts.length === 0 ? (
+              <p className="text-sm text-text-lighter-lm">No posts yet.</p>
+            ) : (
+              userPosts.map((p) => (
+                <Link key={p.postId} to={postPath(p.type, p.postId)}>
+                  <div className="bg-secondary-lm hover:bg-hover-lm border border-stroke-grey hover:border-stroke-peach transition duration-200 lg:p-6 lg:rounded-lg cursor-pointer">
+                    <div className="text-xs text-text-lighter-lm">{p.type}</div>
+                    <h5 className="font-header">{p.title}</h5>
+                    <p className="text-sm text-text-lighter-lm">{p.description}</p>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
@@ -2176,18 +2255,5 @@ export function UserProfile()
         <InterestedPosts items={interestedPosts}/>
       </div>
     </div>
-  );
-}
-
-
-function UserPosts()
-{
-  return(
-    <Link to="/">
-      <div className="bg-secondary-lm hover:bg-hover-lm border border-stroke-grey hover:border-stroke-peach transition duration-200 lg:p-6 lg:rounded-lg cursor-pointer">
-        <h5 className="font-header">Title</h5>
-        <p>djhsjkhsjdhasjkdhkjadhkjahkahda</p>
-      </div>
-    </Link>
   );
 }
