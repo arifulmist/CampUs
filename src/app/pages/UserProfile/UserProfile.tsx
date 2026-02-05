@@ -895,6 +895,11 @@ import { Link, useNavigate, useParams } from "react-router";
 import AddLookupItemModal, {
   type SkillsLookupItem,
 } from "./components/AddLookupItemModal";
+import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import {
+  openChatWith,
+  setupRealtimeSubscription,
+} from "@/app/pages/Messaging/backend/chatStore";
 
 import { supabase } from "../../../../supabase/supabaseClient";
 
@@ -1153,6 +1158,13 @@ export function UserProfile() {
   const [addLookupModalMode, setAddLookupModalMode] = useState<
     "skills" | "interests"
   >("skills");
+
+  // Message drawer state
+  const [messageDrawerOpen, setMessageDrawerOpen] = useState(false);
+  const [messageTarget, setMessageTarget] = useState<{
+    userId: string;
+    userName: string;
+  } | null>(null);
 
   // Background image state
   const [backgroundModalOpen, setBackgroundModalOpen] = useState(false);
@@ -1517,6 +1529,23 @@ export function UserProfile() {
       sub.subscription.unsubscribe();
     };
   }, [navigate, routeStudentId]);
+
+  // Setup real-time message subscription
+  useEffect(() => {
+    let messageChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setupMessages() {
+      messageChannel = await setupRealtimeSubscription();
+    }
+
+    setupMessages();
+
+    return () => {
+      if (messageChannel) {
+        supabase.removeChannel(messageChannel);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -2263,10 +2292,17 @@ export function UserProfile() {
             </div>
             <div className="flex items-center gap-3">
               <h3 className="font-header">{displayName}</h3>
-              {!canEdit && viewedAuthUid && (
+              {!canEdit && viewedAuthUid && studentId && (
                 <button
                   type="button"
-                  onClick={() => navigate("/messaging")}
+                  onClick={() => {
+                    openChatWith(studentId, displayName);
+                    setMessageTarget({
+                      userId: studentId,
+                      userName: displayName,
+                    });
+                    setMessageDrawerOpen(true);
+                  }}
                   className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-200"
                   aria-label="Send message"
                 >
@@ -2908,6 +2944,17 @@ export function UserProfile() {
         <UpcomingEvents />
         <InterestedPosts items={interestedPosts} />
       </div>
+
+      {/* Message Drawer */}
+      {messageTarget && (
+        <MessageDrawer
+          open={messageDrawerOpen}
+          onOpenChange={setMessageDrawerOpen}
+          userId={messageTarget.userId}
+          userName={messageTarget.userName}
+          avatarSrc={undefined}
+        />
+      )}
     </div>
   );
 }
