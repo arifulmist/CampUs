@@ -10,3 +10,10 @@ This repo includes a migration that enables **read-only** `SELECT` access for au
 - [supabase/migrations/20260125123000_allow_profile_view_select.sql](supabase/migrations/20260125123000_allow_profile_view_select.sql)
 
 Apply it to your Supabase project using your usual workflow (for example, via the Supabase SQL Editor or Supabase CLI).
+
+
+
+to run this project :
+->npm run dev 
+to run email server :
+->npm run email-server

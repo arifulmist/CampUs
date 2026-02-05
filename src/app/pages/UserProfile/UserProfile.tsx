@@ -116,7 +116,6 @@
 //   );
 //   // Interested posts state (per user)
 
-
 //   // Load per-user mock profile data; for logged-in user, reflect dynamic interested store
 //   useEffect(() => {
 //     const data = mockProfiles[viewedUser.id];
@@ -886,7 +885,12 @@ import LinkedIn from "@/assets/icons/linkedin_icon.svg";
 import Email from "@/assets/icons/email_icon.png";
 import Discord from "@/assets/icons/discord_icon.svg";
 
-import { LucidePencil, LucidePlus } from "lucide-react";
+import {
+  LucidePencil,
+  LucidePlus,
+  LucideTrash2,
+  LucideMessageCircle,
+} from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import AddLookupItemModal, {
   type SkillsLookupItem,
@@ -906,9 +910,11 @@ function getErrorMessage(error: unknown) {
 
     const parts: string[] = [];
     if (typeof msg === "string" && msg.trim()) parts.push(msg.trim());
-    if (typeof details === "string" && details.trim()) parts.push(details.trim());
+    if (typeof details === "string" && details.trim())
+      parts.push(details.trim());
     if (typeof hint === "string" && hint.trim()) parts.push(hint.trim());
-    if (typeof code === "string" && code.trim()) parts.push(`Code: ${code.trim()}`);
+    if (typeof code === "string" && code.trim())
+      parts.push(`Code: ${code.trim()}`);
     if (parts.length) return parts.join(" — ");
   }
   return "Unexpected error";
@@ -979,7 +985,7 @@ function generateUuidV4() {
 
 async function uploadProfileImage(
   authUid: string,
-  file: File
+  file: File,
 ): Promise<string> {
   if (file.size > MAX_PROFILE_IMAGE_BYTES) {
     throw new Error("Image must be 10MB or smaller.");
@@ -999,10 +1005,12 @@ async function uploadProfileImage(
       contentType: file.type,
     });
   if (uploadError) {
-    const msg = String((uploadError as unknown as { message?: unknown })?.message ?? "");
+    const msg = String(
+      (uploadError as unknown as { message?: unknown })?.message ?? "",
+    );
     if (msg.toLowerCase().includes("row-level security")) {
       throw new Error(
-        "Upload blocked by Supabase Storage RLS (storage.objects). Add an INSERT policy for bucket 'profile_images' allowing authenticated users to upload their own objects."
+        "Upload blocked by Supabase Storage RLS (storage.objects). Add an INSERT policy for bucket 'profile_images' allowing authenticated users to upload their own objects.",
       );
     }
     throw uploadError;
@@ -1063,7 +1071,8 @@ function getPlatformIconSrc(platform: string): string {
   if (p.includes("instagram")) return Instagram;
   if (p.includes("whatsapp") || p.includes("wa")) return Whatsapp;
   if (p.includes("discord")) return Discord;
-  if (p.includes("mail") || p.includes("email") || p.includes("gmail")) return Email;
+  if (p.includes("mail") || p.includes("email") || p.includes("gmail"))
+    return Email;
 
   // Safe fallback
   return Email;
@@ -1102,9 +1111,7 @@ function toExternalContactHref(platform: string, link: string) {
   return `https://${noLeadingSlashes}`;
 }
 
-
-export function UserProfile()
-{
+export function UserProfile() {
   const navigate = useNavigate();
   const { studentId: routeStudentId } = useParams();
 
@@ -1117,9 +1124,12 @@ export function UserProfile()
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
 
-  const [contactPlatforms, setContactPlatforms] = useState<ContactPlatformRow[]>([]);
+  const [contactPlatforms, setContactPlatforms] = useState<
+    ContactPlatformRow[]
+  >([]);
   const [contactPlatformsLoading, setContactPlatformsLoading] = useState(false);
-  const [contactPlatformsError, setContactPlatformsError] = useState<string>("");
+  const [contactPlatformsError, setContactPlatformsError] =
+    useState<string>("");
 
   const [contacts, setContacts] = useState<UserContactItem[]>([]);
 
@@ -1127,11 +1137,15 @@ export function UserProfile()
   const [userPostsLoading, setUserPostsLoading] = useState(false);
   const [userPostsError, setUserPostsError] = useState<string>("");
 
-  const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(null);
+  const [editingSkillIndex, setEditingSkillIndex] = useState<number | null>(
+    null,
+  );
   const [editingSkillValue, setEditingSkillValue] = useState<string>("");
   const [skillEditError, setSkillEditError] = useState<string>("");
 
-  const [editingInterestIndex, setEditingInterestIndex] = useState<number | null>(null);
+  const [editingInterestIndex, setEditingInterestIndex] = useState<
+    number | null
+  >(null);
   const [editingInterestValue, setEditingInterestValue] = useState<string>("");
   const [interestEditError, setInterestEditError] = useState<string>("");
 
@@ -1142,7 +1156,9 @@ export function UserProfile()
 
   // Background image state
   const [backgroundModalOpen, setBackgroundModalOpen] = useState(false);
-  const [backgroundDraftFile, setBackgroundDraftFile] = useState<File | null>(null);
+  const [backgroundDraftFile, setBackgroundDraftFile] = useState<File | null>(
+    null,
+  );
   const [backgroundFileError, setBackgroundFileError] = useState<string>("");
   const [backgroundSaveError, setBackgroundSaveError] = useState<string>("");
   const [backgroundSaving, setBackgroundSaving] = useState(false);
@@ -1156,7 +1172,9 @@ export function UserProfile()
   const [profileFileError, setProfileFileError] = useState<string>("");
   const [profileSaveError, setProfileSaveError] = useState<string>("");
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(
+    null,
+  );
   const [profilePictureRemove, setProfilePictureRemove] = useState(false);
   const profileImageUrl = useObjectUrl(profileImageFile);
   const profileDraftUrl = useObjectUrl(profileDraftFile);
@@ -1169,22 +1187,28 @@ export function UserProfile()
   const [viewedAuthUid, setViewedAuthUid] = useState<string | null>(null);
 
   const [bio, setBio] = useState<string>("");
-  
-  const [selectedContactPlatformId, setSelectedContactPlatformId] = useState<string>("");
+
+  const [selectedContactPlatformId, setSelectedContactPlatformId] =
+    useState<string>("");
   const [contactPickerOpen, setContactPickerOpen] = useState<boolean>(false);
-  const [contactsDraft, setContactsDraft] = useState<UserContactDraftItem[]>([]);
+  const [contactsDraft, setContactsDraft] = useState<UserContactDraftItem[]>(
+    [],
+  );
   const [contactsDraftError, setContactsDraftError] = useState<string>("");
 
   const [nameDraft, setNameDraft] = useState<string>(displayName);
   const [bioDraft, setBioDraft] = useState<string>(bio);
 
   const effectiveBackgroundPreviewUrl = backgroundDraftUrl ?? backgroundImgUrl;
-  const effectiveProfilePreviewUrl =
-    profilePictureRemove
-      ? placeholderUserImg
-      : profileDraftUrl ?? profileImageUrl ?? profilePictureUrl ?? placeholderUserImg;
+  const effectiveProfilePreviewUrl = profilePictureRemove
+    ? placeholderUserImg
+    : (profileDraftUrl ??
+      profileImageUrl ??
+      profilePictureUrl ??
+      placeholderUserImg);
 
-  const canEdit = !!currentAuthUid && !!viewedAuthUid && currentAuthUid === viewedAuthUid;
+  const canEdit =
+    !!currentAuthUid && !!viewedAuthUid && currentAuthUid === viewedAuthUid;
 
   const anyModalOpen = backgroundModalOpen || profileModalOpen;
 
@@ -1193,13 +1217,14 @@ export function UserProfile()
 
     function isUuid(value: string) {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        value
+        value,
       );
     }
 
     async function loadUserInfo() {
       try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
         if (userError) throw userError;
         const authUid = userData.user?.id;
 
@@ -1238,7 +1263,9 @@ export function UserProfile()
             .eq("student_id", routeValue)
             .maybeSingle();
 
-          let resolvedAuthUid = (byStudent as unknown as { auth_uid?: unknown } | null)?.auth_uid;
+          let resolvedAuthUid = (
+            byStudent as unknown as { auth_uid?: unknown } | null
+          )?.auth_uid;
 
           if (!resolvedAuthUid && isUuid(routeValue)) {
             const { data: byAuth } = await supabase
@@ -1246,7 +1273,9 @@ export function UserProfile()
               .select("auth_uid")
               .eq("auth_uid", routeValue)
               .maybeSingle();
-            resolvedAuthUid = (byAuth as unknown as { auth_uid?: unknown } | null)?.auth_uid;
+            resolvedAuthUid = (
+              byAuth as unknown as { auth_uid?: unknown } | null
+            )?.auth_uid;
           }
 
           if (typeof resolvedAuthUid === "string" && resolvedAuthUid) {
@@ -1288,11 +1317,17 @@ export function UserProfile()
         setUserPostsLoading(true);
         setUserPostsError("");
 
-        const [userInfoRes, userProfileRes, userSkillsRes, userInterestsRes, userContactsRes] = await Promise.all([
+        const [
+          userInfoRes,
+          userProfileRes,
+          userSkillsRes,
+          userInterestsRes,
+          userContactsRes,
+        ] = await Promise.all([
           supabase
             .from("user_info")
             .select(
-              "name,batch,department,student_id,departments_lookup(department_name)"
+              "name,batch,department,student_id,departments_lookup(department_name)",
             )
             .eq("auth_uid", targetAuthUid)
             .maybeSingle(),
@@ -1311,7 +1346,9 @@ export function UserProfile()
             .eq("auth_uid", targetAuthUid),
           supabase
             .from("user_contacts")
-            .select("platform_id,contact_link,contacts_platform_lookup(platform)")
+            .select(
+              "platform_id,contact_link,contacts_platform_lookup(platform)",
+            )
             .eq("auth_uid", targetAuthUid),
         ]);
 
@@ -1327,13 +1364,17 @@ export function UserProfile()
         const profile = userProfileRes.data as unknown as UserProfileRow | null;
 
         const skillIds: number[] = [];
-        for (const row of (userSkillsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+        for (const row of (userSkillsRes.data ?? []) as unknown as Array<
+          Record<string, unknown>
+        >) {
           const idVal = row.skill_id;
           if (typeof idVal === "number") skillIds.push(idVal);
         }
 
         const interestIds: number[] = [];
-        for (const row of (userInterestsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+        for (const row of (userInterestsRes.data ?? []) as unknown as Array<
+          Record<string, unknown>
+        >) {
           const idVal = row.interest_id;
           if (typeof idVal === "number") interestIds.push(idVal);
         }
@@ -1347,7 +1388,9 @@ export function UserProfile()
             .in("id", allIds);
           if (lookupError) throw lookupError;
 
-          for (const row of (lookupData ?? []) as unknown as Array<Record<string, unknown>>) {
+          for (const row of (lookupData ?? []) as unknown as Array<
+            Record<string, unknown>
+          >) {
             const idVal = row.id;
             const skillVal = row.skill;
             if (typeof idVal === "number" && typeof skillVal === "string") {
@@ -1358,20 +1401,32 @@ export function UserProfile()
 
         const loadedSkills = skillIds
           .map((id) => lookupById.get(id))
-          .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+          .filter(
+            (x): x is string => typeof x === "string" && x.trim().length > 0,
+          );
 
         const loadedInterests = interestIds
           .map((id) => lookupById.get(id))
-          .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+          .filter(
+            (x): x is string => typeof x === "string" && x.trim().length > 0,
+          );
 
         const loadedContacts: UserContactItem[] = [];
-        for (const row of (userContactsRes.data ?? []) as unknown as Array<Record<string, unknown>>) {
+        for (const row of (userContactsRes.data ?? []) as unknown as Array<
+          Record<string, unknown>
+        >) {
           const platformIdVal = row.platform_id;
           const linkVal = row.contact_link;
-          const lookupObj = row.contacts_platform_lookup as Record<string, unknown> | null | undefined;
+          const lookupObj = row.contacts_platform_lookup as
+            | Record<string, unknown>
+            | null
+            | undefined;
           const platformVal = lookupObj?.platform;
 
-          if (typeof platformIdVal === "number" && typeof linkVal === "string") {
+          if (
+            typeof platformIdVal === "number" &&
+            typeof linkVal === "string"
+          ) {
             loadedContacts.push({
               platformId: platformIdVal,
               platform: typeof platformVal === "string" ? platformVal : "",
@@ -1383,14 +1438,19 @@ export function UserProfile()
         const { data: postsRows, error: postsError } = await supabase
           .from("user_posts")
           .select(
-            "post_id, all_posts!user_posts_post_id_fkey(post_id,type,title,description,created_at)"
+            "post_id, all_posts!user_posts_post_id_fkey(post_id,type,title,description,created_at)",
           )
           .eq("auth_uid", targetAuthUid);
         if (postsError) throw postsError;
 
         const loadedPosts: UserPostItem[] = [];
-        for (const row of (postsRows ?? []) as unknown as Array<Record<string, unknown>>) {
-          const postObj = row.all_posts as Record<string, unknown> | null | undefined;
+        for (const row of (postsRows ?? []) as unknown as Array<
+          Record<string, unknown>
+        >) {
+          const postObj = row.all_posts as
+            | Record<string, unknown>
+            | null
+            | undefined;
           const postId = postObj?.post_id;
           const type = postObj?.type;
           const title = postObj?.title;
@@ -1474,7 +1534,9 @@ export function UserProfile()
         if (!alive) return;
 
         const parsed: ContactPlatformRow[] = [];
-        for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+        for (const row of (data ?? []) as unknown as Array<
+          Record<string, unknown>
+        >) {
           const idVal = row.id;
           const platformVal = row.platform;
           if (typeof idVal === "number" && typeof platformVal === "string") {
@@ -1588,7 +1650,7 @@ export function UserProfile()
     }
 
     const oldLookup = skillsLookup.find(
-      (x) => normalizeText(x.skill) === normalizeText(currentValue)
+      (x) => normalizeText(x.skill) === normalizeText(currentValue),
     );
     if (!oldLookup) {
       setSkillEditError("Could not find this skill in lookup.");
@@ -1596,7 +1658,8 @@ export function UserProfile()
     }
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
       if (authError) throw authError;
       const authUid = authData.user?.id;
       if (!authUid) {
@@ -1605,7 +1668,7 @@ export function UserProfile()
       }
 
       let newLookup = skillsLookup.find(
-        (x) => normalizeText(x.skill) === normalizeText(nextValue)
+        (x) => normalizeText(x.skill) === normalizeText(nextValue),
       );
 
       if (!newLookup) {
@@ -1624,7 +1687,9 @@ export function UserProfile()
         }
         newLookup = { id: idValue, skill: skillValue };
         setSkillsLookup((prev) =>
-          prev.some((p) => p.id === newLookup!.id) ? prev : [...prev, newLookup!]
+          prev.some((p) => p.id === newLookup!.id)
+            ? prev
+            : [...prev, newLookup!],
         );
       }
 
@@ -1647,8 +1712,51 @@ export function UserProfile()
         .eq("skill_id", oldLookup.id);
       if (updateError) throw updateError;
 
-      setSkills((prev) => prev.map((s, i) => (i === index ? newLookup!.skill : s)));
+      setSkills((prev) =>
+        prev.map((s, i) => (i === index ? newLookup!.skill : s)),
+      );
       cancelEditSkill();
+    } catch (e: unknown) {
+      setSkillEditError(getErrorMessage(e));
+    }
+  }
+
+  async function deleteSkill(index: number) {
+    if (!canEdit) {
+      setSkillEditError("You can only edit your own profile.");
+      return;
+    }
+
+    const currentValue = skills[index];
+    if (!currentValue) return;
+
+    const lookup = skillsLookup.find(
+      (x) => normalizeText(x.skill) === normalizeText(currentValue),
+    );
+    if (!lookup) {
+      setSkillEditError("Could not find this skill in lookup.");
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
+      if (authError) throw authError;
+      const authUid = authData.user?.id;
+      if (!authUid) {
+        setSkillEditError("You need to be logged in to delete this.");
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from("user_skills")
+        .delete()
+        .eq("auth_uid", authUid)
+        .eq("skill_id", lookup.id);
+      if (deleteError) throw deleteError;
+
+      setSkills((prev) => prev.filter((_, i) => i !== index));
+      setSkillEditError("");
     } catch (e: unknown) {
       setSkillEditError(getErrorMessage(e));
     }
@@ -1686,7 +1794,7 @@ export function UserProfile()
     }
 
     const oldLookup = skillsLookup.find(
-      (x) => normalizeText(x.skill) === normalizeText(currentValue)
+      (x) => normalizeText(x.skill) === normalizeText(currentValue),
     );
     if (!oldLookup) {
       setInterestEditError("Could not find this interest in lookup.");
@@ -1694,7 +1802,8 @@ export function UserProfile()
     }
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
       if (authError) throw authError;
       const authUid = authData.user?.id;
       if (!authUid) {
@@ -1703,7 +1812,7 @@ export function UserProfile()
       }
 
       let newLookup = skillsLookup.find(
-        (x) => normalizeText(x.skill) === normalizeText(nextValue)
+        (x) => normalizeText(x.skill) === normalizeText(nextValue),
       );
 
       if (!newLookup) {
@@ -1722,7 +1831,9 @@ export function UserProfile()
         }
         newLookup = { id: idValue, skill: skillValue };
         setSkillsLookup((prev) =>
-          prev.some((p) => p.id === newLookup!.id) ? prev : [...prev, newLookup!]
+          prev.some((p) => p.id === newLookup!.id)
+            ? prev
+            : [...prev, newLookup!],
         );
       }
 
@@ -1745,8 +1856,51 @@ export function UserProfile()
         .eq("interest_id", oldLookup.id);
       if (updateError) throw updateError;
 
-      setInterests((prev) => prev.map((s, i) => (i === index ? newLookup!.skill : s)));
+      setInterests((prev) =>
+        prev.map((s, i) => (i === index ? newLookup!.skill : s)),
+      );
       cancelEditInterest();
+    } catch (e: unknown) {
+      setInterestEditError(getErrorMessage(e));
+    }
+  }
+
+  async function deleteInterest(index: number) {
+    if (!canEdit) {
+      setInterestEditError("You can only edit your own profile.");
+      return;
+    }
+
+    const currentValue = interests[index];
+    if (!currentValue) return;
+
+    const lookup = skillsLookup.find(
+      (x) => normalizeText(x.skill) === normalizeText(currentValue),
+    );
+    if (!lookup) {
+      setInterestEditError("Could not find this interest in lookup.");
+      return;
+    }
+
+    try {
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
+      if (authError) throw authError;
+      const authUid = authData.user?.id;
+      if (!authUid) {
+        setInterestEditError("You need to be logged in to delete this.");
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from("user_interests")
+        .delete()
+        .eq("auth_uid", authUid)
+        .eq("interest_id", lookup.id);
+      if (deleteError) throw deleteError;
+
+      setInterests((prev) => prev.filter((_, i) => i !== index));
+      setInterestEditError("");
     } catch (e: unknown) {
       setInterestEditError(getErrorMessage(e));
     }
@@ -1783,7 +1937,7 @@ export function UserProfile()
         key: generateUuidV4(),
         platformId: c.platformId,
         contactLink: c.contactLink,
-      }))
+      })),
     );
     setProfileModalOpen(true);
   }
@@ -1817,7 +1971,9 @@ export function UserProfile()
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [anyModalOpen]);
 
-  const onPickBackgroundFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+  const onPickBackgroundFile: React.ChangeEventHandler<HTMLInputElement> = (
+    e,
+  ) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
@@ -1861,7 +2017,8 @@ export function UserProfile()
     setBackgroundSaving(true);
     setBackgroundSaveError("");
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
       if (userError) throw userError;
       const authUid = userData.user?.id;
       if (!authUid) {
@@ -1871,15 +2028,13 @@ export function UserProfile()
 
       const url = await uploadProfileImage(authUid, backgroundDraftFile);
 
-      const { error: upsertError } = await supabase
-        .from("user_profile")
-        .upsert(
-          {
-            auth_uid: authUid,
-            background_img_url: url,
-          },
-          { onConflict: "auth_uid" }
-        );
+      const { error: upsertError } = await supabase.from("user_profile").upsert(
+        {
+          auth_uid: authUid,
+          background_img_url: url,
+        },
+        { onConflict: "auth_uid" },
+      );
       if (upsertError) throw upsertError;
 
       setBackgroundImgUrl(url);
@@ -1899,7 +2054,8 @@ export function UserProfile()
     setBackgroundSaving(true);
     setBackgroundSaveError("");
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
       if (userError) throw userError;
       const authUid = userData.user?.id;
       if (!authUid) {
@@ -1907,15 +2063,13 @@ export function UserProfile()
         return;
       }
 
-      const { error: upsertError } = await supabase
-        .from("user_profile")
-        .upsert(
-          {
-            auth_uid: authUid,
-            background_img_url: null,
-          },
-          { onConflict: "auth_uid" }
-        );
+      const { error: upsertError } = await supabase.from("user_profile").upsert(
+        {
+          auth_uid: authUid,
+          background_img_url: null,
+        },
+        { onConflict: "auth_uid" },
+      );
       if (upsertError) throw upsertError;
 
       setBackgroundImgUrl(null);
@@ -1944,7 +2098,8 @@ export function UserProfile()
     setProfileSaveError("");
     setContactsDraftError("");
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
       if (userError) throw userError;
       const authUid = userData.user?.id;
       if (!authUid) {
@@ -1956,12 +2111,18 @@ export function UserProfile()
       if (profilePictureRemove) {
         nextProfilePictureUrl = null;
       } else if (profileDraftFile) {
-        nextProfilePictureUrl = await uploadProfileImage(authUid, profileDraftFile);
+        nextProfilePictureUrl = await uploadProfileImage(
+          authUid,
+          profileDraftFile,
+        );
       }
 
       const { error: userInfoError } = await supabase
         .from("user_info")
-        .upsert({ auth_uid: authUid, name: nextName }, { onConflict: "auth_uid" });
+        .upsert(
+          { auth_uid: authUid, name: nextName },
+          { onConflict: "auth_uid" },
+        );
       if (userInfoError) throw userInfoError;
 
       const { error: userProfileError } = await supabase
@@ -1972,7 +2133,7 @@ export function UserProfile()
             bio: nextBio ? nextBio : null,
             profile_picture_url: nextProfilePictureUrl,
           },
-          { onConflict: "auth_uid" }
+          { onConflict: "auth_uid" },
         );
       if (userProfileError) throw userProfileError;
 
@@ -1982,7 +2143,9 @@ export function UserProfile()
           platformId: c.platformId,
           contactLink: c.contactLink.trim(),
         }))
-        .filter((c) => Number.isFinite(c.platformId) && c.contactLink.length > 0);
+        .filter(
+          (c) => Number.isFinite(c.platformId) && c.contactLink.length > 0,
+        );
 
       const { error: deleteContactsError } = await supabase
         .from("user_contacts")
@@ -1997,7 +2160,7 @@ export function UserProfile()
             cleanedContacts.map((c) => ({
               platform_id: c.platformId,
               contact_link: c.contactLink,
-            }))
+            })),
           );
         if (insertContactsError) throw insertContactsError;
       }
@@ -2008,9 +2171,10 @@ export function UserProfile()
       setContacts(
         cleanedContacts.map((c) => ({
           platformId: c.platformId,
-          platform: contactPlatforms.find((p) => p.id === c.platformId)?.platform ?? "",
+          platform:
+            contactPlatforms.find((p) => p.id === c.platformId)?.platform ?? "",
           contactLink: c.contactLink,
-        }))
+        })),
       );
 
       if (profileDraftFile) {
@@ -2025,7 +2189,7 @@ export function UserProfile()
     }
   };
 
-  return(
+  return (
     <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
       <AddLookupItemModal
         open={addLookupModalOpen}
@@ -2036,21 +2200,24 @@ export function UserProfile()
         onClose={() => setAddLookupModalOpen(false)}
         onLookupItemCreated={(item) =>
           setSkillsLookup((prev) =>
-            prev.some((p) => p.id === item.id) ? prev : [...prev, item]
+            prev.some((p) => p.id === item.id) ? prev : [...prev, item],
           )
         }
         onInserted={(value) => {
           if (addLookupModalMode === "skills") {
-            setSkills((prev) => (prev.includes(value) ? prev : [...prev, value]));
+            setSkills((prev) =>
+              prev.includes(value) ? prev : [...prev, value],
+            );
           } else {
             setInterests((prev) =>
-              prev.includes(value) ? prev : [...prev, value]
+              prev.includes(value) ? prev : [...prev, value],
             );
           }
         }}
       />
-      <div className="flex flex-col lg:gap-5 lg:w-[70vw]"> {/*profile content*/}
-        
+      <div className="flex flex-col lg:gap-5 lg:w-[70vw]">
+        {" "}
+        {/*profile content*/}
         {/* profile picture, basic details and bio */}
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl flex flex-col h-fit">
           <div
@@ -2094,7 +2261,20 @@ export function UserProfile()
                 </button>
               )}
             </div>
-            <h3 className="font-header">{displayName}</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="font-header">{displayName}</h3>
+              {!canEdit && viewedAuthUid && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/messaging")}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-200"
+                  aria-label="Send message"
+                >
+                  <LucideMessageCircle className="size-4" />
+                  <span className="text-sm font-medium">Message</span>
+                </button>
+              )}
+            </div>
             {!!studentId && <h6>{studentId}</h6>}
             {!!batchLabel && <h6>{batchLabel}</h6>}
             {!!bio && <p className="lg:my-3">{bio}</p>}
@@ -2112,17 +2292,24 @@ export function UserProfile()
                       target={isEmail ? undefined : "_blank"}
                       rel={isEmail ? undefined : "noreferrer"}
                       className="flex lg:gap-2 items-center hover:opacity-80"
-                      aria-label={c.platform ? `${c.platform} contact` : "Contact"}
+                      aria-label={
+                        c.platform ? `${c.platform} contact` : "Contact"
+                      }
                     >
-                      <img src={getPlatformIconSrc(c.platform)} className="size-8" alt="Contact" />
-                      <p className="max-w-[18rem] truncate">{displayContactLinkText(href)}</p>
+                      <img
+                        src={getPlatformIconSrc(c.platform)}
+                        className="size-8"
+                        alt="Contact"
+                      />
+                      <p className="max-w-[18rem] truncate">
+                        {displayContactLinkText(href)}
+                      </p>
                     </a>
                   );
                 })}
             </div>
           </div>
         </div>
-
         {/* Edit Background Image Modal */}
         {backgroundModalOpen && (
           <>
@@ -2140,15 +2327,23 @@ export function UserProfile()
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="lg:flex lg:justify-between lg:items-center">
-                  <h4 className="lg:font-header text-text-lm lg:font-medium">Edit Background Image</h4>
-                  <button type="button" onClick={closeBackgroundModal} className="cursor-pointer">
+                  <h4 className="lg:font-header text-text-lm lg:font-medium">
+                    Edit Background Image
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={closeBackgroundModal}
+                    className="cursor-pointer"
+                  >
                     <img src={crossBtnIcon} alt="Close modal" />
                   </button>
                 </div>
 
                 <div className="flex flex-col gap-4 lg:mt-4">
                   {backgroundSaveError && (
-                    <p className="text-sm text-accent-lm">{backgroundSaveError}</p>
+                    <p className="text-sm text-accent-lm">
+                      {backgroundSaveError}
+                    </p>
                   )}
 
                   <div
@@ -2170,7 +2365,7 @@ export function UserProfile()
                         <input
                           id="background-image-file"
                           type="file"
-                            accept="image/png,image/jpeg,image/jpg"
+                          accept="image/png,image/jpeg,image/jpg"
                           onChange={onPickBackgroundFile}
                           className="hidden"
                         />
@@ -2199,9 +2394,10 @@ export function UserProfile()
                       )}
                     </div>
                     {backgroundFileError && (
-                      <p className="text-sm text-accent-lm">{backgroundFileError}</p>
+                      <p className="text-sm text-accent-lm">
+                        {backgroundFileError}
+                      </p>
                     )}
-
                   </div>
 
                   <div className="flex justify-end gap-3">
@@ -2227,7 +2423,6 @@ export function UserProfile()
             </div>
           </>
         )}
-
         {/* Edit Profile Modal */}
         {profileModalOpen && (
           <>
@@ -2245,8 +2440,14 @@ export function UserProfile()
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="lg:flex lg:justify-between lg:items-center">
-                  <h4 className="lg:font-header text-text-lm lg:font-medium">Edit Profile</h4>
-                  <button type="button" onClick={closeProfileModal} className="cursor-pointer">
+                  <h4 className="lg:font-header text-text-lm lg:font-medium">
+                    Edit Profile
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={closeProfileModal}
+                    className="cursor-pointer"
+                  >
                     <img src={crossBtnIcon} alt="Close modal" />
                   </button>
                 </div>
@@ -2287,24 +2488,30 @@ export function UserProfile()
                           )}
                         </div>
 
-                        {profilePictureUrl && !profileDraftFile && !profilePictureRemove && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProfilePictureRemove(true);
-                              setProfileDraftFile(null);
-                            }}
-                            className="text-sm text-accent-lm border border-accent-lm rounded-md px-3 py-2"
-                          >
-                            Remove current
-                          </button>
-                        )}
+                        {profilePictureUrl &&
+                          !profileDraftFile &&
+                          !profilePictureRemove && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProfilePictureRemove(true);
+                                setProfileDraftFile(null);
+                              }}
+                              className="text-sm text-accent-lm border border-accent-lm rounded-md px-3 py-2"
+                            >
+                              Remove current
+                            </button>
+                          )}
                       </div>
                       {profileFileError && (
-                        <p className="text-sm text-accent-lm">{profileFileError}</p>
+                        <p className="text-sm text-accent-lm">
+                          {profileFileError}
+                        </p>
                       )}
                       {profilePictureRemove && (
-                        <p className="text-sm text-text-lighter-lm">Profile picture will be removed on Save.</p>
+                        <p className="text-sm text-text-lighter-lm">
+                          Profile picture will be removed on Save.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -2348,17 +2555,25 @@ export function UserProfile()
                         </button>
                       </div>
                       {contactsDraftError && (
-                        <p className="text-sm text-accent-lm">{contactsDraftError}</p>
+                        <p className="text-sm text-accent-lm">
+                          {contactsDraftError}
+                        </p>
                       )}
                       {contactPlatformsError && (
-                        <p className="text-sm text-accent-lm">{contactPlatformsError}</p>
+                        <p className="text-sm text-accent-lm">
+                          {contactPlatformsError}
+                        </p>
                       )}
                       {!!contactsDraft.length && (
                         <div className="flex flex-col gap-2">
                           {contactsDraft.map((c) => {
                             const platformName =
-                              contactPlatforms.find((p) => p.id === c.platformId)?.platform ??
-                              contacts.find((x) => x.platformId === c.platformId)?.platform ??
+                              contactPlatforms.find(
+                                (p) => p.id === c.platformId,
+                              )?.platform ??
+                              contacts.find(
+                                (x) => x.platformId === c.platformId,
+                              )?.platform ??
                               "";
                             return (
                               <div
@@ -2368,7 +2583,11 @@ export function UserProfile()
                                 <img
                                   src={getPlatformIconSrc(platformName)}
                                   className="size-6"
-                                  alt={platformName ? `${platformName} icon` : "Platform icon"}
+                                  alt={
+                                    platformName
+                                      ? `${platformName} icon`
+                                      : "Platform icon"
+                                  }
                                 />
                                 <input
                                   value={c.contactLink}
@@ -2376,8 +2595,10 @@ export function UserProfile()
                                     const next = e.target.value;
                                     setContactsDraft((prev) =>
                                       prev.map((row) =>
-                                        row.key === c.key ? { ...row, contactLink: next } : row
-                                      )
+                                        row.key === c.key
+                                          ? { ...row, contactLink: next }
+                                          : row,
+                                      ),
                                     );
                                   }}
                                   className="flex-1 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
@@ -2385,20 +2606,22 @@ export function UserProfile()
                                 />
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    {
-                                      setContactsDraft((prev) =>
-                                        prev.filter((row) => row.key !== c.key)
-                                      );
-                                      // Reset so user can re-select the same platform again later
-                                      setSelectedContactPlatformId("");
-                                      setContactsDraftError("");
-                                    }
-                                  }
+                                  onClick={() => {
+                                    setContactsDraft((prev) =>
+                                      prev.filter((row) => row.key !== c.key),
+                                    );
+                                    // Reset so user can re-select the same platform again later
+                                    setSelectedContactPlatformId("");
+                                    setContactsDraftError("");
+                                  }}
                                   className="rounded-full p-1 hover:bg-hover-lm"
                                   aria-label="Remove contact"
                                 >
-                                  <img src={crossBtnIcon} className="size-4" alt="Remove" />
+                                  <img
+                                    src={crossBtnIcon}
+                                    className="size-4"
+                                    alt="Remove"
+                                  />
                                 </button>
                               </div>
                             );
@@ -2418,8 +2641,14 @@ export function UserProfile()
                               if (!Number.isFinite(platformId)) return;
 
                               // Prevent duplicates for the same platform by default
-                              if (contactsDraft.some((c) => c.platformId === platformId)) {
-                                setContactsDraftError("You already added this platform.");
+                              if (
+                                contactsDraft.some(
+                                  (c) => c.platformId === platformId,
+                                )
+                              ) {
+                                setContactsDraftError(
+                                  "You already added this platform.",
+                                );
                                 // Reset so selecting the same value again works
                                 setSelectedContactPlatformId("");
                                 return;
@@ -2427,7 +2656,11 @@ export function UserProfile()
 
                               setContactsDraft((prev) => [
                                 ...prev,
-                                { key: generateUuidV4(), platformId, contactLink: "" },
+                                {
+                                  key: generateUuidV4(),
+                                  platformId,
+                                  contactLink: "",
+                                },
                               ]);
 
                               // Hide the picker after one selection; user can click + to add another.
@@ -2472,16 +2705,18 @@ export function UserProfile()
             </div>
           </>
         )}
-
         {/* skills */}
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
-          
           {/* skill header */}
           <div className="flex justify-between items-center">
-            <h4 className="font-header">Skills</h4>   
+            <h4 className="font-header">Skills</h4>
             <div className="space-x-1">
               {canEdit && (
-                <button type="button" onClick={openAddSkillsModal} className="cursor-pointer">
+                <button
+                  type="button"
+                  onClick={openAddSkillsModal}
+                  className="cursor-pointer"
+                >
                   <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
                 </button>
               )}
@@ -2518,19 +2753,30 @@ export function UserProfile()
                       <h6>{skill}</h6>
                     )}
                     {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          editingSkillIndex === index
-                            ? saveSkillEdit(index)
-                            : startEditSkill(index)
-                        }
-                        aria-label={
-                          editingSkillIndex === index ? "Save skill" : "Edit skill"
-                        }
-                      >
-                        <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            editingSkillIndex === index
+                              ? saveSkillEdit(index)
+                              : startEditSkill(index)
+                          }
+                          aria-label={
+                            editingSkillIndex === index
+                              ? "Save skill"
+                              : "Edit skill"
+                          }
+                        >
+                          <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteSkill(index)}
+                          aria-label="Delete skill"
+                        >
+                          <LucideTrash2 className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucideTrash2>
+                        </button>
+                      </div>
                     )}
                   </div>
                   {index !== skills.length - 1 && (
@@ -2539,20 +2785,24 @@ export function UserProfile()
                 </div>
               ))
             ) : (
-              <p className="text-sm text-text-lighter-lm">No skills added yet.</p>
+              <p className="text-sm text-text-lighter-lm">
+                No skills added yet.
+              </p>
             )}
           </div>
         </div>
-
         {/* interests */}
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
-          
           {/* skill header */}
           <div className="flex justify-between items-center">
-            <h4 className="font-header">Interests</h4>   
+            <h4 className="font-header">Interests</h4>
             <div className="space-x-1">
               {canEdit && (
-                <button type="button" onClick={openAddInterestsModal} className="cursor-pointer">
+                <button
+                  type="button"
+                  onClick={openAddInterestsModal}
+                  className="cursor-pointer"
+                >
                   <LucidePlus className="size-7 hover:text-accent-lm transition duration-200"></LucidePlus>
                 </button>
               )}
@@ -2571,7 +2821,9 @@ export function UserProfile()
                     {editingInterestIndex === index ? (
                       <input
                         value={editingInterestValue}
-                        onChange={(e) => setEditingInterestValue(e.target.value)}
+                        onChange={(e) =>
+                          setEditingInterestValue(e.target.value)
+                        }
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
@@ -2589,21 +2841,30 @@ export function UserProfile()
                       <h6>{interest}</h6>
                     )}
                     {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          editingInterestIndex === index
-                            ? saveInterestEdit(index)
-                            : startEditInterest(index)
-                        }
-                        aria-label={
-                          editingInterestIndex === index
-                            ? "Save interest"
-                            : "Edit interest"
-                        }
-                      >
-                        <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            editingInterestIndex === index
+                              ? saveInterestEdit(index)
+                              : startEditInterest(index)
+                          }
+                          aria-label={
+                            editingInterestIndex === index
+                              ? "Save interest"
+                              : "Edit interest"
+                          }
+                        >
+                          <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucidePencil>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteInterest(index)}
+                          aria-label="Delete interest"
+                        >
+                          <LucideTrash2 className="size-5 cursor-pointer hover:text-accent-lm transition duration-200"></LucideTrash2>
+                        </button>
+                      </div>
                     )}
                   </div>
                   {index !== interests.length - 1 && (
@@ -2612,11 +2873,12 @@ export function UserProfile()
                 </div>
               ))
             ) : (
-              <p className="text-sm text-text-lighter-lm">No interests added yet.</p>
+              <p className="text-sm text-text-lighter-lm">
+                No interests added yet.
+              </p>
             )}
           </div>
         </div>
-
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
           <h4 className="font-header">Posts</h4>
           <div className="flex flex-col lg:gap-5 lg:mt-4">
@@ -2632,14 +2894,15 @@ export function UserProfile()
                   <div className="bg-secondary-lm hover:bg-hover-lm border border-stroke-grey hover:border-stroke-peach transition duration-200 lg:p-6 lg:rounded-lg cursor-pointer">
                     <div className="text-xs text-text-lighter-lm">{p.type}</div>
                     <h5 className="font-header">{p.title}</h5>
-                    <p className="text-sm text-text-lighter-lm">{p.description}</p>
+                    <p className="text-sm text-text-lighter-lm">
+                      {p.description}
+                    </p>
                   </div>
                 </Link>
               ))
             )}
           </div>
         </div>
-
       </div>
       <div className="flex flex-col lg:gap-5 lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
         <UpcomingEvents />
