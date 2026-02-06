@@ -120,6 +120,12 @@ export function EditProfileModal({
 
   if (!open) return null;
 
+  const saveLabel = profileSaving
+    ? profileDraftFile && !profilePictureRemove
+      ? "Uploading…"
+      : "Saving…"
+    : "Save";
+
   const onPickProfileFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
     const file = e.target.files?.[0] ?? null;
     if (!file) return;
@@ -197,6 +203,13 @@ export function EditProfileModal({
           { onConflict: "auth_uid" }
         );
       if (userProfileError) throw userProfileError;
+
+      // Optimistic cross-app update (e.g., TopNav avatar) without waiting for refresh/realtime.
+      window.dispatchEvent(
+        new CustomEvent("campus:profilePictureUpdated", {
+          detail: { authUid, url: nextProfilePictureUrl ?? null },
+        })
+      );
 
       const cleanedContacts = contactsDraft
         .map((c) => ({
@@ -290,16 +303,24 @@ export function EditProfileModal({
                     </label>
                   </div>
 
-                  {profilePictureUrl && profilePictureUrl !== PLACEHOLDER_USER_IMG && !profilePictureRemove && (
+                  {!profilePictureRemove && (profileDraftFile || (profilePictureUrl && profilePictureUrl !== PLACEHOLDER_USER_IMG)) && (
                     <button
                       type="button"
                       onClick={() => {
+                        if (profileDraftFile) {
+                          // Clearing the selected (not-yet-saved) file.
+                          setProfileDraftFile(null);
+                          setProfileFileError("");
+                          return;
+                        }
+
+                        // Removing the currently saved profile image.
                         setProfilePictureRemove(true);
                         setProfileDraftFile(null);
                       }}
                       className="text-sm text-accent-lm border border-accent-lm lg:rounded-md lg:px-3 lg:py-2 bg-primary-lm font-medium hover:bg-stroke-grey/20 cursor-pointer transition duration-150"
                     >
-                      Remove current
+                      {profileDraftFile ? "Remove selected" : "Remove current"}
                     </button>
                   )}
                 </div>
@@ -458,10 +479,11 @@ export function EditProfileModal({
               <button
                 type="button"
                 onClick={saveProfile}
-                className="lg:px-6 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-150 cursor-pointer"
+                className="lg:px-6 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={profileSaving}
+                aria-busy={profileSaving}
               >
-                Save
+                {saveLabel}
               </button>
             </div>
           </div>

@@ -143,7 +143,7 @@ export function ProfileSection() {
           setBio(next.bio);
           setProfilePictureUrl(next.profilePictureUrl);
           setContacts(next.contacts);
-          if (next.savedDraftFile) setProfileImageFile(next.savedDraftFile);
+          setProfileImageFile(next.savedDraftFile ?? null);
         }}
       />
     </>
