@@ -310,7 +310,7 @@ export default function AddLookupItemModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md text-text-lighter-lm/70 border border-stroke-grey bg-primary-lm hover:bg-stroke-grey/40 transition duration-150 cursor-pointer"
                 disabled={saving}
               >
                 Cancel
@@ -318,7 +318,7 @@ export default function AddLookupItemModal({
               <button
                 type="button"
                 onClick={onConfirm}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm disabled:opacity-50"
+                className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm hover:bg-hover-btn-lm transition duration-150 text-primary-lm disabled:opacity-50 cursor-pointer"
                 disabled={saving || lookupLoading}
               >
                 Confirm

@@ -159,11 +159,10 @@ export function EditBackgroundModal({
   return (
     <>
       <div
-        className="fixed inset-0"
-        style={{ zIndex: 10000, backgroundColor: "rgba(0,0,0,0.4)" }}
+        className="fixed inset-0 z-100 bg-[rgba(0,0,0,0.4)]"
         onMouseDown={onClose}
       />
-      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 10001 }}>
+      <div className="fixed inset-0 flex items-center justify-center z-101">
         <div
           className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-8 lg:py-6 lg:w-130 lg:relative lg:animate-slide-in max-h-[85vh] overflow-y-auto"
           onMouseDown={(e) => e.stopPropagation()}
@@ -203,12 +202,12 @@ export function EditBackgroundModal({
                   />
                   <label
                     htmlFor="background-image-file"
-                    className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm disabled:opacity-50 cursor-pointer"
+                    className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm disabled:opacity-50 hover:bg-hover-btn-lm transition duration-150 cursor-pointer"
                   >
                     Choose file
                   </label>
                   {draftFile?.name && (
-                    <p className="mt-1 text-sm text-text-lighter-lm max-w-[20rem] wrap-break-word">
+                    <p className="lg:mt-1 text-sm text-text-lighter-lm max-w-[20rem] wrap-break-word">
                       {draftFile.name}
                     </p>
                   )}
@@ -218,7 +217,7 @@ export function EditBackgroundModal({
                   <button
                     type="button"
                     onClick={removeCurrent}
-                    className="px-4 py-2 rounded-md border border-accent-lm text-accent-lm bg-primary-lm"
+                    className="lg:px-4 lg:py-2 lg:rounded-md border border-accent-lm text-accent-lm bg-primary-lm hover:bg-stroke-grey/20 transition duration-150 cursor-pointer"
                     disabled={saving}
                   >
                     Remove current
@@ -233,7 +232,7 @@ export function EditBackgroundModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md border text-text-lighter-lm/70 border-stroke-grey bg-primary-lm hover:bg-stroke-grey/40 transition duration-150 cursor-pointer"
                 disabled={saving}
               >
                 Cancel
@@ -242,7 +241,7 @@ export function EditBackgroundModal({
                 type="button"
                 onClick={confirm}
                 disabled={!draftFile || saving}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm disabled:opacity-50"
+                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-150 disabled:opacity-50 cursor-pointer"
               >
                 Confirm
               </button>
