@@ -19,7 +19,7 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
             {items
               .slice()
               .sort((a, b) => b.createdAt - a.createdAt)
-              .map((item) => (
+              .map((item, index) => (
                 <div
                   key={item.id}
                   className="lg:flex lg:flex-col lg:py-2 lg:px-3 hover:bg-secondary-lm hover:w-full hover:rounded-lg"
@@ -27,7 +27,7 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                   <div className="lg:flex lg:items-start lg:justify-between lg:gap-4">
                     <div className="min-w-0">
                       <p className="lg:font-medium text-md text-text-lm truncate">{item.title}</p>
-                      <p className="text-xs text-text-lighter-lm">
+                      <p className="text-sm text-text-lighter-lm">
                         {item.category}
                         {item.userName ? ` • by ${item.userName}` : ""}
                       </p>
@@ -37,7 +37,7 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                           {item.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="lg:font-bold bg-[#C23D00] text-[#FFFFFF] lg:px-2 lg:py-0.5 lg:rounded-full text-xs"
+                              className="border border-stroke-peach text-accent-lm lg:px-2 lg:py-0.5 lg:rounded-full text-xs"
                             >
                               {tag}
                             </span>
@@ -46,10 +46,13 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                       )}
                     </div>
 
-                    <p className="text-xs text-text-lighter-lm whitespace-nowrap">
+                    {/* <p className="text-xs text-text-lighter-lm whitespace-nowrap">
                       {new Date(item.createdAt).toLocaleDateString()}
-                    </p>
+                    </p> */}
                   </div>
+                  {index !== items.length - 1 && (
+                    <hr className="lg:mt-4 border-stroke-grey"></hr>
+                  )}
                 </div>
               ))}
           </div>

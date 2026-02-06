@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { UpcomingEvents } from "@/components/UpcomingEvents";
 
 import InterestedPosts from "./components/InterestedPosts";
 import type { InterestedItem } from "./backend/interestedStore";
+import { getInterested, subscribe as interestedSubscribe } from "./backend/interestedStore";
 
 import { UserProfileProvider } from "./components/UserProfileProvider";
 import { ProfileSection } from "./components/ProfileSection";
@@ -39,7 +40,14 @@ function UserProfileSidebar({ interestedPosts }: { interestedPosts: InterestedIt
 }
 
 export function UserProfile() {
-  const [interestedPosts] = useState<InterestedItem[]>([]);
+  const [interestedPosts, setInterestedPosts] = useState<InterestedItem[]>([]);
+
+  useEffect(() => {
+    // Initialize from store and subscribe for changes
+    setInterestedPosts(getInterested());
+    const unsub = interestedSubscribe((items) => setInterestedPosts(items));
+    return unsub;
+  }, []);
 
   return (
     <UserProfileProvider>
