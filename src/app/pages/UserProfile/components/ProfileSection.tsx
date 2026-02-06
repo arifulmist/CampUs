@@ -1,5 +1,5 @@
-import { LucidePencil } from "lucide-react";
-import { useMemo, useState } from "react";
+import { LucideMessageCircle, LucidePencil } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useUserProfileContext } from "./UserProfileContext";
 import {
@@ -12,6 +12,14 @@ import {
 } from "../userProfileUtils";
 import { EditBackgroundModal } from "./EditBackgroundModal";
 import { EditProfileModal } from "./EditProfileModal";
+
+import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import {
+  openChatWith,
+  setupRealtimeSubscription,
+} from "@/app/pages/Messaging/backend/chatStore";  
+
+import { supabase } from "../../../../../supabase/supabaseClient";
 
 export function ProfileSection() {
   const {
@@ -44,6 +52,28 @@ export function ProfileSection() {
     return profileImageUrl ?? profilePictureUrl ?? PLACEHOLDER_USER_IMG;
   }, [profileImageUrl, profilePictureUrl]);
 
+  const [messageDrawerOpen, setMessageDrawerOpen] = useState(false);
+  const [messageTarget, setMessageTarget] = useState<{
+    userId: string;
+    userName: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let messageChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setupMessages() {
+      messageChannel = await setupRealtimeSubscription();
+    }
+
+    setupMessages();
+
+    return () => {
+      if (messageChannel) {
+        supabase.removeChannel(messageChannel);
+      }
+    };
+  }, []);
+
   return (
     <>
       <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl flex flex-col h-fit">
@@ -71,7 +101,7 @@ export function ProfileSection() {
           )}
         </div>
 
-        <div className="flex flex-col lg:ml-8">
+        <div className="flex flex-col lg:mx-8">
 
           <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
             <img src={effectiveAvatarUrl} className="object-cover lg:size-35 rounded-full" alt="Profile" />
@@ -87,7 +117,28 @@ export function ProfileSection() {
             )}
           </div>
 
-          <h3 className="font-header">{displayName}</h3>
+          <div className="flex justify-between">
+            <h3 className="font-header">{displayName}</h3>
+            {!canEdit && currentAuthUid && studentId && (
+            <button
+              type="button"
+              onClick={() => {
+                openChatWith(studentId, displayName);
+                setMessageTarget({
+                  userId: studentId,
+                  userName: displayName,
+                });
+                setMessageDrawerOpen(true);
+              }}
+              className="flex items-center gap-2 lg:px-3 lg:rounded-xl bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-200 w-fit"
+              aria-label="Send message"
+            >
+              <LucideMessageCircle className="size-5" />
+              Message
+            </button>
+          )}
+          </div>
+
           {!!studentId && <h6>{studentId}</h6>}
           {!!batchLabel && <h6>{batchLabel}</h6>}
           {!!bio && <p className="lg:my-3">{bio}</p>}
@@ -146,6 +197,16 @@ export function ProfileSection() {
           setProfileImageFile(next.savedDraftFile ?? null);
         }}
       />
+
+      {messageDrawerOpen && (
+        <MessageDrawer
+          open={messageDrawerOpen}
+          onOpenChange={setMessageDrawerOpen}
+          userId={messageTarget?.userId}
+          userName={messageTarget?.userName ?? ""}
+          avatarSrc={undefined}
+        />
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { LucideCheck, LucidePencil, LucidePlus } from "lucide-react";
+import { LucideCheck, LucidePencil, LucidePlus, LucideTrash2 } from "lucide-react";
 import { useState } from "react";
 
 import AddLookupItemModal from "./AddLookupItemModal";
@@ -26,6 +26,7 @@ export function SkillsSection() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState<string>("");
   const [editError, setEditError] = useState<string>("");
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
   function startEdit(index: number) {
     if (!canEdit) return;
@@ -121,6 +122,51 @@ export function SkillsSection() {
     }
   }
 
+  async function deleteSkill(index: number) {
+    if (!canEdit) {
+      setEditError("You can only edit your own profile.");
+      return;
+    }
+
+    const currentValue = skills[index];
+    if (!currentValue) return;
+
+    const lookup = skillsLookup.find(
+      (x) => normalizeText(x.skill) === normalizeText(currentValue)
+    );
+    if (!lookup) {
+      setEditError("Could not find this skill in lookup.");
+      return;
+    }
+
+    try {
+      setDeletingIndex(index);
+      setEditError("");
+
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const authUid = authData.user?.id;
+      if (!authUid) {
+        setEditError("You need to be logged in to update this.");
+        return;
+      }
+
+      const { error: deleteError } = await supabase
+        .from("user_skills")
+        .delete()
+        .eq("auth_uid", authUid)
+        .eq("skill_id", lookup.id);
+      if (deleteError) throw deleteError;
+
+      setSkills((prev) => prev.filter((_, i) => i !== index));
+      if (editingIndex === index) cancelEdit();
+    } catch (e: unknown) {
+      setEditError(getErrorMessage(e));
+    } finally {
+      setDeletingIndex(null);
+    }
+  }
+
   return (
     <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
       <AddLookupItemModal
@@ -158,7 +204,7 @@ export function SkillsSection() {
               <div className="flex justify-between items-center">
                 {editingIndex === index ? (
                   <input
-                    className="flex-1 lg:mr-3 lg:rounded-md bg-primary-lm lg:px-3 lg:py-1 focus:outline-accent-lm lg:text-md"
+                    className="flex-1 lg:mr-3 lg:rounded-md border border-stroke-grey bg-primary-lm lg:px-3 lg:py-1 focus:outline-accent-lm lg:text-md"
                     autoFocus
                     value={editingValue}
                     onChange={(e) => setEditingValue(e.target.value)}
@@ -178,17 +224,31 @@ export function SkillsSection() {
                 )}
 
                 {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => (editingIndex === index ? saveEdit(index) : startEdit(index))}
-                    aria-label={editingIndex === index ? "Save skill" : "Edit skill"}
-                  >
-                    {editingIndex === index ? (
-                      <LucideCheck className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
-                    ) : (
-                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => (editingIndex === index ? saveEdit(index) : startEdit(index))}
+                      aria-label={editingIndex === index ? "Save skill" : "Edit skill"}
+                      disabled={deletingIndex === index}
+                    >
+                      {editingIndex === index ? (
+                        <LucideCheck className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                      ) : (
+                        <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                      )}
+                    </button>
+
+                    {editingIndex !== index && (
+                      <button
+                        type="button"
+                        onClick={() => deleteSkill(index)}
+                        aria-label="Delete skill"
+                        disabled={deletingIndex === index}
+                      >
+                        <LucideTrash2 className="lg:size-6 cursor-pointer hover:text-accent-lm transition duration-200" />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
 
@@ -196,7 +256,7 @@ export function SkillsSection() {
             </div>
           ))
         ) : (
-          <p className="text-sm text-text-lighter-lm">No skills added yet.</p>
+          <p className="text-text-lighter-lm">No skills added yet.</p>
         )}
       </div>
     </div>

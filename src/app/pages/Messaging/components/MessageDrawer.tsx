@@ -1,4 +1,3 @@
-"use client";
 import { useEffect, useMemo, useState } from "react";
 import {
   Drawer,
@@ -17,8 +16,10 @@ import {
   openChatWith,
   sendMessage,
   getThreads,
+  markMessagesAsRead,
   type ChatThread,
 } from "@/app/pages/Messaging/backend/chatStore";
+import { supabase } from "../../../../../supabase/supabaseClient";
 
 export type MessageDrawerProps = {
   open: boolean;
@@ -37,14 +38,17 @@ export default function MessageDrawer({
 }: MessageDrawerProps) {
   const [threads, setThreads] = useState<ChatThread[]>(() => getThreads());
   const [storeActiveUserId, setStoreActiveUserId] = useState<string | null>(
-    null
+    null,
   );
   const [text, setText] = useState("");
+  const [isUserOnline, setIsUserOnline] = useState<boolean>(false);
 
   // Ensure thread and set active on open
   useEffect(() => {
     if (open && userId) {
       openChatWith(userId, userName);
+      // Mark messages as read when opening the conversation
+      markMessagesAsRead(userId);
     }
   }, [open, userId, userName]);
 
@@ -56,11 +60,49 @@ export default function MessageDrawer({
     return unsub;
   }, []);
 
+  // Track if the user we're chatting with is online
+  useEffect(() => {
+    if (!userId || !open) return;
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setupPresenceTracking() {
+      try {
+        channel = supabase.channel("online-users");
+
+        channel
+          .on("presence", { event: "sync" }, () => {
+            const state = channel!.presenceState();
+            let isOnline = false;
+            Object.values(state).forEach((presences: Array<any>) => {
+              presences.forEach((presence: any) => {
+                if (presence.student_id === userId) {
+                  isOnline = true;
+                }
+              });
+            });
+            setIsUserOnline(isOnline);
+          })
+          .subscribe();
+      } catch (error) {
+        console.error("Error tracking user presence:", error);
+      }
+    }
+
+    setupPresenceTracking();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [userId, open]);
+
   const activeId = userId || storeActiveUserId || null;
   const activeThread = useMemo(
     () =>
-      activeId ? threads.find((t) => t.userId === activeId) ?? null : null,
-    [threads, activeId]
+      activeId ? (threads.find((t) => t.userId === activeId) ?? null) : null,
+    [threads, activeId],
   );
 
   const onSend = () => {
@@ -87,15 +129,28 @@ export default function MessageDrawer({
       >
         <DrawerHeader className="lg:flex-row lg:flex lg:items-center lg:justify-between lg:p-4 border-b border-stroke-grey">
           <div className="lg:flex lg:items-center lg:gap-3">
-            <Avatar className="lg:h-8 lg:w-8">
-              {avatarSrc ? <AvatarImage src={avatarSrc} /> : null}
-              <AvatarFallback>
-                {userName?.[0]?.toUpperCase() ?? "U"}
-              </AvatarFallback>
-            </Avatar>
-            <DrawerTitle className="text-base lg:font-semibold">
-              {activeThread ? activeThread.userName : "Messages"}
-            </DrawerTitle>
+            <div className="relative">
+              <Avatar className="lg:h-8 lg:w-8">
+                {avatarSrc ? <AvatarImage src={avatarSrc} /> : null}
+                <AvatarFallback>
+                  {userName?.[0]?.toUpperCase() ?? "U"}
+                </AvatarFallback>
+              </Avatar>
+              {isUserOnline && (
+                <span className="absolute bottom-0 right-0 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 border border-primary-lm"></span>
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <DrawerTitle className="text-base lg:font-semibold">
+                {activeThread ? activeThread.userName : "Messages"}
+              </DrawerTitle>
+              {isUserOnline && (
+                <span className="text-xs text-green-500">Active now</span>
+              )}
+            </div>
           </div>
           <DrawerClose asChild>
             <Button variant="ghost" size="icon" className="text-text-lm">
@@ -118,7 +173,9 @@ export default function MessageDrawer({
                     onClick={() => openChatWith(t.userId, t.userName)}
                     className="lg:w-full text-left lg:px-3 lg:py-2 lg:rounded-md lg:border border-stroke-grey hover:border-stroke-peach hover:bg-secondary-lm"
                   >
-                    <div className="lg:font-medium text-text-lm">{t.userName}</div>
+                    <div className="lg:font-medium text-text-lm">
+                      {t.userName}
+                    </div>
                     {t.messages.length > 0 && (
                       <div className="text-xs text-text-lighter-lm lg:mt-0.5 lg:line-clamp-1">
                         {t.messages[t.messages.length - 1].text}
@@ -139,15 +196,15 @@ export default function MessageDrawer({
                         "max-w-[75%] rounded-lg px-3 py-2 text-sm",
                         m.from === "me"
                           ? "ml-auto bg-message-user-lm text-primary-lm"
-                          : "mr-auto bg-message-other-lm text-text-lm"
+                          : "mr-auto bg-message-other-lm text-text-lm",
                       )}
                     >
                       {m.text}
-                      {"status" in m && m.from === "me" ? (
-                        <div className="lg:mt-1 text-[10px] text-text-lighter-lm">
-                          pending
+                      {m.from === "me" && m.status && (
+                        <div className="lg:mt-1 text-[10px] text-text-lighter-lm opacity-70">
+                          {m.status === "seen" ? "Seen" : "Sent"}
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   ))
                 ) : (

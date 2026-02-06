@@ -234,13 +234,11 @@ export default function AddLookupItemModal({
   return (
     <>
       <div
-        className="fixed inset-0"
-        style={{ zIndex: 10000, backgroundColor: "rgba(0,0,0,0.7)" }}
+        className="fixed inset-0 z-100 bg-[rgba(0,0,0,0.4)]"
         onMouseDown={onClose}
       />
       <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ zIndex: 10001 }}
+        className="fixed inset-0 flex items-center justify-center z-101"
       >
         <div
           className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-8 lg:py-6 lg:w-130 lg:relative lg:animate-slide-in max-h-[85vh] overflow-y-auto"
@@ -257,7 +255,7 @@ export default function AddLookupItemModal({
 
           <div className="flex flex-col gap-4 lg:mt-4">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">{headerText}</label>
+              {/* <label className="font-medium">{headerText}</label> */}
               <input
                 value={value}
                 onChange={(e) => {
@@ -265,7 +263,7 @@ export default function AddLookupItemModal({
                   setPickedSuggestion(null);
                   setError("");
                 }}
-                className="w-full rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 text-sm"
+                className="w-full rounded-md border border-stroke-grey bg-primary-lm focus:outline-accent-lm lg:px-3 lg:py-2 placeholder:text-text-lighter-lm/70"
                 placeholder={mode === "skills" ? "Type a skill..." : "Type an interest..."}
               />
 

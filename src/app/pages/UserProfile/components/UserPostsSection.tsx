@@ -19,7 +19,7 @@ export function UserPostsSection() {
         ) : userPostsError ? (
           <p className="text-sm text-accent-lm">{userPostsError}</p>
         ) : userPosts.length === 0 ? (
-          <p className="text-sm text-text-lighter-lm">No posts yet.</p>
+          <p className="text-text-lighter-lm">No posts yet.</p>
         ) : (
           userPosts.map((p) => (
             <Link key={p.postId} to={postPath(p.type, p.postId)}>

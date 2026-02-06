@@ -58,7 +58,7 @@ export function InterestedPosts({ items }: { items: InterestedItem[] }) {
                 </div>
               </div>
             ))}
-          <div className="lg:flex lg:justify-end lg:pt-3 lg:mt-auto">
+          <div className="lg:flex lg:justify-end lg:p-3 lg:w-full">
             <Link to="/collab">
               <ButtonCTA label={"Add More"} />
             </Link>

@@ -26,6 +26,17 @@ function UserProfileMainColumn() {
   );
 }
 
+function UserProfileSidebar({ interestedPosts }: { interestedPosts: InterestedItem[] }) {
+  const { canEdit } = useUserProfileContext();
+
+  return (
+    <div className="flex flex-col lg:gap-5 lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+      {canEdit ? <UpcomingEvents /> : null}
+      <InterestedPosts items={interestedPosts} />
+    </div>
+  );
+}
+
 export function UserProfile() {
   const [interestedPosts] = useState<InterestedItem[]>([]);
 
@@ -34,10 +45,7 @@ export function UserProfile() {
       <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
         <UserProfileMainColumn />
 
-        <div className="flex flex-col lg:gap-5 lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-          <UpcomingEvents />
-          <InterestedPosts items={interestedPosts} />
-        </div>
+        <UserProfileSidebar interestedPosts={interestedPosts} />
       </div>
     </UserProfileProvider>
   );

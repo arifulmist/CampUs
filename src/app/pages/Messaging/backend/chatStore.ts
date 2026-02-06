@@ -1,12 +1,12 @@
-// Simple in-memory chat store to manage threads and active chat
-// NOTE: Replace with real backend/state later.
+// Real-time chat store with Supabase integration
+import { supabase } from "../../../../../supabase/supabaseClient";
 
 export type ChatMessage = {
   id: string;
   from: "me" | "other";
   text: string;
   ts: number;
-  status?: "pending" | "sent" | "delivered" | "failed";
+  status?: "sent" | "seen" | "failed";
 };
 
 export type ChatThread = {
@@ -20,26 +20,15 @@ type Listener = (state: {
   activeUserId: string | null;
 }) => void;
 
-const STORAGE_KEY = "app.chat.v1";
-const state: { threads: ChatThread[]; activeUserId: string | null } = {
+const state: {
+  threads: ChatThread[];
+  activeUserId: string | null;
+  currentUserStudentId: string | null;
+} = {
   threads: [],
   activeUserId: null,
+  currentUserStudentId: null,
 };
-
-// hydrate from localStorage
-(function hydrate() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as {
-        threads?: ChatThread[];
-        activeUserId?: string | null;
-      };
-      state.threads = Array.isArray(parsed.threads) ? parsed.threads : [];
-      state.activeUserId = parsed.activeUserId ?? null;
-    }
-  } catch {}
-})();
 
 const listeners: Listener[] = [];
 
@@ -48,21 +37,11 @@ function notify() {
     threads: [...state.threads],
     activeUserId: state.activeUserId,
   };
-  try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        threads: state.threads,
-        activeUserId: state.activeUserId,
-      })
-    );
-  } catch {}
   listeners.forEach((l) => l(snapshot));
 }
 
 export function subscribe(listener: Listener) {
   listeners.push(listener);
-  // immediate publish
   listener({ threads: [...state.threads], activeUserId: state.activeUserId });
   return () => {
     const idx = listeners.indexOf(listener);
@@ -85,67 +64,292 @@ export function ensureThread(userId: string, userName?: string) {
   if (!t) {
     t = { userId: id, userName: userName ?? id, messages: [] };
     state.threads.push(t);
+  } else if (userName && t.userName !== userName) {
+    t.userName = userName;
   }
   return t;
 }
 
-export function openChatWith(userId: string, userName?: string) {
+// Load messages from Supabase for a conversation
+export async function loadMessagesFromDB(otherUserId: string) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: userInfo } = await supabase
+      .from("user_info")
+      .select("student_id")
+      .eq("auth_uid", user.id)
+      .single();
+
+    if (!userInfo?.student_id) return;
+
+    state.currentUserStudentId = userInfo.student_id;
+
+    // Get conversation ID (sorted pair of IDs)
+    const [minId, maxId] = [userInfo.student_id, otherUserId].sort();
+    const conversationId = `${minId}_${maxId}`;
+
+    // Load messages from database
+    const { data: messages, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error loading messages:", error);
+      return;
+    }
+
+    const thread = ensureThread(otherUserId);
+    if (!thread) return;
+
+    // Convert DB messages to chat messages
+    thread.messages = (messages || []).map((msg: {
+      id: string;
+      sender_id: string;
+      message_text: string;
+      created_at: string;
+      read_at: string | null;
+    }) => ({
+      id: msg.id,
+      from: msg.sender_id === userInfo.student_id ? "me" : "other",
+      text: msg.message_text,
+      ts: new Date(msg.created_at).getTime(),
+      status:
+        msg.sender_id === userInfo.student_id
+          ? msg.read_at
+            ? "seen"
+            : "sent"
+          : undefined,
+    }));
+
+    notify();
+  } catch (error) {
+    console.error("Error in loadMessagesFromDB:", error);
+  }
+}
+
+export async function openChatWith(userId: string, userName?: string) {
   const t = ensureThread(userId, userName);
   if (!t) return;
   state.activeUserId = t.userId;
+
+  // Load past messages from database
+  await loadMessagesFromDB(userId);
+
   notify();
 }
 
-export function sendMessage(text: string) {
+export async function sendMessage(text: string) {
   const msg = text.trim();
   if (!msg || !state.activeUserId) return;
-  const t = state.threads.find((th) => th.userId === state.activeUserId);
-  if (!t) return;
-  t.messages.push({
-    id: Math.random().toString(36).slice(2),
-    from: "me",
-    text: msg,
-    ts: Date.now(),
-    status: "pending",
-  });
-  notify();
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: userInfo } = await supabase
+      .from("user_info")
+      .select("student_id")
+      .eq("auth_uid", user.id)
+      .single();
+
+    if (!userInfo?.student_id) return;
+
+    const t = state.threads.find((th) => th.userId === state.activeUserId);
+    if (!t) return;
+
+    // Create temporary message
+    const tempId = Math.random().toString(36).slice(2);
+    t.messages.push({
+      id: tempId,
+      from: "me",
+      text: msg,
+      ts: Date.now(),
+      status: "sent",
+    });
+    notify();
+
+    // Get conversation ID
+    const [minId, maxId] = [userInfo.student_id, state.activeUserId].sort();
+    const conversationId = `${minId}_${maxId}`;
+
+    // Save to database
+    const { data, error } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: userInfo.student_id,
+        receiver_id: state.activeUserId,
+        message_text: msg,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error sending message:", error);
+      // Update status to failed
+      const msgIndex = t.messages.findIndex((m) => m.id === tempId);
+      if (msgIndex >= 0) {
+        t.messages[msgIndex].status = "failed";
+        notify();
+      }
+      return;
+    }
+
+    // Update with real ID and status
+    const msgIndex = t.messages.findIndex((m) => m.id === tempId);
+    if (msgIndex >= 0) {
+      t.messages[msgIndex].id = data.id;
+      t.messages[msgIndex].status = "sent";
+      notify();
+    }
+  } catch (error) {
+    console.error("Error in sendMessage:", error);
+  }
 }
 
-export function receiveMessage(fromUserId: string, text: string) {
+export function receiveMessage(
+  fromUserId: string,
+  text: string,
+  messageId: string,
+  timestamp: number,
+) {
   const t = ensureThread(fromUserId);
   if (!t) return;
+
+  // Check if message already exists
+  if (t.messages.some((m) => m.id === messageId)) return;
+
   t.messages.push({
-    id: Math.random().toString(36).slice(2),
+    id: messageId,
     from: "other",
     text: text,
-    ts: Date.now(),
+    ts: timestamp,
   });
   notify();
 }
 
-// ---- Conversation helpers (min/max id pair) ----
-export type ConversationMessage = {
-  conversationId: string;
-  senderId: string;
-  text: string;
-  timestamp: number;
-};
+// Mark messages as read when opening a conversation
+export async function markMessagesAsRead(otherUserId: string) {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
 
-const convMessages: ConversationMessage[] = [];
+    const { data: userInfo } = await supabase
+      .from("user_info")
+      .select("student_id")
+      .eq("auth_uid", user.id)
+      .single();
 
-export function getConversationId(a: string, b: string) {
-  const [minId, maxId] = [a, b].sort();
-  return `${minId}_${maxId}`;
+    if (!userInfo?.student_id) return;
+
+    // Get conversation ID
+    const [minId, maxId] = [userInfo.student_id, otherUserId].sort();
+    const conversationId = `${minId}_${maxId}`;
+
+    // Mark all unread messages from other user as read
+    await supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("conversation_id", conversationId)
+      .eq("sender_id", otherUserId)
+      .eq("receiver_id", userInfo.student_id)
+      .is("read_at", null);
+  } catch (error) {
+    console.error("Error marking messages as read:", error);
+  }
 }
 
-export function addConversationMessage(
-  conversationId: string,
-  senderId: string,
-  text: string
-) {
-  convMessages.push({ conversationId, senderId, text, timestamp: Date.now() });
-}
+// Setup real-time message subscription
+export async function setupRealtimeSubscription() {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-export function getConversationMessages(conversationId: string) {
-  return convMessages.filter((m) => m.conversationId === conversationId);
+    const { data: userInfo } = await supabase
+      .from("user_info")
+      .select("student_id")
+      .eq("auth_uid", user.id)
+      .single();
+
+    if (!userInfo?.student_id) return null;
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel("messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${userInfo.student_id}`,
+        },
+        (payload) => {
+          const msg = payload.new as {
+            id: string;
+            sender_id: string;
+            receiver_id: string;
+            message_text: string;
+            created_at: string;
+            read_at: string | null;
+          };
+          receiveMessage(
+            msg.sender_id,
+            msg.message_text,
+            msg.id,
+            new Date(msg.created_at).getTime(),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${userInfo.student_id}`,
+        },
+        (payload) => {
+          const msg = payload.new as {
+            id: string;
+            sender_id: string;
+            receiver_id: string;
+            message_text: string;
+            created_at: string;
+            read_at: string | null;
+          };
+          // Update message status to seen
+          if (msg.read_at) {
+            const thread = state.threads.find(
+              (t) => t.userId === msg.receiver_id,
+            );
+            if (thread) {
+              const message = thread.messages.find((m) => m.id === msg.id);
+              if (message && message.from === "me") {
+                message.status = "seen";
+                notify();
+              }
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return channel;
+  } catch (error) {
+    console.error("Error setting up realtime subscription:", error);
+    return null;
+  }
 }
