@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router-dom";
 
 import type { SkillsLookupItem } from "./AddLookupItemModal";
 import type {
@@ -21,6 +21,8 @@ function isUuid(value: string) {
 export function UserProfileProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { studentId: routeStudentId } = useParams();
+
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const [skillsLookup, setSkillsLookup] = useState<SkillsLookupItem[]>([]);
   const [skillsLookupLoading, setSkillsLookupLoading] = useState(false);
@@ -56,6 +58,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
     let mounted = true;
 
     async function loadUserInfo() {
+      setProfileLoading(true);
       try {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
@@ -123,6 +126,20 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
             return;
           }
         }
+
+        // Clear previous profile state immediately so we don't briefly show stale data
+        // while the next profile is loading.
+        setDisplayName("Loading...");
+        setStudentId("");
+        setBatchLabel("");
+        setBio("");
+        setProfilePictureUrl(null);
+        setBackgroundImgUrl(null);
+        setSkills([]);
+        setInterests([]);
+        setContacts([]);
+        setUserPosts([]);
+        setUserPostsError("");
 
         setViewedAuthUid(targetAuthUid);
 
@@ -276,7 +293,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         setContacts([]);
         setViewedAuthUid(null);
       } finally {
-        if (mounted) setUserPostsLoading(false);
+        if (mounted) {
+          setUserPostsLoading(false);
+          setProfileLoading(false);
+        }
       }
     }
 
@@ -369,6 +389,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
   const value = useMemo(
     () => ({
+      profileLoading,
       canEdit,
       currentAuthUid,
       viewedAuthUid,
@@ -409,6 +430,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       setInterests,
     }),
     [
+      profileLoading,
       canEdit,
       currentAuthUid,
       viewedAuthUid,

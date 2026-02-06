@@ -10,6 +10,7 @@ import type {
 } from "../profile-types";
 
 export type UserProfileContextValue = {
+  profileLoading: boolean;
   canEdit: boolean;
   currentAuthUid: string | null;
   viewedAuthUid: string | null;

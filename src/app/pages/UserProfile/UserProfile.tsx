@@ -11,6 +11,7 @@ import { SkillsSection } from "./components/SkillsSection";
 import { InterestsSection } from "./components/InterestsSection";
 import { UserPostsSection } from "./components/UserPostsSection";
 import { useUserProfileContext } from "./components/UserProfileContext";
+import { Spinner } from "@/components/ui/spinner";
 
 function UserProfileMainColumn() {
   const { viewedAuthUid } = useUserProfileContext();
@@ -42,11 +43,29 @@ export function UserProfile() {
 
   return (
     <UserProfileProvider>
-      <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
-        <UserProfileMainColumn />
-
-        <UserProfileSidebar interestedPosts={interestedPosts} />
-      </div>
+      <UserProfileBody interestedPosts={interestedPosts} />
     </UserProfileProvider>
+  );
+}
+
+function UserProfileBody({ interestedPosts }: { interestedPosts: InterestedItem[] }) {
+  const { profileLoading } = useUserProfileContext();
+
+  if (profileLoading) {
+    return (
+      <div className="lg:px-10 lg:w-full flex items-center justify-center min-h-[calc(100vh-6rem)]">
+        <div className="flex flex-col items-center gap-3">
+          <Spinner className="size-12 text-accent-lm" />
+          <p className="text-md text-text-lighter-lm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
+      <UserProfileMainColumn />
+      <UserProfileSidebar interestedPosts={interestedPosts} />
+    </div>
   );
 }
