@@ -72,6 +72,7 @@ export function ProfileSection() {
         </div>
 
         <div className="flex flex-col lg:ml-8">
+
           <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
             <img src={effectiveAvatarUrl} className="object-cover lg:size-35 rounded-full" alt="Profile" />
             {canEdit && (

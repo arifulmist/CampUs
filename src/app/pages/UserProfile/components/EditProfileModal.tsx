@@ -126,16 +126,21 @@ export function EditProfileModal({
     if (file.size > MAX_PROFILE_IMAGE_BYTES) {
       setProfileFileError("Image must be 10MB or smaller.");
       setProfileDraftFile(null);
+      e.currentTarget.value = "";
       return;
     }
     if (!isAllowedImage(file)) {
       setProfileFileError("Only PNG, JPG, and JPEG files are allowed.");
       setProfileDraftFile(null);
+      e.currentTarget.value = "";
       return;
     }
     setProfileFileError("");
     setProfileDraftFile(file);
     setProfilePictureRemove(false);
+
+    // Allow picking the same file again later (otherwise onChange may not fire).
+    e.currentTarget.value = "";
   };
 
   const saveProfile = async () => {
@@ -241,11 +246,10 @@ export function EditProfileModal({
   return (
     <>
       <div
-        className="fixed inset-0"
-        style={{ zIndex: 10000, backgroundColor: "rgba(0,0,0,0.7)" }}
+        className="fixed inset-0 bg-[rgba(0,0,0,0.4)] z-100"
         onMouseDown={onClose}
       />
-      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 10001 }}>
+      <div className="fixed inset-0 flex items-center justify-center z-101">
         <div
           className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-8 lg:py-6 lg:w-130 lg:relative lg:animate-slide-in max-h-[85vh] overflow-y-auto"
           onMouseDown={(e) => e.stopPropagation()}
@@ -269,7 +273,7 @@ export function EditProfileModal({
                 />
               </div>
               <div className="flex flex-col gap-2 flex-1">
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex flex-col items-start">
                     <input
                       id="profile-image-file"
@@ -280,34 +284,32 @@ export function EditProfileModal({
                     />
                     <label
                       htmlFor="profile-image-file"
-                      className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm text-sm disabled:opacity-50 cursor-pointer"
+                      className="lg:px-4 lg:py-2 lg:rounded-md bg-accent-lm text-primary-lm text-sm disabled:opacity-50 cursor-pointer hover:bg-hover-btn-lm transition duration-150"
                     >
                       Choose file
                     </label>
-                    {profileDraftFile?.name && (
-                      <p className="mt-1 text-sm text-text-lighter-lm max-w-[20rem] wrap-break-word">
-                        {profileDraftFile.name}
-                      </p>
-                    )}
                   </div>
 
-                  {profilePictureUrl && !profileDraftFile && !profilePictureRemove && (
+                  {profilePictureUrl && profilePictureUrl !== PLACEHOLDER_USER_IMG && !profilePictureRemove && (
                     <button
                       type="button"
                       onClick={() => {
                         setProfilePictureRemove(true);
                         setProfileDraftFile(null);
                       }}
-                      className="text-sm text-accent-lm border border-accent-lm rounded-md px-3 py-2"
+                      className="text-sm text-accent-lm border border-accent-lm lg:rounded-md lg:px-3 lg:py-2 bg-primary-lm font-medium hover:bg-stroke-grey/20 cursor-pointer transition duration-150"
                     >
                       Remove current
                     </button>
                   )}
                 </div>
-                {profileFileError && <p className="text-sm text-accent-lm">{profileFileError}</p>}
-                {profilePictureRemove && (
-                  <p className="text-sm text-text-lighter-lm">Profile picture will be removed on Save.</p>
+
+                {profileDraftFile?.name && (
+                  <p className="text-sm text-text-lighter-lm max-w-[20rem] truncate">
+                    {profileDraftFile.name}
+                  </p>
                 )}
+                {profileFileError && <p className="text-sm text-accent-lm">{profileFileError}</p>}
               </div>
             </div>
 
@@ -342,11 +344,11 @@ export function EditProfileModal({
                       setSelectedContactPlatformId("");
                       setContactPickerOpen(true);
                     }}
-                    className="rounded-md border border-stroke-grey bg-primary-lm px-3 py-2 hover:bg-hover-lm"
+                    className="rounded-md border border-stroke-grey bg-primary-lm lg:px-2 lg:py-1.5 hover:bg-hover-lm transition duration-150"
                     aria-label="Add contact"
                     disabled={contactPlatformsLoading}
                   >
-                    <LucidePlus className="size-5" />
+                    <LucidePlus className="size-5 text-accent-lm" />
                   </button>
                 </div>
 
@@ -366,7 +368,7 @@ export function EditProfileModal({
                       return (
                         <div
                           key={c.key}
-                          className="flex items-center gap-2 rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
+                          className="flex items-center gap-2 rounded-md px-3 py-2"
                         >
                           <img
                             src={getPlatformIconSrc(platformName)}
@@ -393,10 +395,10 @@ export function EditProfileModal({
                               setSelectedContactPlatformId("");
                               setContactsDraftError("");
                             }}
-                            className="rounded-full p-1 hover:bg-hover-lm"
+                            className="rounded-full lg:p-0.5 hover:bg-accent-lm/8 transition duration-150"
                             aria-label="Remove contact"
                           >
-                            <img src={crossBtnIcon} className="size-4" alt="Remove" />
+                            <img src={crossBtnIcon} className="size-5" alt="Remove" />
                           </button>
                         </div>
                       );
@@ -448,7 +450,7 @@ export function EditProfileModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-md border border-stroke-grey bg-primary-lm"
+                className="lg:px-4 lg:py-2 lg:rounded-md border border-stroke-grey text-text-lighter-lm/70 bg-primary-lm hover:bg-stroke-grey/40 transition duration-150 cursor-pointer"
                 disabled={profileSaving}
               >
                 Cancel
@@ -456,7 +458,7 @@ export function EditProfileModal({
               <button
                 type="button"
                 onClick={saveProfile}
-                className="px-4 py-2 rounded-md bg-accent-lm text-primary-lm"
+                className="lg:px-6 rounded-md bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-150 cursor-pointer"
                 disabled={profileSaving}
               >
                 Save
