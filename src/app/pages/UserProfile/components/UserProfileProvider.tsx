@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type { SkillsLookupItem } from "./AddLookupItemModal";
@@ -23,6 +23,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const { studentId: routeStudentId } = useParams();
 
   const [profileLoading, setProfileLoading] = useState(true);
+  const currentAuthUidRef = useRef<string | null>(null);
 
   const [skillsLookup, setSkillsLookup] = useState<SkillsLookupItem[]>([]);
   const [skillsLookupLoading, setSkillsLookupLoading] = useState(false);
@@ -65,6 +66,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
         const authUid = userData.user?.id;
 
         setCurrentAuthUid(authUid ?? null);
+        currentAuthUidRef.current = authUid ?? null;
 
         if (!mounted) return;
 
@@ -302,7 +304,14 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
     loadUserInfo();
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      loadUserInfo();
+      // Supabase can emit events on tab focus (e.g. token refresh). Only refetch
+      // the profile when the *actual auth user id* changes.
+      void (async () => {
+        const { data } = await supabase.auth.getUser();
+        const nextUid = data.user?.id ?? null;
+        if (nextUid === currentAuthUidRef.current) return;
+        loadUserInfo();
+      })();
     });
 
     return () => {
