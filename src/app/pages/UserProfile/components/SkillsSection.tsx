@@ -1,4 +1,4 @@
-import { LucidePencil, LucidePlus } from "lucide-react";
+import { LucideCheck, LucidePencil, LucidePlus } from "lucide-react";
 import { useState } from "react";
 
 import AddLookupItemModal from "./AddLookupItemModal";
@@ -158,6 +158,8 @@ export function SkillsSection() {
               <div className="flex justify-between items-center">
                 {editingIndex === index ? (
                   <input
+                    className="flex-1 lg:mr-3 lg:rounded-md bg-primary-lm lg:px-3 lg:py-1 focus:outline-accent-lm lg:text-md"
+                    autoFocus
                     value={editingValue}
                     onChange={(e) => setEditingValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -170,8 +172,6 @@ export function SkillsSection() {
                         cancelEdit();
                       }
                     }}
-                    className="flex-1 mr-3 rounded-md border border-stroke-grey bg-primary-lm px-3 py-1"
-                    autoFocus
                   />
                 ) : (
                   <h6>{skill}</h6>
@@ -183,12 +183,16 @@ export function SkillsSection() {
                     onClick={() => (editingIndex === index ? saveEdit(index) : startEdit(index))}
                     aria-label={editingIndex === index ? "Save skill" : "Edit skill"}
                   >
-                    <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                    {editingIndex === index ? (
+                      <LucideCheck className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                    ) : (
+                      <LucidePencil className="size-5 cursor-pointer hover:text-accent-lm transition duration-200" />
+                    )}
                   </button>
                 )}
               </div>
 
-              {index !== skills.length - 1 && <hr className="border-stroke-grey" />}
+              {index !== skills.length - 1 && <hr className="lg:mt-2 border-stroke-grey" />}
             </div>
           ))
         ) : (
