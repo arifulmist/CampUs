@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import postImg from "@/assets/images/placeholderPostImg.png";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
-import CreateEventModal from "./components/CreateEventModal";
+import CreateEventModal from "./components/CreateEventModal/CreateEventModal";
 import EventPostDetail from "./components/EventPostDetail";
 import { PostBody } from "@/components/PostBody";
 import { placeholderUser } from "../../../mockData/placeholderUser";
