@@ -1,11 +1,12 @@
-import { useCreateEventForm } from "./useCreateEventForm";
+import React from "react";
+import type { EventPostType } from "../EventPost";
 import CategorySelector from "./CategorySelector";
 import TitleInput from "./TitleInput";
 import SegmentList from "./SegmentList";
 import TagInput from "./TagInput";
 import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreview";
-import type { EventPostType } from "../types";
+import { useCreateEventForm } from "./useCreateEventForm";
 
 interface Props {
   open: boolean;
@@ -27,44 +28,70 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      {/* overlay */}
+      <div
+        className="lg:fixed lg:inset-0 lg:z-40"
+        onClick={onClose}
+        style={{ backgroundColor: "rgba(14,21,31,0.35)" }}
+      />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="bg-white p-6 rounded-lg w-full max-w-3xl"
-             onClick={e => e.stopPropagation()}>
-
-          <h2 className="text-xl font-semibold mb-4">Announce Event</h2>
-
-          <CategorySelector category={form.category} onChange={form.setCategory} />
-          <TitleInput value={form.title} error={form.titleError} onChange={form.setTitle} />
-
-          <SegmentList
-            segments={form.segments}
-            onAdd={form.addSegment}
-            onUpdate={form.updateSegment}
-            onRemove={form.removeSegment}
-          />
-
-          <TagInput
-            value={form.tagInput}
-            tags={form.tags}
-            onChange={form.setTagInput}
-            onAdd={form.addTag}
-          />
-
-          <ImageUploader
-            image={form.imageDataUrl}
-            imageName={form.imageName}
-            onSelect={form.handleImage}
-            onPreview={() => form.setPreviewOpen(true)}
-          />
-
-          <div className="text-right mt-6">
+      {/* modal wrapper */}
+      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:p-6">
+        <div
+          className="lg:w-full lg:max-w-3xl lg:p-6 lg:border border-stroke-grey"
+          onClick={e => e.stopPropagation()}
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: 8,
+            boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+            maxHeight: "calc(100vh - 96px)",
+            overflowY: "auto",
+          }}
+        >
+          <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
+            <h2 className="text-xl lg:font-semibold text-text-lm">
+              Announce Event
+            </h2>
             <button
-              onClick={handlePost}
-              className="bg-[#C23D00] text-white px-6 py-2 rounded-full">
-              Post
+              onClick={onClose}
+              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              aria-label="Close modal"
+            >
+              ✕
             </button>
+          </div>
+
+          <div className="lg:space-y-6">
+            <CategorySelector category={form.category} onChange={form.setCategory} />
+            <TitleInput value={form.title} error={form.titleError} onChange={form.setTitle} />
+            <SegmentList
+              segments={form.segments}
+              onAdd={form.addSegment}
+              onUpdate={form.updateSegment}
+              onRemove={form.removeSegment}
+            />
+            <TagInput
+              value={form.tagInput}
+              tags={form.tags}
+              onChange={form.setTagInput}
+              onAdd={form.addTag}
+            />
+            <ImageUploader
+              image={form.imageDataUrl}
+              imageName={form.imageName}
+              onSelect={form.handleImage}
+              onPreview={() => form.setPreviewOpen(true)}
+            />
+
+            <div className="text-right lg:pt-4">
+              <button
+                onClick={handlePost}
+                className="bg-[#C23D00] text-white lg:px-6 lg:py-2 lg:rounded-full"
+                style={{ color: "white" }}
+              >
+                Post
+              </button>
+            </div>
           </div>
         </div>
       </div>

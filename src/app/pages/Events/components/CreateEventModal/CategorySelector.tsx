@@ -1,23 +1,12 @@
-
-import type { EventCategory } from "./types";
-
-export default function CategorySelector({
-  category,
-  onChange,
-}: {
-  category: EventCategory;
-  onChange: (c: EventCategory) => void;
-}) {
+interface Props { category: string; onChange: (v: any) => void; }
+export default function CategorySelector({ category, onChange }: Props) {
   return (
-    <div className="flex gap-6 mb-4">
-      {["workshop", "seminar", "course", "competition"].map(c => (
-        <label key={c} className="flex items-center gap-2">
-          <input
-            type="radio"
-            checked={category === c}
-            onChange={() => onChange(c as EventCategory)}
-          />
-          {c}
+    <div className="lg:flex lg:gap-6">
+      {["Workshop","Seminar","Course","Competition"].map(c => (
+        <label key={c} className="lg:flex lg:items-center lg:gap-2">
+          <input type="radio" checked={category===c.toLowerCase()} onChange={()=>onChange(c.toLowerCase())} 
+           className="accent-accent-lm"/>
+           <span>{c}</span>
         </label>
       ))}
     </div>

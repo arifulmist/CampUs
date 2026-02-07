@@ -1,23 +1,15 @@
-export default function TitleInput({
-  value,
-  error,
-  onChange,
-}: {
-  value: string;
-  error: boolean;
-  onChange: (v: string) => void;
-}) {
+interface Props { value: string; error: boolean; onChange: (v:string)=>void; }
+export default function TitleInput({value,error,onChange}:Props){
   return (
-    <div className="mb-6">
-      <h3 className="mb-2 font-medium">Title</h3>
+    <div>
+      <h3 className="lg:mb-2 text-lg lg:font-medium">Title</h3>
       <input
-        className={`w-full border rounded-lg px-4 py-2 ${
-          error ? "border-red-500" : "border-gray-300"
-        }`}
+        className={`w-full border border-stroke-grey rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-[#C23D00] ${error?"border-red-500":""}`}
+        placeholder="Enter event title"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e=>onChange(e.target.value)}
       />
-      {error && <p className="text-sm text-red-600 mt-1">Title is required</p>}
+      {error && <p className="text-sm text-red-600 lg:mt-1">Title field is mandatory.</p>}
     </div>
   );
 }

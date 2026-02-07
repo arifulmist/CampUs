@@ -1,35 +1,12 @@
-export default function TagInput({
-  value,
-  tags,
-  onChange,
-  onAdd,
-}: {
-  value: string;
-  tags: string[];
-  onChange: (v: string) => void;
-  onAdd: () => void;
-}) {
+interface Props { value:string; tags:string[]; onChange:(v:string)=>void; onAdd:()=>void; }
+export default function TagInput({value,tags,onChange,onAdd}:Props){
   return (
-    <div className="mb-6">
-      <h3 className="mb-2 font-medium">Tags</h3>
-
-      <div className="flex gap-2 mb-2">
-        {tags.map(t => (
-          <span key={t} className="px-3 py-1 border rounded-full text-sm">
-            #{t}
-          </span>
-        ))}
-      </div>
-
-      <div className="flex gap-2">
-        <input
-          className="flex-1 border px-3 py-2 rounded"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-        />
-        <button onClick={onAdd} className="bg-gray-200 px-3 rounded">
-          Add
-        </button>
+    <div>
+      <h3 className="lg:mb-2 text-lg text-text-lm lg:font-medium">Tags</h3>
+      <div className="lg:flex lg:gap-2 lg:mb-3">{tags.map(t=><span key={t} className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm">#{t}</span>)}</div>
+      <div className="lg:flex lg:gap-2 lg:items-center">
+        <input value={value} onChange={e=>onChange(e.target.value)} className="lg:flex-1 lg:border border-stroke-grey lg:rounded-lg lg:px-3 lg:py-2" placeholder="Add tag (press Add)"/>
+        <button onClick={onAdd} className="bg-accent-lm text-primary-lm lg:px-3 lg:py-2 lg:rounded-lg" style={{color:"white"}}>Add</button>
       </div>
     </div>
   );
