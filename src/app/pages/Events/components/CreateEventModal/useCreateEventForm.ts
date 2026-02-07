@@ -1,56 +1,121 @@
 import { useState, useEffect } from "react";
-import type { EventPostType, Segment } from "../EventPost";
-
-function generateId() {
-  return Date.now().toString() + Math.random().toString(36).slice(2);
-}
+import type { Segment, EventPostType } from "../types";
 
 export function useCreateEventForm(open: boolean) {
   const [category, setCategory] = useState<"workshop" | "seminar" | "course" | "competition">("workshop");
   const [title, setTitle] = useState("");
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [description, setDescription] = useState(""); 
+  const [titleError, setTitleError] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([{ id: generateId(), name: "", description: "", date: "", time: "" }]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
-  const [titleError, setTitleError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  function generateId() {
+    return Date.now().toString() + Math.random().toString(36).slice(2);
+  }
+
+  
   function resetForm() {
     setCategory("workshop");
     setTitle("");
-    setTagInput("");
-    setTags([]);
+    setDescription(""); 
+    setTitleError(false);
     setSegments([{ id: generateId(), name: "", description: "", date: "", time: "" }]);
+    setTags([]);
+    setTagInput("");
     setImageDataUrl(null);
     setImageName(null);
-    setTitleError(false);
     setPreviewOpen(false);
   }
 
-  useEffect(() => { if(open) resetForm(); }, [open]);
+  useEffect(() => {
+    if (open) resetForm();
+  }, [open]);
 
-  function addSegment() { setSegments(prev => [...prev, { id: generateId(), name: "", description: "", date: "", time: "" }]); }
-  function updateSegment(id: string, data: Partial<Segment>) { setSegments(prev => prev.map(s => s.id === id ? { ...s, ...data } : s)); }
-  function removeSegment(id: string) { setSegments(prev => prev.filter(s => s.id !== id)); }
-  function addTag() { const t = tagInput.trim(); if(!t) return; setTags(prev => [...new Set([...prev, t])]); setTagInput(""); }
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) { const file = e.target.files?.[0]; if(!file) return; setImageName(file.name); const reader = new FileReader(); reader.onload = () => setImageDataUrl(reader.result as string); reader.readAsDataURL(file); }
-
-  function validate() { if(!title.trim()){ setTitleError(true); return false; } return true; }
+  function validate() {
+    if (!title.trim()) {
+      setTitleError(true);
+      return false;
+    }
+    return true;
+  }
 
   function buildPost(): EventPostType {
-    return { id: generateId(), category, title, author: "You", excerpt: title, body: "", image: imageDataUrl, segments, tags };
+    return {
+      id: generateId(),
+      category,
+      title,
+      body: description, 
+      excerpt: title,
+      author: "You",
+      segments,
+      tags,
+      image: imageDataUrl,
+    };
+  }
+
+  // Segment handlers
+  function addSegment() {
+    setSegments(prev => [...prev, { id: generateId(), name: "", description: "", date: "", time: "" }]);
+  }
+
+  function updateSegment(id: string, data: Partial<Segment>) {
+    setSegments(prev => prev.map(seg => seg.id === id ? { ...seg, ...data } : seg));
+  }
+
+  function removeSegment(id: string) {
+    setSegments(prev => prev.filter(seg => seg.id !== id));
+  }
+
+  // Tag handlers
+  function addTag() {
+    const t = tagInput.trim();
+    if (!t) return;
+    setTags(prev => [...new Set([...prev, t])]);
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setTags(prev => prev.filter(t => t !== tag));
+  }
+
+  // Image handler
+  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setImageDataUrl(reader.result as string);
+    reader.readAsDataURL(file);
   }
 
   return {
-    category, setCategory,
-    title, setTitle,
-    tagInput, setTagInput,
-    tags, addTag,
-    segments, addSegment, updateSegment, removeSegment,
-    imageDataUrl, imageName, handleImage,
+    category,
+    setCategory,
+    title,
+    setTitle,
+    description,
+    setDescription, 
     titleError,
-    previewOpen, setPreviewOpen,
-    resetForm, validate, buildPost
+    segments,
+    addSegment,
+    updateSegment,
+    removeSegment,
+    tags,
+    tagInput,
+    setTagInput,
+    addTag,
+    removeTag,
+    imageDataUrl,
+    imageName,
+    handleImage,
+    previewOpen,
+    setPreviewOpen,
+    validate,
+    buildPost,
+    resetForm,
   };
 }

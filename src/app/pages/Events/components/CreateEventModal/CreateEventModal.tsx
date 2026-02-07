@@ -7,7 +7,8 @@ import TagInput from "./TagInput";
 import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreview";
 import { useCreateEventForm } from "./useCreateEventForm";
-
+import { createEvent } from "../../backend/eventService";
+import { supabase } from "../../../../../../supabase/supabaseClient";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -19,12 +20,60 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
   if (!open) return null;
 
-  function handlePost() {
-    if (!form.validate()) return;
-    onCreate(form.buildPost());
+
+
+async function handlePost() {
+  if (!form.validate()) return;
+
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+
+    const authUid = user?.id;
+    if (!authUid) {
+      alert("You must be logged in to create an event.");
+      return;
+    }
+
+    const post = form.buildPost();
+
+    if (!post.segments || post.segments.length === 0) {
+      alert("Please add at least one event segment.");
+      return;
+    }
+
+    const newPostId = await createEvent({
+      type: post.category,
+      title: post.title,
+      description: post.body ?? "",
+      author_id: authUid,
+      location: "Dhaka", // replace with form field
+      event_start_date: new Date(post.segments[0].date).toISOString().split("T")[0], // YYYY-MM-DD
+      event_end_date: new Date(post.segments[0].date).toISOString().split("T")[0],
+      event_start_time: post.segments[0].time + ":00+06", // HH:MM:SS+TZ
+      registration_link: undefined,
+      img_url: post.image ?? undefined,
+      category_id: Number(1), // ensure number
+      segments: post.segments.map(seg => ({
+        segment_title: seg.name ?? "Untitled Segment",
+        segment_description: seg.description ?? "",
+        segment_start_date: new Date(seg.date ?? new Date()).toISOString().split("T")[0],
+        segment_end_date: new Date(seg.date ?? new Date()).toISOString().split("T")[0],
+        segment_start_time: (seg.time ?? "00:00") + ":00+06",
+        segment_end_time: (seg.time ?? "00:00") + ":00+06",
+      })),
+      tags: (post.tags ?? []).map(tag => ({ skill_id: lookupSkillId(tag) })),
+    });
+
+    console.log("Event saved successfully with post_id:", newPostId);
+    alert("Event saved successfully!");
     form.resetForm();
     onClose();
+  } catch (err: any) {
+    console.error("Failed to save event:", err);
+    alert("Failed to save event: " + (err.message ?? JSON.stringify(err)));
   }
+}
 
   return (
     <>
@@ -63,7 +112,14 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
           <div className="lg:space-y-6">
             <CategorySelector category={form.category} onChange={form.setCategory} />
-            <TitleInput value={form.title} error={form.titleError} onChange={form.setTitle} />
+            <TitleInput
+              value={form.title}
+              error={form.titleError}
+              onChange={form.setTitle}
+              description={form.description}
+              onDescriptionChange={form.setDescription}
+            />
+
             <SegmentList
               segments={form.segments}
               onAdd={form.addSegment}
