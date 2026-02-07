@@ -54,7 +54,8 @@ export default function SegmentList({
             <strong className="text-text-lm">Description</strong>
             <textarea
               rows={3}
-              className="w-full mt-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2"
+              className="w-full mt-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 resize-none overflow-y-auto"
+              style={{ maxHeight: "150px" }}
               value={seg.description}
               onChange={e =>
                 onUpdate(seg.id, { description: e.target.value })
@@ -62,41 +63,73 @@ export default function SegmentList({
             />
           </div>
 
+          {/* Location */}
+          <div className="mb-3">
+            <strong className="text-text-lm">Location</strong>
+            <input
+              type="text"
+              className="w-full mt-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2"
+              placeholder="Enter segment location"
+              value={seg.location ?? ""}
+              onChange={e =>
+                onUpdate(seg.id, { location: e.target.value })
+              }
+            />
+          </div>
+
+
           {/* Date / Time table */}
           <div className="border border-stroke-grey bg-primary-lm rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="text-text-lm">
-                  <th className="px-4 py-2 border-r">Date</th>
-                  <th className="px-4 py-2">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border-r">
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2 bg-transparent"
-                      value={seg.date}
-                      onChange={e =>
-                        onUpdate(seg.id, { date: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="time"
-                      className="w-full px-4 py-2 bg-transparent"
-                      value={seg.time}
-                      onChange={e =>
-                        onUpdate(seg.id, { time: e.target.value })
-                      }
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+  <table className="w-full">
+    <thead>
+      <tr className="text-text-lm">
+        <th className="px-4 py-2 border-r">Start Date</th>
+        <th className="px-4 py-2 border-r">End Date</th>
+        <th className="px-4 py-2 border-r">Start Time</th>
+        <th className="px-4 py-2">End Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td className="border-r">
+          <input
+            type="date"
+            className="w-full px-4 py-2 bg-transparent"
+            value={seg.startDate}
+            onChange={e => onUpdate(seg.id, { startDate: e.target.value })}
+          />
+        </td>
+        <td className="border-r">
+          <input
+            type="date"
+            className="w-full px-4 py-2 bg-transparent"
+            value={seg.endDate}
+            onChange={e => onUpdate(seg.id, { endDate: e.target.value })}
+          />
+        </td>
+        <td className="border-r">
+          <input
+            type="time"
+            className="w-full px-4 py-2 bg-transparent"
+            value={seg.startTime}
+            onChange={e => onUpdate(seg.id, { startTime: e.target.value })}
+          />
+        </td>
+        <td>
+          <input
+            type="time"
+            className="w-full px-4 py-2 bg-transparent"
+            value={seg.endTime}
+            onChange={e => onUpdate(seg.id, { endTime: e.target.value })}
+          />
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+           
         </div>
       ))}
 

@@ -7,11 +7,15 @@ import userImg from "@/assets/images/placeholderUser.png";
 
 export type Segment = {
   id: string;
-  name?: string;
-  description?: string;
-  date?: string;
-  time?: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  location?: string;
 };
+
 
 export type EventPostType = {
   id: string;
@@ -21,10 +25,12 @@ export type EventPostType = {
   dept?: string;
   excerpt?: string;
   body?: string;
+  location?: string;          
   image?: string | null;
   segments?: Segment[];
-  tags?: string[];
+  tags: { skill_id: number; name: string }[];
 };
+
 
 interface Props {
   post: EventPostType;
@@ -61,7 +67,7 @@ export default function EventPost({ post, onClick }: Props) {
           text: post.body ?? post.excerpt ?? "",
           img: post.image ?? undefined,
         }}
-        tags={post.tags}
+        tags={post.tags.map((tag) => tag.name)}
         category={post.category}
       />
     </article>

@@ -1,5 +1,15 @@
 import { supabase } from "../../../../../supabase/supabaseClient";
 import type { EventPost } from "./event-types";
+export async function searchSkills(query: string) {
+  const { data, error } = await supabase
+    .from("skills_lookup")
+    .select("id, skill")
+    .ilike("skill", `%${query}%`); 
+
+  if (error) throw error;
+  return data;
+}
+
 
 export async function createEvent(event: EventPost) {
   // 1. Insert into all_posts
@@ -29,7 +39,12 @@ export async function createEvent(event: EventPost) {
     category_id: event.category_id,
   });
   if (eventError) throw eventError;
-
+   const { error: userError } = await supabase.from("user_posts").insert({ 
+    post_id: postId,
+     auth_uid: event.author_id, 
+   });
+     if (userError) throw userError;
+    
   // 3. Insert segments
   if (event.segments.length) {
     const { error: segError } = await supabase.from("event_segment").insert(
