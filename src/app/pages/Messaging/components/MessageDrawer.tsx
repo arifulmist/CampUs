@@ -119,9 +119,10 @@ export default function MessageDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      {/* Make DrawerContent a flex-column container and ensure it has the explicit height */}
       <DrawerContent
         className={
-          "bg-primary-lm text-text-lm fixed right-0 w-95 sm:w-95 sm:max-w-95 border-l border-stroke-grey"
+          "bg-primary-lm text-text-lm fixed right-0 w-95 sm:w-95 sm:max-w-95 border-l border-stroke-grey flex flex-col overflow-visible"
         }
         style={{
           top: NAVBAR_HEIGHT + NAVBAR_SPACING,
@@ -160,9 +161,11 @@ export default function MessageDrawer({
           </DrawerClose>
         </DrawerHeader>
 
-        <div className="lg:flex lg:flex-col lg:h-full">
+        {/* Main column: message list (scrollable) + sticky footer */}
+        <div className="flex-1 flex flex-col min-h-0">
           {!activeThread ? (
-            <div className="lg:p-3 lg:space-y-2 lg:overflow-y-auto">
+            // Threads list: scrollable
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {threads.length === 0 ? (
                 <div className="text-sm text-text-lighter-lm">
                   No conversations yet
@@ -172,13 +175,11 @@ export default function MessageDrawer({
                   <button
                     key={t.userId}
                     onClick={() => openChatWith(t.userId, t.userName)}
-                    className="lg:w-full text-left lg:px-3 lg:py-2 lg:rounded-md lg:border border-stroke-grey hover:border-stroke-peach hover:bg-secondary-lm"
+                    className="w-full text-left px-3 py-2 rounded-md border border-stroke-grey hover:border-stroke-peach hover:bg-secondary-lm"
                   >
-                    <div className="lg:font-medium text-text-lm">
-                      {t.userName}
-                    </div>
+                    <div className="font-medium text-text-lm">{t.userName}</div>
                     {t.messages.length > 0 && (
-                      <div className="text-xs text-text-lighter-lm lg:mt-0.5 lg:line-clamp-1">
+                      <div className="text-xs text-text-lighter-lm mt-0.5 line-clamp-1">
                         {t.messages[t.messages.length - 1].text}
                       </div>
                     )}
@@ -188,7 +189,8 @@ export default function MessageDrawer({
             </div>
           ) : (
             <>
-              <div className="lg:flex-1 lg:p-3 lg:space-y-2 lg:overflow-y-auto">
+              {/* Message list: scrollable. Important: pb so content never hides behind the sticky footer */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 pb-28">
                 {activeThread.messages.length > 0 ? (
                   activeThread.messages.map((m) => (
                     <div
@@ -202,7 +204,7 @@ export default function MessageDrawer({
                     >
                       {m.text}
                       {m.from === "me" && m.status && (
-                        <div className="lg:mt-1 text-[10px] text-text-lighter-lm opacity-70">
+                        <div className="mt-1 text-[10px] text-text-lighter-lm opacity-70">
                           {m.status === "seen" ? "Seen" : "Sent"}
                         </div>
                       )}
@@ -214,23 +216,30 @@ export default function MessageDrawer({
                   </div>
                 )}
               </div>
-              <div className="border-t border-stroke-grey lg:p-3 lg:flex lg:items-center lg:gap-2">
-                <Input
-                  autoFocus
-                  placeholder={`Message ${activeThread.userName}`}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onSend();
-                  }}
-                  className="bg-secondary-lm text-text-lm"
-                />
-                <Button
-                  onClick={onSend}
-                  className="bg-accent-lm text-primary-lm"
-                >
-                  Send
-                </Button>
+
+              {/* Sticky footer: will remain visible even when the list scrolls */}
+              <div className="sticky bottom-0 z-30 border-t border-stroke-grey p-3 bg-primary-lm backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <Input
+                    autoFocus
+                    placeholder={`Message ${activeThread.userName}`}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        onSend();
+                      }
+                    }}
+                    className="bg-secondary-lm text-text-lm"
+                  />
+                  <Button
+                    onClick={onSend}
+                    className="bg-accent-lm text-primary-lm"
+                  >
+                    Send
+                  </Button>
+                </div>
               </div>
             </>
           )}
