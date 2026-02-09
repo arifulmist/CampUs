@@ -2,8 +2,6 @@
 import React from "react";
 import { PostBody } from "@/components/PostBody";
 import userImg from "@/assets/images/placeholderUser.png";
-// don't render buttons here — PostBody already renders the Like/Comment/Share components
-// if ShareModal is used by your ShareButton internally, it will open from there
 
 export type Segment = {
   id: string;
@@ -16,13 +14,13 @@ export type Segment = {
   location?: string;
 };
 
-
 export type EventPostType = {
   id: string;
   category: string;
   title: string;
   author: string;
-  dept?: string;
+  dept?: string;       
+  batch?: string;     
   excerpt?: string;
   body?: string;
   location?: string;          
@@ -30,9 +28,11 @@ export type EventPostType = {
   segments?: Segment[];
   tags: { skill_id: number; name: string }[];
   likes?: number; 
-  comments?:number;
+  comments?: number;
+  shares?: number;
+  createdAt?: string;  
+  profilePictureUrl?: string;
 };
-
 
 interface Props {
   post: EventPostType;
@@ -40,7 +40,6 @@ interface Props {
 }
 
 export default function EventPost({ post, onClick }: Props) {
-  // make the whole article clickable but preserve keyboard accessibility
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!onClick) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -48,6 +47,34 @@ export default function EventPost({ post, onClick }: Props) {
       onClick();
     }
   };
+
+  // Format createdAt as relative time with fallback
+  function formatRelativeTime(dateString?: string) {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+    // fallback to formatted date
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "2-digit",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  const formattedDate = formatRelativeTime(post.createdAt);
+  const deptBatch = `${post.dept ?? ""}-${post.batch ?? ""}`.trim();
 
   return (
     <article
@@ -62,8 +89,8 @@ export default function EventPost({ post, onClick }: Props) {
         title={post.title}
         user={{
           name: post.author,
-          batch: post.dept ?? "",
-          imgURL: userImg,
+          batch: deptBatch,
+          imgURL: post.profilePictureUrl ?? userImg,
         }}
         content={{
           text: post.body ?? post.excerpt ?? "",
@@ -72,6 +99,13 @@ export default function EventPost({ post, onClick }: Props) {
         tags={post.tags.map((tag) => tag.name)}
         category={post.category}
       />
+
+      
+      {formattedDate && (
+        <p className="text-lg text-accent-lm">
+          {deptBatch} · {formattedDate}
+        </p>
+      )}
     </article>
   );
 }

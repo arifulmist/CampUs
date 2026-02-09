@@ -77,8 +77,11 @@ export function Events() {
           supabase.from("skills_lookup").select("id, skill"),
         ]);
 
-      // Merge owners with user_info
-      const mergedOwners = (owners ?? []).map((o: any) => ({
+  const { data: departments } = await supabase
+  .from("departments_lookup")
+  .select("dept_id, department_name");
+
+   const mergedOwners = (owners ?? []).map((o: any) => ({
         ...o,
         user_info: (users ?? []).find((u: any) => u.auth_uid === o.auth_uid) ?? null,
       }));
@@ -89,23 +92,32 @@ export function Events() {
         name: (skills ?? []).find((s: any) => s.id === t.skill_id)?.skill ?? "",
       }));
 
-      // Merge final EventPostType
-      const mergedPosts = (events ?? []).map((ev: any) => {
-  const ownerInfo = mergedOwners.find((o: any) => o.post_id === ev.post_id)?.user_info;
-  const postData = ev.all_posts?.[0]; // <- important fix
+
+const mergedPosts = (events ?? []).map((ev: any) => {
+  const owner = mergedOwners.find((o: any) => o.post_id === ev.post_id);
+  const userInfo = owner?.user_info;
+
+  const deptName = departments?.find(
+    (d: any) => d.dept_id === userInfo?.department
+  )?.department_name;
+
+  const postData = ev.all_posts; 
 
   return {
     id: ev.post_id,
-    category: ev.events_category?.category_name ?? "uncategorized",
+    category: ev.events_category?.category_name ?? "Uncategorized", 
     title: postData?.title ?? "Untitled",
-    author: ownerInfo?.name ?? "Unknown",
-    dept: ownerInfo?.department ?? "",
-    batch: ownerInfo?.batch ?? "",          // <-- add batch
-    datePosted: postData?.created_at ?? "", // <-- add date/time
+    author: userInfo?.name ?? "Unknown",
+    dept: deptName ?? "",
+    batch: userInfo?.batch ?? "",
     excerpt: postData?.description?.slice(0, 100) ?? "",
     body: postData?.description ?? "",
     location: ev.location,
     image: ev.img_url,
+    likes: postData?.like_count ?? 0,
+    comments: postData?.comment_count ?? 0,
+    shares: 0,
+    createdAt: postData?.created_at ?? "",
     segments: (segments ?? [])
       .filter((seg: any) => seg.post_id === ev.post_id)
       .map((seg: any) => ({
@@ -120,13 +132,15 @@ export function Events() {
       })),
     tags: mergedTags
       .filter((t: any) => t.post_id === ev.post_id)
-      .map((t: any) => ({ skill_id: t.skill_id, name: t.name })),
-    likes: postData?.like_count ?? 0,
-    comments: postData?.comment_count ?? 0,
-    shares: 0,
+      .map((t: any) => ({
+        skill_id: t.skill_id,
+        name: t.name,
+      })),
   };
 });
 
+     
+ 
 
       setPosts(mergedPosts);
     } catch (err) {
