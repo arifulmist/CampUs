@@ -26,6 +26,8 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
 
     async function handlePost() {
+      toast.success("Test toast");
+
       if (!form.validate()) return;
 
       try {
