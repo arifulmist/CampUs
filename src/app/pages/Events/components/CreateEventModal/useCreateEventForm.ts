@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import type { Segment, EventPostType } from "../types";
-import { searchSkills } from "../../backend/eventService"; // Update the import path
+import { searchSkills } from "../../backend/eventService"; 
 
 export function useCreateEventForm(open: boolean) {
-  const [category, setCategory] = useState<"workshop" | "seminar" | "course" | "competition">("workshop");
+  const [category, setCategory] = useState<number>(0); // default to 0 or first category_id
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState(""); 
@@ -59,7 +59,7 @@ const [segments, setSegments] = useState<Segment[]>([
 
   
   function resetForm() {
-  setCategory("workshop");
+  setCategory(0);
   setTitle("");
   setDescription(""); 
   setLocation(""); 
@@ -96,9 +96,10 @@ const [segments, setSegments] = useState<Segment[]>([
   }
 
   function buildPost(): EventPostType {
+  const categoryName = categories.find(c => c.category_id === category)?.category_name ?? "uncategorized";
     return {
       id: generateId(),
-      category,
+      category:categoryName,
       title,
       body: description, 
       location,

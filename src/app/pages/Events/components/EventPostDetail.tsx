@@ -30,7 +30,7 @@ export type EventPostType = {
   body?: string;
   image?: string | null;
   segments?: Segment[];
-  tags?: string[];
+  tags: { skill_id: number; name: string }[];
   likes?: number;
   comments?: number;
   shares?: number;
@@ -191,17 +191,18 @@ export default function EventPostDetail({ post, onBack }: Props) {
 
         {/* TAGS: added under title, same style as feed */}
         {post.tags && post.tags.length > 0 && (
-          <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mb-4">
-            {post.tags.map((t) => (
-              <span
-                key={t}
-                className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm"
-              >
-                #{t}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mb-4">
+          {post.tags.map((t) => (
+            <span
+              key={t.skill_id}
+              className="lg:border border-accent-lm text-accent-lm lg:rounded-full lg:px-3 lg:py-1 text-sm"
+            >
+              #{t.name}
+            </span>
+          ))}
+        </div>
+      )}
+
 
         <div className="lg:flex lg:items-center lg:gap-3 lg:mb-4">
           <Avatar className="lg:h-10 lg:w-10 lg:border border-stroke-grey">

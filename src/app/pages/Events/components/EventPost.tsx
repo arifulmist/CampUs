@@ -29,6 +29,8 @@ export type EventPostType = {
   image?: string | null;
   segments?: Segment[];
   tags: { skill_id: number; name: string }[];
+  likes?: number; 
+  comments?:number;
 };
 
 

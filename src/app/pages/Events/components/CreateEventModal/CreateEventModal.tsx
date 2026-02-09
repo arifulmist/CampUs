@@ -26,7 +26,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
 
     async function handlePost() {
-      toast.success("Test toast");
+    
 
       if (!form.validate()) return;
 
@@ -45,7 +45,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
         // Build payload parts
         const event_data = {
                 // all_posts fields
-              type: "event",              // ensures all_posts.type is set correctly
+              type: "event",              
               title: post.title,
               description: post.body ?? "",
               author_id: authUid,
@@ -59,7 +59,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                 : null,
             
               img_url: post.image ?? null,
-              category_id: post.category ?? 1,
+              category_id: form.category,
             };
 
 
@@ -91,7 +91,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
           toast.error("Failed to save event: " + error.message);
           return;
         }
-
+         
         toast.success("Event added successfully!");
         form.resetForm();
         onClose();
