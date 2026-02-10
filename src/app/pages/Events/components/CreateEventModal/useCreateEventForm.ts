@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Segment, EventPostType } from "../types";
 import { searchSkills } from "../../backend/eventService"; 
-
+import {supabase} from "../../../../../../supabase/supabaseClient";
 export function useCreateEventForm(open: boolean) {
   const [category, setCategory] = useState<number>(0); // default to 0 or first category_id
   const [title, setTitle] = useState("");
@@ -11,6 +11,22 @@ export function useCreateEventForm(open: boolean) {
   const [searchTerm, setSearchTerm] = useState("");
 const [suggestions, setSuggestions] = useState<{ id: number; skill: string }[]>([]);
 const [tags, setTags] = useState<{ skill_id: number; name: string }[]>([]);
+const [categories, setCategories] = useState<{ category_id: number; category_name: string }[]>([]);
+
+useEffect(() => {
+  async function fetchCategories() {
+    const { data, error } = await supabase
+      .from("events_category")
+      .select("category_id, category_name")
+      .order("category_id");
+    if (error) {
+      console.error("Failed to fetch categories:", error);
+      return;
+    }
+    setCategories(data || []);
+  }
+  fetchCategories();
+}, []);
 
 useEffect(() => {
   if (searchTerm.length > 0) {
@@ -152,6 +168,7 @@ const [segments, setSegments] = useState<Segment[]>([
   return {
     category,
     setCategory,
+    categories,
     title,
     setTitle,
     description,
