@@ -60,7 +60,7 @@ export default function EventPost({ post, onClick }: Props) {
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours < 24) return `${diffHours} hr ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
 
     // fallback to formatted date
     return date.toLocaleString("en-US", {
@@ -73,7 +73,7 @@ export default function EventPost({ post, onClick }: Props) {
     });
   }
 
-  const formattedDate = formatRelativeTime(post.createdAt);
+ const formattedDate = formatRelativeTime(post.createdAt) ?? undefined;
   const deptBatch = `${post.dept ?? ""}-${post.batch ?? ""}`.trim();
 
   return (
@@ -86,26 +86,24 @@ export default function EventPost({ post, onClick }: Props) {
       aria-pressed={onClick ? false : undefined}
     >
       <PostBody
-        title={post.title}
-        user={{
-          name: post.author,
-          batch: deptBatch,
-          imgURL: post.profilePictureUrl ?? userImg,
-        }}
-        content={{
-          text: post.body ?? post.excerpt ?? "",
-          img: post.image ?? undefined,
-        }}
-        tags={post.tags.map((tag) => tag.name)}
-        category={post.category}
-      />
+  title={post.title}
+  user={{
+    name: post.author,
+    batch: deptBatch,
+    imgURL: post.profilePictureUrl ?? userImg,
+  }}
+  content={{
+    text: post.body ?? post.excerpt ?? "",
+    img: post.image ?? undefined,
+  }}
+  tags={post.tags.map((tag) => tag.name)}
+  category={post.category}
+  deptBatch={deptBatch}
+  formattedDate={formattedDate}
+/>
 
-      
-      {formattedDate && (
-        <p className="text-lg text-accent-lm">
-          {deptBatch} · {formattedDate}
-        </p>
-      )}
+
+     
     </article>
   );
 }
