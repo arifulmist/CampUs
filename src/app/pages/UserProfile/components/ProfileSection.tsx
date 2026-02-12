@@ -13,7 +13,7 @@ import {
 import { EditBackgroundModal } from "./EditBackgroundModal";
 import { EditProfileModal } from "./EditProfileModal";
 
-import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import MessageDrawer from "@/app/pages/Messaging/temp/MessageDrawer";
 import {
   openChatWith,
   setupRealtimeSubscription,

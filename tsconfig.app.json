@@ -28,5 +28,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "supabase/supabaseClient.ts"]
+  "include": ["src", "supabase/supabaseClient.ts", "supabase/supabase.ts"]
 }

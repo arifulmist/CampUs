@@ -10,7 +10,7 @@ import signoutIcon from "../assets/icons/logout_icon.svg";
 import { UserInfo } from "./UserInfo";
 import { useEffect, useRef, useState } from "react";
 import NotificationsDrawer from "./NotificationsDrawer";
-import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import {MessageDrawer} from "@/app/pages/Messaging/MessageDrawer";
 import {
   subscribe as notiSubscribe,
   getUnreadCount,
@@ -36,7 +36,7 @@ export function TopNav() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(() => getUnreadCount() > 0);
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(() => getUnreadCount() > 0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("Loading...");
@@ -49,7 +49,7 @@ export function TopNav() {
 
   useEffect(() => {
     const unsub = notiSubscribe(() => {
-      setHasUnread(getUnreadCount() > 0);
+      setHasUnreadNotifs(getUnreadCount() > 0);
     });
     return () => unsub();
   }, []);
@@ -180,7 +180,7 @@ export function TopNav() {
 
         <button onClick={() => setIsNotifOpen(true)} className="lg:relative">
           <img src={bellIcon} className="lg:size-8 cursor-pointer" />
-          {hasUnread && (
+          {hasUnreadNotifs && (
             <span className="lg:absolute lg:-top-0.5 lg:-right-0.5 lg:inline-block lg:h-2.5 lg:w-2.5 lg:rounded-full bg-red-500 ring-2 ring-primary-lm" />
           )}
         </button>
@@ -188,7 +188,7 @@ export function TopNav() {
         <button
           onClick={() => {
             // Always open inbox list first
-            setMsgTarget({ id: null });
+            // setMsgTarget({ id: null });
             setIsMsgOpen(true);
           }}
         >
@@ -230,15 +230,18 @@ export function TopNav() {
           />
         )}
       </div>
+
       <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
+
       {isMsgOpen && (
-        <MessageDrawer
-          open={isMsgOpen}
-          onOpenChange={setIsMsgOpen}
-          userId={msgTarget?.id ?? undefined}
-          userName={msgTarget?.name || ""}
-          avatarSrc={undefined}
-        />
+        // <MessageDrawer
+        //   open={isMsgOpen}
+        //   onOpenChange={setIsMsgOpen}
+        //   userId={msgTarget?.id ?? undefined}
+        //   userName={msgTarget?.name || ""}
+        //   avatarSrc={undefined}
+        // />
+        <MessageDrawer />
       )}
     </nav>
   );
