@@ -1,152 +1,184 @@
-import { useMemo, useState } from "react";
-import postImg from "@/assets/images/placeholderPostImg.png";
+import { useEffect, useState, useMemo } from "react";
+import { supabase } from "../../../../supabase/supabaseClient";
+import EventPost from "./components/EventPost";
+import type { EventPostType } from "./components/EventPost";
+import EventPostDetail from "./components/EventPostDetail";
+import CreateEventModal from "./components/CreateEventModal/CreateEventModal";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
-import CreateEventModal from "./components/CreateEventModal";
-import EventPostDetail from "./components/EventPostDetail";
-import { PostBody } from "@/components/PostBody";
-import { placeholderUser } from "../../../mockData/placeholderUser";
-import { addNotification } from "../../../mockData/notifications";
-
-type Segment = {
-  id: string;
-  name?: string;
-  description?: string;
-  date?: string;
-  time?: string;
-};
-
-type EventPostType = {
-  id: string;
-  category: string;
-  title: string;
-  author: string;
-  dept?: string;
-  excerpt?: string;
-  body?: string;
-  image?: string | null;
-  segments?: Segment[];
-  tags?: string[];
-  likes?: number;
-  comments?: number;
-  shares?: number;
-};
-
-const initialPosts: EventPostType[] = [
-  {
-    id: "p1",
-    category: "workshop",
-    title: "Announcing CyberVoid 2025 by MCSC. Don't miss it!",
-    author: "Than Than Thay",
-    dept: "CSE-23",
-    excerpt:
-      "For the first time, MIST Cyber Security Club is hosting a 3-in-1 event exclusively for MIST students! CyberVoid'25 kicks off on Dec 10, 2025...",
-    body: "For the first time, MIST Cyber Security Club is hosting a 3-in-1 event exclusively for MIST students! CyberVoid'25 kicks off on Dec 10, 2025, and wraps up on Dec 12. Don't miss out on this incredible 3-day experience! Register now and secure your spot! Features include cybersecurity quiz, CTF challenges and hands-on workshops.",
-    image: postImg,
-    segments: [
-      {
-        id: "s1",
-        name: "CyberSecurity Quiz",
-        description:
-          "Short quiz about security basics with small prizes for winners.",
-        date: "2025-12-27",
-        time: "15:00",
-      },
-      {
-        id: "s2",
-        name: "Break the Firewall",
-        description: "Hands-on CTF challenge to test your penetration skills.",
-        date: "2025-12-27",
-        time: "15:00",
-      },
-    ],
-    tags: ["hackathon", "ctf"],
-    likes: 46,
-    comments: 12,
-    shares: 2,
-  },
-  {
-    id: "p2",
-    category: "seminar",
-    title: "Cloud Security Seminar — Industry speakers",
-    author: "Cloud Club",
-    dept: "EECE",
-    excerpt:
-      "Join industry experts for a seminar on modern cloud security architecture...",
-    body: "An in-depth seminar with speakers from major cloud providers covering best practices for secure deployments.",
-    image: null,
-    segments: [],
-    tags: ["cloud", "seminar"],
-    likes: 12,
-    comments: 3,
-    shares: 1,
-  },
-];
+import { toast } from "react-hot-toast";
 
 export function Events() {
-  const [posts, setPosts] = useState<EventPostType[]>(initialPosts);
+  const [posts, setPosts] = useState<EventPostType[]>([]);
+  const [categories, setCategories] = useState<Category[]>(["all"]);
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
-
   const [selectedPost, setSelectedPost] = useState<EventPostType | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch all events and merge related data
+  async function loadEvents() {
+    setLoading(true);
+
+    try {
+      // Fetch event posts
+      const { data: events, error: eventsError } = await supabase
+        .from("event_posts")
+        .select(`
+          post_id,
+          location,
+          event_start_date,
+          event_end_date,
+          event_start_time,
+          registration_link,
+          img_url,
+          category_id,
+          all_posts (
+            post_id,
+            type,
+            title,
+            description,
+            author_id,
+            like_count,
+            comment_count,
+            created_at
+          ),
+          events_category (
+            category_id,
+            category_name
+          )
+        `)
+        .order("event_start_date", { ascending: false });
+
+      if (eventsError) {
+        console.error("Error fetching events:", eventsError);
+        toast.error("Failed to load events");
+        setPosts([]);
+        return;
+      }
+
+      // Fetch related tables
+      const [{ data: segments }, { data: owners }, { data: users }, { data: tags }, { data: skills }] =
+        await Promise.all([
+          supabase.from("event_segment").select(`
+            segment_id,
+            post_id,
+            segment_title,
+            segment_description,
+            segment_start_date,
+            segment_end_date,
+            segment_start_time,
+            segment_end_time,
+            segment_location
+          `),
+          supabase.from("user_posts").select("post_id, auth_uid"),
+          supabase.from("user_info").select("auth_uid, name, department, batch"),
+          supabase.from("post_tags").select("post_id, skill_id"),
+          supabase.from("skills_lookup").select("id, skill"),
+        ]);
+
+  const { data: departments } = await supabase
+  .from("departments_lookup")
+  .select("dept_id, department_name");
+
+   const mergedOwners = (owners ?? []).map((o: any) => ({
+        ...o,
+        user_info: (users ?? []).find((u: any) => u.auth_uid === o.auth_uid) ?? null,
+      }));
+
+      // Merge tags with skills_lookup
+      const mergedTags = (tags ?? []).map((t: any) => ({
+        ...t,
+        name: (skills ?? []).find((s: any) => s.id === t.skill_id)?.skill ?? "",
+      }));
+
+
+const mergedPosts = (events ?? []).map((ev: any) => {
+  const owner = mergedOwners.find((o: any) => o.post_id === ev.post_id);
+  const userInfo = owner?.user_info;
+
+  const deptName = departments?.find(
+    (d: any) => d.dept_id === userInfo?.department
+  )?.department_name;
+
+  const postData = ev.all_posts; 
+
+  return {
+    id: ev.post_id,
+    category: ev.events_category?.category_name ?? "Uncategorized", 
+    title: postData?.title ?? "Untitled",
+    author: userInfo?.name ?? "Unknown",
+    dept: deptName ?? "",
+    batch: userInfo?.batch ?? "",
+    excerpt: postData?.description?.slice(0, 100) ?? "",
+    body: postData?.description ?? "",
+    location: ev.location,
+    image: ev.img_url,
+    likes: postData?.like_count ?? 0,
+    comments: postData?.comment_count ?? 0,
+    shares: 0,
+    createdAt: postData?.created_at ?? "",
+    segments: (segments ?? [])
+      .filter((seg: any) => seg.post_id === ev.post_id)
+      .map((seg: any) => ({
+        id: seg.segment_id,
+        name: seg.segment_title,
+        description: seg.segment_description,
+        startDate: seg.segment_start_date,
+        endDate: seg.segment_end_date,
+        startTime: seg.segment_start_time,
+        endTime: seg.segment_end_time,
+        location: seg.segment_location,
+      })),
+    tags: mergedTags
+      .filter((t: any) => t.post_id === ev.post_id)
+      .map((t: any) => ({
+        skill_id: t.skill_id,
+        name: t.name,
+      })),
+  };
+});
+
+     
+ 
+
+      setPosts(mergedPosts);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading events");
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Fetch categories
+  async function loadCategories() {
+    const { data, error } = await supabase.from("events_category").select("category_name");
+    if (error) {
+      console.error("Error fetching categories:", error);
+      return;
+    }
+    if (data) {
+      setCategories(["all", ...data.map((c: any) => c.category_name as Category)]);
+    }
+  }
+
+  // Top-level useEffect to load data once
+  useEffect(() => {
+    loadEvents();
+    loadCategories();
+  }, []);
+
+  // Filter posts by selected category
   const filtered = useMemo(() => {
     if (filter === "all") return posts;
     return posts.filter((p) => p.category === filter);
   }, [posts, filter]);
 
-  function handleCreate(post: EventPostType) {
-    // ensure created post has defaults so layout behavior stays consistent
-    const normalized: EventPostType = {
-      id: post.id ?? Date.now().toString(),
-      category: post.category ?? "workshop",
-      title: post.title ?? "Untitled",
-      author: post.author ?? "Unknown",
-      dept: post.dept ?? "",
-      excerpt: post.excerpt ?? "",
-      body: post.body ?? "",
-      image: typeof post.image !== "undefined" ? post.image : null,
-      segments: post.segments ?? [],
-      tags: post.tags ?? [],
-      likes: post.likes ?? 0,
-      comments: post.comments ?? 0,
-      shares: post.shares ?? 0,
-    };
-
-    setPosts((prev) => [normalized, ...prev]);
-    addNotification({
-      type: "event",
-      title: `New Event: ${normalized.title}`,
-      description: normalized.excerpt || normalized.body,
-      path: "/events",
-    });
-  }
-
-  function openDetail(post: EventPostType) {
-    // normalize post before selecting to avoid missing properties or capitalization issues
-    const normalized: EventPostType = {
-      id: post.id ?? Date.now().toString(),
-      category: post.category ?? "workshop",
-      title: post.title ?? "Untitled",
-      author: post.author ?? "Unknown",
-      dept: post.dept ?? "",
-      excerpt: post.excerpt ?? "",
-      body: post.body ?? "",
-      image: typeof post.image !== "undefined" ? post.image : null,
-      segments: post.segments ?? [],
-      tags: post.tags ?? [],
-      likes: post.likes ?? 0,
-      comments: post.comments ?? 0,
-      shares: post.shares ?? 0,
-    };
-
-    setSelectedPost(normalized);
-    // keep UX friendly: scroll top to show detail (optional)
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function closeDetail() {
-    setSelectedPost(null);
+  // Handle modal create
+  async function handleCreate() {
+    await loadEvents();
   }
 
   return (
@@ -154,76 +186,36 @@ export function Events() {
       <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
         {/* LEFT: Posts */}
         <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
-         { !selectedPost && <button
-            onClick={() => setModalOpen(true)}
-            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
-          >
-            Click to announce an event here
-          </button>}
+          {!selectedPost && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
+            >
+              Click to announce an event here
+            </button>
+          )}
 
           <div className="lg:flex lg:items-center lg:justify-center">
             <div className="lg:w-[60vw]">
-              {selectedPost ? (
-                // detail view is constrained to same width as the list view
-                <EventPostDetail post={selectedPost} onBack={closeDetail} />
+              {loading ? (
+                <p>Loading events...</p>
+              ) : selectedPost ? (
+                <EventPostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />
+              ) : filtered.length === 0 ? (
+                <p className="text-text-lighter-lm text-lg">No posts in this category</p>
               ) : (
-                <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full">
-                  {filtered.length === 0 ? (
-                    <div className="lg:flex lg:items-center lg:justify-center">
-                      <p className="text-text-lighter-lm text-lg">
-                        No posts in this category
-                      </p>
-                    </div>
-                  ) : (
-                    filtered.map((p) => {
-                      const content = {
-                        text: p.excerpt ?? p.body ?? "",
-                        img: p.image ?? undefined,
-                      };
-
-                      const user = {
-                        ...placeholderUser,
-                        name: p.author,
-                        batch: p.dept ?? "Student",
-                      };
-
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => openDetail(p)}
-                          className="cursor-pointer lg:flex lg:flex-col lg:gap-4"
-                        >
-                          <PostBody
-                            title={p.title}
-                            content={content}
-                            user={user}
-                            tags={p.tags}
-                            category={p.category}
-                          />
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                filtered.map((p) => (
+                  <EventPost key={p.id} post={p} onClick={() => setSelectedPost(p)} />
+                ))
               )}
             </div>
           </div>
         </div>
 
         {/* RIGHT: Categories */}
-        {!selectedPost && <CategoryFilter
-          categories={
-            [
-              "all",
-              "workshop",
-              "seminar",
-              "course",
-              "competition",
-            ] as unknown as Category[]
-          }
-          selected={filter}
-          onChange={setFilter}
-        />}
+        {!selectedPost && (
+          <CategoryFilter categories={categories} selected={filter} onChange={setFilter} />
+        )}
       </div>
 
       <CreateEventModal
