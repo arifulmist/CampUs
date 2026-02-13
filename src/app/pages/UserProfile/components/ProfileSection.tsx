@@ -50,7 +50,7 @@ export function ProfileSection() {
     <>
       <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl flex flex-col h-fit">
         <div
-          className="w-full h-[30vh] bg-stroke-grey rounded-t-xl relative overflow-hidden"
+          className="w-full h-[30vh] bg-stroke-grey rounded-t-xl relative overflow-hidden border-b border-b-stroke-grey"
           style={
             backgroundImgUrl
               ? {

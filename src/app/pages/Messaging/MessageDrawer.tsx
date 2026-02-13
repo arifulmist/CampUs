@@ -23,6 +23,7 @@ interface MessageDrawerProps {
 interface ListMessages extends chatUser {
   messagePreview: string;
   isUnread: boolean;
+  onlineStatus?: boolean;
 }
 
 export function MessageDrawer({ 
@@ -36,6 +37,7 @@ export function MessageDrawer({
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false); // Start with false
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [directChatMode, setDirectChatMode] = useState(false); // Track if opening direct chat
   const [directInitLoading, setDirectInitLoading] = useState(false);
   const [directUser, setDirectUser] = useState<{
@@ -44,6 +46,9 @@ export function MessageDrawer({
     batch: string;
   } | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const presenceIntervalRef = useRef<number | null>(null);
+  const refreshTimeoutRef = useRef<number | null>(null);
 
   // Get current user ID
   useEffect(() => {
@@ -53,6 +58,67 @@ export function MessageDrawer({
     }
     getCurrentUser();
   }, []);
+
+  // Track online presence (Supabase Presence)
+  useEffect(() => {
+    if (!open) return;
+    if (!currentUserId) return;
+
+    // Clean up any previous channel/interval
+    if (presenceIntervalRef.current) {
+      window.clearInterval(presenceIntervalRef.current);
+      presenceIntervalRef.current = null;
+    }
+    if (presenceChannelRef.current) {
+      supabase.removeChannel(presenceChannelRef.current);
+      presenceChannelRef.current = null;
+    }
+
+    const channel = supabase.channel("online-users", {
+      config: {
+        presence: { key: currentUserId },
+      },
+    });
+    presenceChannelRef.current = channel;
+
+    channel.on("presence", { event: "sync" }, () => {
+      type PresencePayload = { auth_uid?: string } & Record<string, unknown>;
+      const state = channel.presenceState() as Record<string, PresencePayload[]>;
+      const online = new Set<string>();
+
+      // Keys in presenceState are presence keys; we use auth uid.
+      Object.keys(state).forEach((key) => online.add(key));
+
+      // Also accept auth_uid in payload for robustness.
+      Object.values(state).forEach((presences) => {
+        presences.forEach((presence) => {
+          if (typeof presence.auth_uid === "string") online.add(presence.auth_uid);
+        });
+      });
+
+      setOnlineUserIds(online);
+    });
+
+    channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") return;
+      await channel.track({ auth_uid: currentUserId, online_at: new Date().toISOString() });
+      presenceIntervalRef.current = window.setInterval(async () => {
+        await channel.track({ auth_uid: currentUserId, online_at: new Date().toISOString() });
+      }, 30_000);
+    });
+
+    return () => {
+      if (presenceIntervalRef.current) {
+        window.clearInterval(presenceIntervalRef.current);
+        presenceIntervalRef.current = null;
+      }
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
+      }
+      setOnlineUserIds(new Set());
+    };
+  }, [open, currentUserId]);
 
   // Clear any previous chat header/data BEFORE paint when switching to a new profile target.
   useLayoutEffect(() => {
@@ -157,16 +223,58 @@ export function MessageDrawer({
   // Subscribe to real-time conversation updates
   useEffect(() => {
     if (!open) return;
+    if (!currentUserId) return;
 
-    return subscribeToConversations(async () => {
+    async function refreshConversations() {
       const convs = await getConversations();
       setConversations(convs);
-    });
-  }, [open]);
+    }
+
+    function queueRefresh() {
+      if (refreshTimeoutRef.current) return;
+      refreshTimeoutRef.current = window.setTimeout(async () => {
+        refreshTimeoutRef.current = null;
+        await refreshConversations();
+      }, 150);
+    }
+
+    const unsubscribe = subscribeToConversations(queueRefresh);
+
+    return () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+      unsubscribe();
+    };
+  }, [open, currentUserId]);
+
+  // Fallback: while the drawer is open and we're on the conversation list, periodically refresh.
+  // This keeps the list responsive even if realtime events are delayed/missed.
+  useEffect(() => {
+    if (!open) return;
+    if (!currentUserId) return;
+    if (selectedConversation) return;
+
+    const intervalId = window.setInterval(async () => {
+      const convs = await getConversations();
+      setConversations(convs);
+    }, 3000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [open, currentUserId, selectedConversation]);
 
   // Handle click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Element | null;
+      // Dialogs render in a portal outside the drawer. Don't treat dialog interactions as "outside" clicks.
+      if (target?.closest?.('[data-slot="dialog-content"], [data-slot="dialog-overlay"], [data-slot="dialog-portal"]')) {
+        return;
+      }
+
       if (
         drawerRef.current &&
         !drawerRef.current.contains(event.target as Node) &&
@@ -231,6 +339,12 @@ export function MessageDrawer({
     return message.substring(0, maxLength) + "...";
   };
 
+  const getPreviewText = (raw: string) => {
+    const IMAGE_PREFIX = "__image__:";
+    if (raw.startsWith(IMAGE_PREFIX)) return "Image";
+    return truncateMessage(raw);
+  };
+
   if (!open) return null;
 
   return (
@@ -259,6 +373,8 @@ export function MessageDrawer({
               ? (directUser?.batch || "")
               : (conversation?.other_user.batch || "");
             const metaLoading = directChatMode ? directInitLoading : false;
+            const otherId = directChatMode ? initialUserId : conversation?.other_user.auth_uid;
+            const onlineStatus = otherId ? onlineUserIds.has(otherId) : undefined;
             
             return (
                 <ChatHistory
@@ -266,6 +382,7 @@ export function MessageDrawer({
                   userName={userName}
                   userAvatar={userAvatar}
                   userBatch={userBatch}
+                  onlineStatus={onlineStatus}
                   metaLoading={metaLoading}
                   otherUserId={directChatMode ? initialUserId : undefined}
                   onConversationCreated={async (newConversationId) => {
@@ -299,9 +416,10 @@ export function MessageDrawer({
                     userAvatar={
                       conv.other_user.profile_picture_url || placeholderUserImg
                     }
+                    onlineStatus={onlineUserIds.has(conv.other_user.auth_uid)}
                     messagePreview={
                       conv.last_message
-                        ? truncateMessage(conv.last_message.message_body)
+                        ? getPreviewText(conv.last_message.message_body)
                         : "Start a conversation"
                     }
                     isUnread={conv.unread_count > 0}
@@ -321,6 +439,7 @@ export function MessageDrawer({
 function MessageChannel({
   userName,
   userAvatar,
+  onlineStatus,
   messagePreview,
   isUnread,
   onClick,
@@ -331,8 +450,13 @@ function MessageChannel({
       className="flex items-center w-full justify-between lg:px-2 lg:py-4 lg:rounded-lg hover:bg-hover-lm transition duration-150 text-left"
     >
       <div className="flex items-center gap-4">
-        <div className="size-10 shrink-0 rounded-full ring ring-stroke-grey overflow-hidden">
-          <img src={userAvatar} className="w-full h-full object-cover" alt="" />
+        <div className="relative size-10 shrink-0 rounded-full ring ring-stroke-grey overflow-visible">
+          <div className="w-full h-full rounded-full overflow-hidden">
+            <img src={userAvatar} className="w-full h-full object-cover" alt="" />
+          </div>
+          {onlineStatus && (
+            <span className="absolute bottom-0 right-0 size-3 rounded-full bg-online-indicator ring-2 ring-primary-lm" />
+          )}
         </div>
 
         <div className="flex flex-col">

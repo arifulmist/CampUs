@@ -85,13 +85,30 @@ export async function getConversations(): Promise<Conversation[]> {
         )
       `)
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      // Do not show conversations that were never started (no messages)
-      .not("last_message_id", "is", null)
       .order("updated_at", { ascending: false });
 
     if (error) throw error;
 
-    // Get other user info and unread counts for each conversation
+    async function getFallbackLastMessage(conversationId: string) {
+      const { data: lastMsg, error: lastMsgError } = await supabase
+        .from("all_messages")
+        .select("id,message_body,created_at,sender_id,read_at")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastMsgError) {
+        console.error("Error fetching last message:", lastMsgError);
+        return null;
+      }
+
+      return (lastMsg ?? null) as ConversationRow["last_message"];
+    }
+
+    // Get other user info and unread counts for each conversation.
+    // Also ensure we can display conversations even if last_message_id isn't maintained,
+    // by falling back to the most recent message in all_messages.
     const conversationsWithUserInfo = await Promise.all(
       data.map(async (conv: ConversationRow) => {
         const otherUserId = conv.sender_id === user.id ? conv.receiver_id : conv.sender_id;
@@ -112,6 +129,9 @@ export async function getConversations(): Promise<Conversation[]> {
         if (userError) {
           console.error("Error fetching user info:", userError);
         }
+
+        // Resolve last message
+        const resolvedLastMessage = conv.last_message ?? (await getFallbackLastMessage(conv.id));
 
         // Count unread messages
         const { count: unreadCount } = await supabase
@@ -137,12 +157,24 @@ export async function getConversations(): Promise<Conversation[]> {
             profile_picture_url: profileInfo?.profile_picture_url || undefined,
             batch: displayBatch,
           },
+          last_message: resolvedLastMessage,
           unread_count: unreadCount || 0,
         };
       })
     );
 
-    return conversationsWithUserInfo as Conversation[];
+    const startedConversations = (conversationsWithUserInfo as Conversation[]).filter(
+      (conv) => !!conv.last_message
+    );
+
+    // Sort by most recent message if available (more reliable than conversations.updated_at)
+    startedConversations.sort((a, b) => {
+      const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
+      const bTime = b.last_message?.created_at ? new Date(b.last_message.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    return startedConversations;
   } catch (error) {
     console.error("Error fetching conversations:", error);
     return [];
@@ -337,7 +369,7 @@ export function subscribeToConversations(
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "INSERT",
         schema: "public",
         table: "all_messages",
       },
@@ -348,8 +380,19 @@ export function subscribeToConversations(
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "INSERT",
         schema: "public", 
+        table: "conversations",
+      },
+      () => {
+        onUpdate();
+      }
+    )
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
         table: "conversations",
       },
       () => {

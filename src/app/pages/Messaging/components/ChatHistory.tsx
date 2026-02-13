@@ -1,9 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LucideArrowLeft, LucidePaperclip, LucideSendHorizontal } from "lucide-react";
+import { LucideArrowLeft, LucidePaperclip, LucideSendHorizontal, LucideX } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   getMessages,
   getOrCreateConversation,
+  markMessagesAsRead,
   sendMessage,
   subscribeToMessages,
   type Message,
@@ -36,20 +38,72 @@ export function ChatHistory({
   otherUserId = null,
   onConversationCreated,
 }: ChatHistoryProps) {
+  const IMAGE_PREFIX = "__image__:";
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [attachedImagePreviewUrl, setAttachedImagePreviewUrl] = useState<string | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const didInitialScrollRef = useRef(false);
   const scrollRafRef = useRef<number | null>(null);
+  const markReadInFlightRef = useRef(false);
 
   const isTempConversation =
     !conversationId ||
     conversationId === "loading" ||
     conversationId.startsWith("temp-");
+
+  const clearAttachment = () => {
+    setAttachedImage(null);
+    setAttachmentError(null);
+    if (attachedImagePreviewUrl) {
+      URL.revokeObjectURL(attachedImagePreviewUrl);
+      setAttachedImagePreviewUrl(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (attachedImagePreviewUrl) URL.revokeObjectURL(attachedImagePreviewUrl);
+    };
+  }, [attachedImagePreviewUrl]);
+
+  const handlePickImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+
+    // Replace any previous attachment
+    if (attachedImagePreviewUrl) URL.revokeObjectURL(attachedImagePreviewUrl);
+    setAttachedImage(file);
+    setAttachedImagePreviewUrl(URL.createObjectURL(file));
+    setAttachmentError(null);
+
+    // allow selecting the same file again after clearing
+    e.target.value = "";
+  };
+
+  const getFileExtension = (filename: string) => {
+    const parts = filename.split(".");
+    if (parts.length < 2) return "";
+    const ext = parts[parts.length - 1]?.trim();
+    return ext ? `.${ext}` : "";
+  };
+
+  const encodeImageMessageBody = (path: string, filename: string) => {
+    return `${IMAGE_PREFIX}${encodeURIComponent(path)}::${encodeURIComponent(filename)}`;
+  };
 
   // Get current user ID
   useEffect(() => {
@@ -90,6 +144,17 @@ export function ChatHistory({
       const msgs = await getMessages(conversationId);
       setMessages(msgs);
       setLoading(false);
+
+      // If the user is currently viewing this conversation, treat any existing unread
+      // incoming messages as read immediately.
+      if (!markReadInFlightRef.current) {
+        markReadInFlightRef.current = true;
+        try {
+          await markMessagesAsRead(conversationId);
+        } finally {
+          markReadInFlightRef.current = false;
+        }
+      }
     }
 
     loadMessages();
@@ -106,8 +171,21 @@ export function ChatHistory({
         if (exists) return prev;
         return [...prev, newMsg];
       });
+
+      // If we received a message from the other user while this chat is open,
+      // mark it as read right away so the unread dot/count doesn't persist.
+      if (newMsg.sender_id !== currentUserId && !markReadInFlightRef.current) {
+        markReadInFlightRef.current = true;
+        Promise.resolve(markMessagesAsRead(conversationId))
+          .catch((error) => {
+            console.error("Failed to mark messages as read:", error);
+          })
+          .finally(() => {
+            markReadInFlightRef.current = false;
+          });
+      }
     });
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -155,59 +233,97 @@ export function ChatHistory({
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
-    if (!newMessage.trim() || sending) return;
+
+    const hasText = !!newMessage.trim();
+    const hasAttachment = !!attachedImage;
+    if ((!hasText && !hasAttachment) || sending) return;
 
     setSending(true);
     const messageBody = newMessage.trim();
-    setNewMessage(""); // Clear input immediately for better UX
+    if (hasText) setNewMessage(""); // Clear input immediately for better UX
 
     try {
       let activeConversationId = conversationId;
       let createdConversationId: string | null = null;
+      let anySent = false;
 
       // If this is a brand-new chat, create the conversation only when sending the first message
       if (!activeConversationId || activeConversationId === "loading" || activeConversationId.startsWith("temp-")) {
         if (!otherUserId) {
-          setNewMessage(messageBody);
+          if (hasText) setNewMessage(messageBody);
           return;
         }
         const createdId = await getOrCreateConversation(otherUserId);
         if (!createdId) {
-          setNewMessage(messageBody);
+          if (hasText) setNewMessage(messageBody);
           return;
         }
         createdConversationId = createdId;
         activeConversationId = createdId;
       }
 
-      const sentMessage = await sendMessage(activeConversationId, messageBody);
-      if (sentMessage) {
-        // Optimistically add the message so we don't flash a full-screen loader
-        // while the new conversation id propagates to the parent.
-        setMessages((prev) => {
-          const exists = prev.some((m) => m.id === sentMessage.id);
-          return exists ? prev : [...prev, sentMessage];
-        });
-
-        // Only now switch the parent to the real conversation id.
-        // This avoids a brief "Loading..." flash between creating the conversation row
-        // and inserting the first message.
-        if (createdConversationId) {
-          onConversationCreated?.(createdConversationId);
+      // 1) Send text (if any)
+      if (hasText) {
+        const sentTextMessage = await sendMessage(activeConversationId, messageBody);
+        if (sentTextMessage) {
+          anySent = true;
+          setMessages((prev) => {
+            const exists = prev.some((m) => m.id === sentTextMessage.id);
+            return exists ? prev : [...prev, sentTextMessage];
+          });
+        } else {
+          setNewMessage(messageBody);
         }
-
-        // Message will be added via real-time subscription
-        // Focus back to input
-        inputRef.current?.focus();
-      } else {
-        // Restore message if sending failed
-        setNewMessage(messageBody);
       }
+
+      // 2) Upload + send image (if any)
+      if (attachedImage) {
+        const ext = getFileExtension(attachedImage.name);
+        const uuid =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const path = `${activeConversationId}/${uuid}${ext}`;
+
+        const { error: uploadError } = await supabase
+          .storage
+          .from("message_uploads")
+          .upload(path, attachedImage, {
+            contentType: attachedImage.type,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error("Image upload failed:", uploadError);
+          setAttachmentError(uploadError.message || "Image upload failed");
+        } else {
+          // Store the storage path (not a public URL). We'll generate signed URLs when rendering.
+          const imageMessageBody = encodeImageMessageBody(path, attachedImage.name);
+          const sentImageMessage = await sendMessage(activeConversationId, imageMessageBody);
+          if (sentImageMessage) {
+            anySent = true;
+            clearAttachment();
+            setMessages((prev) => {
+              const exists = prev.some((m) => m.id === sentImageMessage.id);
+              return exists ? prev : [...prev, sentImageMessage];
+            });
+          } else {
+            setAttachmentError("Image uploaded but failed to send message");
+          }
+        }
+      }
+
+      // Only now switch the parent to the real conversation id.
+      // This avoids flicker mid-send (especially important when uploading attachments).
+      if (createdConversationId && anySent) {
+        onConversationCreated?.(createdConversationId);
+      }
+
+      inputRef.current?.focus();
     } catch (error) {
       console.error("Failed to send message:", error);
       // Restore message if sending failed
-      setNewMessage(messageBody);
+      if (hasText) setNewMessage(messageBody);
     } finally {
       setSending(false);
     }
@@ -265,15 +381,15 @@ export function ChatHistory({
           {onlineStatus !== undefined && (
             <div className="flex items-center lg:gap-1">
               <span
-                className={`lg:size-4 rounded-full ${
-                  onlineStatus ? "bg-online-indicator" : "bg-stroke-grey"
+                className={`lg:size-2 rounded-full ${
+                  onlineStatus ? "bg-online-indicator" : "bg-text-lighter-lm/40"
                 }`}
               ></span>
               <p className="m-0 p-0 text-sm">
                 {onlineStatus ? (
                   <span className="text-online-indicator">Online</span>
                 ) : (
-                  <span className="text-stroke-grey">Offline</span>
+                  <span className="text-text-lighter-lm/50">Offline</span>
                 )}
               </p>
             </div>
@@ -308,8 +424,52 @@ export function ChatHistory({
       </div>
 
       {/* Send message */}
-      <div className="bg-primary-lm border-t border-t-stroke-grey flex lg:gap-2 items-center lg:px-2 lg:py-2 shrink-0">
-        <button type="button" className="hover:bg-hover-lm lg:p-1 lg:rounded">
+      <div className="bg-primary-lm border-t border-t-stroke-grey flex flex-col gap-2 lg:px-2 lg:py-2 px-2 py-2 shrink-0">
+        {attachedImage && attachedImagePreviewUrl && (
+          <div className="flex items-center justify-between gap-2 bg-secondary-lm border border-stroke-grey rounded-md px-2 py-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="size-9 rounded overflow-hidden ring ring-stroke-grey shrink-0">
+                <img
+                  src={attachedImagePreviewUrl}
+                  alt={attachedImage.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="m-0 text-sm text-text-lm truncate">{attachedImage.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={clearAttachment}
+              disabled={sending}
+              className="hover:bg-hover-lm p-1 rounded disabled:opacity-50"
+              aria-label="Remove attachment"
+            >
+              <LucideX className="text-accent-lm size-4" />
+            </button>
+          </div>
+        )}
+
+        {attachmentError && (
+          <p className="m-0 text-xs text-text-lighter-lm">
+            Attachment error: {attachmentError}
+          </p>
+        )}
+
+        <div className="flex lg:gap-2 items-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+
+        <button
+          type="button"
+          onClick={handlePickImage}
+          disabled={sending}
+          className="hover:bg-hover-lm lg:p-1 p-1 lg:rounded rounded disabled:opacity-50"
+        >
           <LucidePaperclip className="text-accent-lm lg:size-6" />
         </button>
         <form onSubmit={handleSendMessage} className="flex lg:gap-2 flex-1 items-center">
@@ -325,12 +485,13 @@ export function ChatHistory({
           />
           <button
             type="submit"
-            disabled={!newMessage.trim() || sending}
+            disabled={(!newMessage.trim() && !attachedImage) || sending}
             className="hover:bg-hover-lm lg:p-1 lg:rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LucideSendHorizontal className="text-accent-lm lg:size-6" />
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
@@ -344,13 +505,95 @@ interface ChatMessageProps {
 }
 
 function ChatMessage({ message, isCurrentUser, userAvatar, timestamp }: ChatMessageProps) {
+  const IMAGE_PREFIX = "__image__:";
+  const imageData = (() => {
+    if (!message.startsWith(IMAGE_PREFIX)) return null;
+    const rest = message.slice(IMAGE_PREFIX.length);
+    const [encodedUrl, encodedName] = rest.split("::");
+    const raw = encodedUrl ? decodeURIComponent(encodedUrl) : "";
+    const name = encodedName ? decodeURIComponent(encodedName) : "Image";
+    if (!raw) return null;
+    return { raw, name };
+  })();
+
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveUrl() {
+      if (!imageData) {
+        setResolvedImageUrl(null);
+        return;
+      }
+
+      const raw = imageData.raw;
+
+      // Support both formats:
+      // 1) New: raw is a storage path like `<conversationId>/<uuid>.png`
+      // 2) Legacy: raw is a public storage URL
+      const isHttp = /^https?:\/\//i.test(raw);
+
+      const extractPathFromStorageUrl = (urlString: string) => {
+        try {
+          const u = new URL(urlString);
+          const match = u.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
+          if (!match) return null;
+          const bucket = match[1];
+          const path = match[2];
+          return { bucket, path };
+        } catch {
+          return null;
+        }
+      };
+
+      let bucket = "message_uploads";
+      let path = raw;
+
+      if (isHttp) {
+        const extracted = extractPathFromStorageUrl(raw);
+        if (!extracted) {
+          setResolvedImageUrl(raw);
+          return;
+        }
+        bucket = extracted.bucket;
+        path = extracted.path;
+      }
+
+      if (bucket !== "message_uploads") {
+        setResolvedImageUrl(raw);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .storage
+        .from("message_uploads")
+        .createSignedUrl(path, 60 * 60);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error("Failed to create signed URL:", error);
+        setResolvedImageUrl(isHttp ? raw : null);
+        return;
+      }
+
+      setResolvedImageUrl(data?.signedUrl ?? (isHttp ? raw : null));
+    }
+
+    resolveUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [imageData]);
+
   return (
     <div className={`flex lg:gap-2 items-end ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {!isCurrentUser && (
-        <div className="lg:size-8 shrink-0">
+        <div className="lg:size-8 shrink-0 rounded-full overflow-hidden ring ring-stroke-grey">
           <img
             src={userAvatar}
-            className="rounded-full ring ring-stroke-grey object-cover w-full h-full"
+            className="object-cover w-full h-full"
             alt="User avatar"
           />
         </div>
@@ -362,8 +605,39 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp }: ChatMess
             : "bg-message-other-lm text-text-lm"
         }`}
       >
-        <p className="m-0 wrap-break-word text-sm">{message}</p>
-        <p className="m-0 text-xs opacity-70 lg:mt-1 text-right">
+        {imageData ? (
+          resolvedImageUrl ? (
+            <Dialog>
+              <DialogTrigger asChild>
+                <button type="button" className="block" title={imageData.name}>
+                  <img
+                    src={resolvedImageUrl}
+                    alt={imageData.name}
+                    className="max-w-55 max-h-55 rounded-md object-cover"
+                  />
+                </button>
+              </DialogTrigger>
+              <DialogContent
+                overlayClassName="bg-[rgba(0,0,0,0.4)]"
+                className="bg-primary-lm border-stroke-grey text-text-lm p-4 sm:max-w-5xl"
+              >
+                <img
+                  src={resolvedImageUrl}
+                  alt={imageData.name}
+                  className="w-full h-auto max-h-[85vh] object-contain rounded-md"
+                />
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <p className="m-0 text-sm opacity-70">Loading image...</p>
+          )
+        ) : (
+          <p className="m-0 wrap-break-word text-sm">{message}</p>
+        )}
+        <p className={`m-0 text-xs opacity-70 lg:mt-1 ${
+          isCurrentUser
+          ? "text-right"
+          : "text-left"}`}>
           {new Date(timestamp).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
