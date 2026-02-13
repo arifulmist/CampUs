@@ -13,9 +13,14 @@ interface NotesAddModalProps {
     file: File | null;
     fileLink?: string | null;
   }) => void;
+  isSubmitting?: boolean;
 }
 
-export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
+export function NotesAddModal({
+  onClose,
+  onPost,
+  isSubmitting = false,
+}: NotesAddModalProps) {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -53,8 +58,6 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
       }
     };
   }, [previewUrl]);
-
-
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = e.target.files?.[0];
@@ -97,14 +100,13 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
       file,
       fileLink: previewUrl ?? null,
     });
-
-    onClose();
+    // Note: onClose is called by parent component after successful submission
   }
 
   return (
     <>
       {/* Modal backdrop */}
-      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50"/>
+      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50" />
 
       {/* Modal */}
       <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center">
@@ -113,15 +115,18 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
           className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-10 lg:py-8 lg:w-130 lg:relative"
         >
           <div className="lg:flex lg:justify-between">
-            <h4 className="lg:font-header text-text-lm lg:font-medium">Add File</h4>
-            <button
-            onClick={onClose} className="cursor-pointer"
-          >
-            <img src={crossBtn}></img>
-          </button>
+            <h4 className="lg:font-header text-text-lm lg:font-medium">
+              Add File
+            </h4>
+            <button onClick={onClose} className="cursor-pointer">
+              <img src={crossBtn}></img>
+            </button>
           </div>
 
-          <div className="lg:mt-4 lg:flex lg:flex-col lg:gap-3" onFocusCapture={() => setCourseCodeError("")}>
+          <div
+            className="lg:mt-4 lg:flex lg:flex-col lg:gap-3"
+            onFocusCapture={() => setCourseCodeError("")}
+          >
             <InputField
               label="Title"
               name="title"
@@ -139,7 +144,7 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                 value={course}
                 changeHandler={(e) => setCourse(e.target.value)}
               />
-             <div className="lg:relative">
+              <div className="lg:relative">
                 <InputField
                   label="Course Code"
                   name="coursecode"
@@ -157,15 +162,13 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
               </div>
             </div>
 
-
             {/* Upload section */}
             <div className="lg:mt-2">
               <div className="lg:flex lg:items-center lg:gap-4">
                 <ButtonCTA
                   label="Upload File"
                   clickEvent={() => fileInputRef.current?.click()}
-                >
-                </ButtonCTA>
+                ></ButtonCTA>
 
                 <input
                   ref={fileInputRef}
@@ -200,7 +203,9 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
                       <p className="text-sm text-text-lighter-lm lg:max-w-35 lg:truncate">
                         {file.name}
                       </p>
-                      <p className="text-sm text-text-lighter-lm">Click to expand preview</p>
+                      <p className="text-sm text-text-lighter-lm">
+                        Click to expand preview
+                      </p>
                     </div>
                     {/* Remove */}
 
@@ -221,10 +226,10 @@ export function NotesAddModal({ onClose, onPost }: NotesAddModalProps) {
               <div className="lg:relative">
                 <button
                   type="submit"
-                  disabled={!file && !previewUrl}
+                  disabled={(!file && !previewUrl) || isSubmitting}
                   className="lg:px-6 lg:py-2 lg:rounded-lg bg-accent-lm text-primary-lm hover:bg-hover-btn-lm lg:transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Post
+                  {isSubmitting ? "Uploading..." : "Post"}
                 </button>
                 {fileRequiredError && (
                   <span className="lg:absolute lg:right-0 lg:-top-8 bg-primary-lm text-accent-lm text-sm lg:px-2 lg:py-1 lg:rounded lg:shadow lg:z-20 lg:border border-stroke-grey">
