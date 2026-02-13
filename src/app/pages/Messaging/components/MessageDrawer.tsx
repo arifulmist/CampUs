@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -7,7 +7,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// removed Input import to use native textarea
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { X } from "lucide-react";
 import { cn } from "@/mockData/utils";
@@ -42,6 +42,7 @@ export default function MessageDrawer({
   );
   const [text, setText] = useState("");
   const [isUserOnline, setIsUserOnline] = useState<boolean>(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Ensure thread and set active on open
   useEffect(() => {
@@ -105,10 +106,23 @@ export default function MessageDrawer({
     [threads, activeId],
   );
 
+  const adjustTextareaHeight = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const newHeight = Math.min(ta.scrollHeight, 192); // cap height
+    ta.style.height = `${newHeight}px`;
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [text, activeThread]);
+
   const onSend = () => {
     if (!text.trim()) return;
     sendMessage(text);
     setText("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   // Combined navbar height (TopNav + BotNav) approx. 96px; adjust if needed.
@@ -195,7 +209,8 @@ export default function MessageDrawer({
                     <div
                       key={m.id}
                       className={cn(
-                        "max-w-[75%] rounded-lg px-3 py-2 text-sm",
+                        // preserve newlines and wrap long words
+                        "max-w-[75%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words",
                         m.from === "me"
                           ? "ml-auto bg-message-user-lm text-primary-lm"
                           : "mr-auto bg-message-other-lm text-text-lm",
@@ -219,18 +234,27 @@ export default function MessageDrawer({
               {/* Sticky footer: will remain visible even when the list scrolls */}
               <div className="sticky bottom-0 z-30 border-t border-stroke-grey p-3 bg-primary-lm backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                  <Input
+                  <textarea
+                    ref={textareaRef}
                     autoFocus
                     placeholder={`Message ${activeThread.userName}`}
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      const ta = textareaRef.current;
+                      if (!ta) return;
+                      ta.style.height = "auto";
+                      ta.style.height = `${Math.min(ta.scrollHeight, 192)}px`;
+                    }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      // Enter sends, Shift+Enter adds newline
+                      if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
                         onSend();
                       }
                     }}
-                    className="bg-secondary-lm text-text-lm"
+                    rows={1}
+                    className="bg-secondary-lm text-text-lm w-full min-h-[36px] max-h-48 overflow-auto resize-none rounded-md px-3 py-2"
                   />
                   <Button
                     onClick={onSend}
