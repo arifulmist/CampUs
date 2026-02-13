@@ -12,19 +12,13 @@ import {
 } from "../userProfileUtils";
 import { EditBackgroundModal } from "./EditBackgroundModal";
 import { EditProfileModal } from "./EditProfileModal";
-
-import MessageDrawer from "@/app/pages/Messaging/temp/MessageDrawer";
-import {
-  openChatWith,
-  setupRealtimeSubscription,
-} from "@/app/pages/Messaging/backend/chatStore";  
-
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { openGlobalMessage } from "@/utils/globalMessaging";
 
 export function ProfileSection() {
   const {
     canEdit,
     currentAuthUid,
+    viewedAuthUid,
     displayName,
     studentId,
     batchLabel,
@@ -51,28 +45,6 @@ export function ProfileSection() {
   const effectiveAvatarUrl = useMemo(() => {
     return profileImageUrl ?? profilePictureUrl ?? PLACEHOLDER_USER_IMG;
   }, [profileImageUrl, profilePictureUrl]);
-
-  const [messageDrawerOpen, setMessageDrawerOpen] = useState(false);
-  const [messageTarget, setMessageTarget] = useState<{
-    userId: string;
-    userName: string;
-  } | null>(null);
-
-  useEffect(() => {
-    let messageChannel: ReturnType<typeof supabase.channel> | null = null;
-
-    async function setupMessages() {
-      messageChannel = await setupRealtimeSubscription();
-    }
-
-    setupMessages();
-
-    return () => {
-      if (messageChannel) {
-        supabase.removeChannel(messageChannel);
-      }
-    };
-  }, []);
 
   return (
     <>
@@ -119,24 +91,19 @@ export function ProfileSection() {
 
           <div className="flex justify-between">
             <h3 className="font-header">{displayName}</h3>
-            {!canEdit && currentAuthUid && studentId && (
-            <button
-              type="button"
-              onClick={() => {
-                openChatWith(studentId, displayName);
-                setMessageTarget({
-                  userId: studentId,
-                  userName: displayName,
-                });
-                setMessageDrawerOpen(true);
-              }}
-              className="flex items-center gap-2 lg:px-3 lg:rounded-xl bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-200 w-fit"
-              aria-label="Send message"
-            >
-              <LucideMessageCircle className="size-5" />
-              Message
-            </button>
-          )}
+            {!canEdit && currentAuthUid && viewedAuthUid && (
+              <button
+                type="button"
+                onClick={() => {
+                  openGlobalMessage(viewedAuthUid, displayName);
+                }}
+                className="flex items-center gap-2 lg:px-3 lg:rounded-xl bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition duration-200 w-fit"
+                aria-label="Send message"
+              >
+                <LucideMessageCircle className="size-5" />
+                Message
+              </button>
+            )}
           </div>
 
           {!!studentId && <h6>{studentId}</h6>}
@@ -197,16 +164,6 @@ export function ProfileSection() {
           setProfileImageFile(next.savedDraftFile ?? null);
         }}
       />
-
-      {messageDrawerOpen && (
-        <MessageDrawer
-          open={messageDrawerOpen}
-          onOpenChange={setMessageDrawerOpen}
-          userId={messageTarget?.userId}
-          userName={messageTarget?.userName ?? ""}
-          avatarSrc={undefined}
-        />
-      )}
     </>
   );
 }
