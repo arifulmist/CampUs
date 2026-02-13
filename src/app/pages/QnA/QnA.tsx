@@ -17,6 +17,7 @@ import {
 } from "../../../components/PostButtons";
 import { PostDetail } from "./components/PostDetail";
 import { addNotification } from "../../../mockData/notifications";
+import QnaPost from "./components/QnaPost";
 
 type Post = {
   id: string;
@@ -290,64 +291,29 @@ function QAPageContent() {
         )}
       </main>
 
-      {/* New Post Dialog */}
-      <Dialog open={isNewPostOpen} onOpenChange={setIsNewPostOpen}>
-        <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm lg:max-h-[80vh] lg:overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>New Post</DialogTitle>
-          </DialogHeader>
+     <QnaPost
+  open={isNewPostOpen}
+  onOpenChange={setIsNewPostOpen}
+  onCreate={(payload) => {
+    const newPost = {
+      id: Date.now(),
+      author: {
+        name: "You",
+        role: "Student",
+      },
+      title: payload.title,
+      description: payload.description,
+      tags: payload.tags,
+      category: payload.category,
+      likes: 0,
+      comments: [],
+      createdAt: new Date().toISOString(),
+    };
 
-          <div className="lg:space-y-4 lg:px-0">
-            <Input
-              placeholder="Title"
-              value={newPost.title}
-              onChange={(e) =>
-                setNewPost({ ...newPost, title: e.target.value })
-              }
-              className="lg:w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
-            />
+    setPosts((prev) => [newPost, ...prev]);
+  }}
+/>
 
-            <Textarea
-              placeholder="Description"
-              rows={5}
-              value={newPost.description}
-              onChange={(e) =>
-                setNewPost({ ...newPost, description: e.target.value })
-              }
-              className="lg:w-full bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
-            />
-
-            <div className="lg:space-y-2">
-              <div className="lg:flex lg:flex-wrap lg:gap-2">
-                {(["Question", "Advice", "Resource"] as const).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setNewPost({ ...newPost, category: cat })}
-                    aria-pressed={newPost.category === cat}
-                    className={`group inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border transition focus:outline-none focus:ring-2 focus:ring-accent-lm ${
-                      newPost.category === cat
-                        ? "border-stroke-peach bg-secondary-lm text-accent-lm shadow-sm ring-2 ring-accent-lm"
-                        : "border-stroke-grey bg-primary-lm text-text-lm hover:bg-hover-lm"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="lg:pt-2">
-              <Button
-                className="lg:w-full bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
-                onClick={submitNewPost}
-              >
-                Post
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

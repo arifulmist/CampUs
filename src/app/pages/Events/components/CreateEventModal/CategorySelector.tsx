@@ -7,7 +7,7 @@ interface Category {
 }
 
 interface Props {
-  category: number; // store numeric ID
+  category: number;
   onChange: (v: number) => void;
 }
 
