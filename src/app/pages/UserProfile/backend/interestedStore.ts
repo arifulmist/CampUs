@@ -57,13 +57,11 @@ export function subscribe(
 ): () => void {
   const handler = () => callback(load());
   window.addEventListener(EVENT_NAME, handler);
-  // Also reflect cross-tab changes
   const storageHandler = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) handler();
   };
   window.addEventListener("storage", storageHandler);
 
-  // Fire immediately
   callback(load());
 
   return () => {

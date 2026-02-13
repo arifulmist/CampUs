@@ -108,7 +108,13 @@ export async function loadMessagesFromDB(otherUserId: string) {
     if (!thread) return;
 
     // Convert DB messages to chat messages
-    thread.messages = (messages || []).map((msg: any) => ({
+    thread.messages = (messages || []).map((msg: {
+      id: string;
+      sender_id: string;
+      message_text: string;
+      created_at: string;
+      read_at: string | null;
+    }) => ({
       id: msg.id,
       from: msg.sender_id === userInfo.student_id ? "me" : "other",
       text: msg.message_text,
@@ -291,7 +297,14 @@ export async function setupRealtimeSubscription() {
           filter: `receiver_id=eq.${userInfo.student_id}`,
         },
         (payload) => {
-          const msg = payload.new as any;
+          const msg = payload.new as {
+            id: string;
+            sender_id: string;
+            receiver_id: string;
+            message_text: string;
+            created_at: string;
+            read_at: string | null;
+          };
           receiveMessage(
             msg.sender_id,
             msg.message_text,
@@ -309,7 +322,14 @@ export async function setupRealtimeSubscription() {
           filter: `sender_id=eq.${userInfo.student_id}`,
         },
         (payload) => {
-          const msg = payload.new as any;
+          const msg = payload.new as {
+            id: string;
+            sender_id: string;
+            receiver_id: string;
+            message_text: string;
+            created_at: string;
+            read_at: string | null;
+          };
           // Update message status to seen
           if (msg.read_at) {
             const thread = state.threads.find(

@@ -247,12 +247,12 @@ export function Login2FA() {
 
         {/* Development OTP Display */}
         {devOTP && import.meta.env.DEV && (
-          <div className="lg:p-3 bg-blue-50 lg:border border-blue-200 lg:rounded-lg">
+          <div className="lg:p-3 bg-stroke-grey lg:border border-s-text-lm lg:rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Development Mode:</strong> OTP is:{" "}
               <span className="lg:font-mono lg:font-bold text-lg">{devOTP}</span>
             </p>
-            <p className="text-xs text-blue-600 lg:mt-1">
+            <p className="text-xs border-s-text-lm lg:mt-1">
               This would be sent to {userEmail}
             </p>
           </div>
@@ -262,14 +262,14 @@ export function Login2FA() {
         <div className="text-center">
           {timeLeft > 0 ? (
             <div className="lg:inline-flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 bg-gray-100 lg:rounded-lg">
-              <span className="text-gray-600">Code expires in:</span>
+              <span className="text-stroke-grey">Code expires in:</span>
               <span className="lg:font-mono lg:font-bold text-accent-lm">
                 {minutes}:{seconds.toString().padStart(2, "0")}
               </span>
             </div>
           ) : (
             <div className="lg:inline-flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 bg-red-50 lg:rounded-lg">
-              <span className="text-red-600 lg:font-medium">Code expired</span>
+              <span className="text-accent-lm lg:font-medium">Code expired</span>
             </div>
           )}
         </div>

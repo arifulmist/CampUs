@@ -1,4 +1,3 @@
-"use client";
 import { useEffect, useMemo, useState } from "react";
 import {
   Drawer,
@@ -75,7 +74,7 @@ export default function MessageDrawer({
           .on("presence", { event: "sync" }, () => {
             const state = channel!.presenceState();
             let isOnline = false;
-            Object.values(state).forEach((presences: any) => {
+            Object.values(state).forEach((presences: Array<any>) => {
               presences.forEach((presence: any) => {
                 if (presence.student_id === userId) {
                   isOnline = true;

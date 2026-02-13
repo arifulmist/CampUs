@@ -38,6 +38,7 @@ export function TopNav() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(() => getUnreadCount() > 0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
+  const [authUid, setAuthUid] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("Loading...");
   const [userBatch, setUserBatch] = useState<string>("");
   const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(null);
@@ -66,6 +67,8 @@ export function TopNav() {
     async function loadProfile() {
       const { data: userData } = await supabase.auth.getUser();
       const authUid = userData.user?.id;
+
+      setAuthUid(authUid ?? null);
 
       if (!mounted) return;
 
@@ -124,6 +127,46 @@ export function TopNav() {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authUid) return;
+
+    const channel = supabase
+      .channel(`topnav-user-profile-${authUid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_profile",
+          filter: `auth_uid=eq.${authUid}`,
+        },
+        (payload) => {
+          const rec = payload.new as unknown as Record<string, unknown> | null | undefined;
+          const nextUrl = rec?.profile_picture_url;
+          if (typeof nextUrl === "string" || nextUrl === null) {
+            setUserProfilePicUrl(nextUrl);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authUid]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ authUid?: string; url?: string | null }>;
+      const nextAuthUid = ce.detail?.authUid;
+      if (!nextAuthUid || (authUid && nextAuthUid !== authUid)) return;
+      setUserProfilePicUrl(ce.detail?.url ?? null);
+    };
+
+    window.addEventListener("campus:profilePictureUpdated", handler);
+    return () => window.removeEventListener("campus:profilePictureUpdated", handler);
+  }, [authUid]);
 
   return (
     <nav className="bg-primary-lm lg:border border-stroke-grey lg:flex lg:justify-between lg:px-10 lg:py-3">
