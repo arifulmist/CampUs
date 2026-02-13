@@ -23,10 +23,9 @@ export function MessageDrawer()
   );
 }
 
+import type {chatUser} from "./components/ChatHistory";
 
-type ListMessages = {
-  userName: string,
-  userAvatar: string,
+ interface ListMessages extends chatUser {
   messagePreview: string,
   isUnread: boolean
 }
