@@ -147,11 +147,11 @@ export async function fetchNotes(
 
   if (!semester) return [];
 
-  // Fetch notes
+  // Fetch notes; include joined `user_info` (if available) to get author name directly
   const { data: notes, error } = await supabase
     .from("notes")
     .select(
-      "note_id, title, course, course_code, file_url, upload_date, upload_time, author_id",
+      `note_id, title, course, course_code, file_url, upload_date, upload_time, author_id, user_info ( auth_uid, name )`,
     )
     .eq("semester_id", semester.semester_id)
     .order("upload_date", { ascending: false });
@@ -163,24 +163,32 @@ export async function fetchNotes(
 
   if (!notes || notes.length === 0) return [];
 
-  // Batch-fetch author info for all unique author_ids
+  // Batch-fetch author info for all unique author_ids (only names missing from join)
   const authorIds = [
     ...new Set(notes.map((n: any) => n.author_id).filter(Boolean)),
   ];
   const authorMap = await fetchAuthorMap(authorIds);
 
-  // Transform to frontend format
-  return notes.map((n: any) => ({
-    id: n.note_id,
-    title: n.title,
-    uploadedBy: authorMap[n.author_id]?.name ?? "Unknown",
-    courseCode: `${n.course}-${n.course_code}`,
-    uploadDate: formatDate(n.upload_date),
-    uploadTime: formatTime(n.upload_time),
-    fileLink: n.file_url,
-    fileName: extractFileName(n.file_url),
-    authorId: n.author_id,
-  }));
+  // Transform to frontend format. Prefer joined `user_info.name` when present,
+  // otherwise fall back to authorMap lookup and finally "Unknown".
+  const result = [];
+  for (const n of notes) {
+    const joinedName = n.user_info?.name ?? null;
+    const mappedName = authorMap[n.author_id]?.name ?? null;
+    result.push({
+      id: n.note_id,
+      title: n.title,
+      uploadedBy: joinedName ?? mappedName ?? "Unknown",
+      courseCode: `${n.course}-${n.course_code}`,
+      uploadDate: formatDate(n.upload_date),
+      uploadTime: formatTime(n.upload_time),
+      fileLink: n.file_url,
+      fileName: extractFileName(n.file_url),
+      authorId: n.author_id,
+    });
+  }
+
+  return result;
 }
 
 // Fetch resources for a specific level/term
