@@ -323,8 +323,7 @@ function CommentItem({
   return (
     <div
       className={
-        isReply && "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey"
-      }
+        `${isReply && "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey"}`}
     >
       <UserInfo
         userName={node.author}

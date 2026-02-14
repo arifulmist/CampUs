@@ -22,7 +22,6 @@ export interface EventPost {
   location: string;
   event_start_date: string;
   event_end_date: string;
-  event_start_time: string;
   registration_link?: string;
   img_url?: string;
   category_id: number;

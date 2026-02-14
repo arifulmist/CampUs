@@ -33,7 +33,6 @@ export async function createEvent(event: EventPost) {
     location: event.location,
     event_start_date: event.event_start_date,
     event_end_date: event.event_end_date,
-    event_start_time: event.event_start_time,
     registration_link: event.registration_link,
     img_url: event.img_url,
     category_id: event.category_id,
@@ -56,7 +55,6 @@ export async function createEvent(event: EventPost) {
         segment_end_date: seg.segment_end_date,
         segment_start_time: seg.segment_start_time,
         segment_end_time: seg.segment_end_time,
-        user_id: event.author_id,
       }))
     );
     if (segError) throw segError;

@@ -4,9 +4,7 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 
 export function RootLayout({ children }: { children?: React.ReactNode }) {
-  useEffect(() => {
-    toast.success("App loaded successfully!");
-  }, []);
+  // previously showed a toast on every page load; removed to avoid noise
 
   return (
     <>

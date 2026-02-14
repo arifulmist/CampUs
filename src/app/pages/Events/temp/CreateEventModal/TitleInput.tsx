@@ -57,7 +57,7 @@ export default function TitleInput({
           <h6 className="text-text-lm font-medium">Start Date</h6>
           <input
             type="date"
-            required
+            required={true}
             value={startDate}
             onChange={e => onStartDateChange(e.target.value)}
             className="bg-primary-lm lg:p-2 rounded-md border border-stroke-grey w-fit"
@@ -78,7 +78,7 @@ export default function TitleInput({
           {!sameAsStart && (
             <input
               type="date"
-              required
+              required={true}
               value={endDate}
               onChange={e => onEndDateChange(e.target.value)}
               className="bg-primary-lm lg:p-2 rounded-md border border-stroke-grey w-fit"
@@ -94,7 +94,7 @@ export default function TitleInput({
           placeholder="Enter event title"
           value={value}
           onChange={e => onChange(e.target.value)}
-          required
+          required={true}
         />
       </div>
 
@@ -109,7 +109,7 @@ export default function TitleInput({
           value={description}
           style={{ height: "150px" }} // fixed height
           onChange={e => onDescriptionChange(e.target.value)}
-          required
+          required={true}
         />
       </div>
 
@@ -131,7 +131,7 @@ export default function TitleInput({
             placeholder="e.g: Room-302, Hall of Fame etc"
             value={location}
             onChange={e => onLocationChange(e.target.value)}
-            required
+            required={true}
           />
         )}
       </div>

@@ -35,9 +35,12 @@ export default function CategorySelector({ category, onChange }: Props) {
         <label key={c.category_id} className="lg:flex lg:items-center lg:gap-2">
           <input
             type="radio"
+            name="category"
+            value={c.category_id}
             checked={category === c.category_id}
             onChange={() => onChange(c.category_id)}
             className="accent-accent-lm"
+            required
           />
           <span className="text-text-lm font-medium">{c.category_name}</span>
         </label>

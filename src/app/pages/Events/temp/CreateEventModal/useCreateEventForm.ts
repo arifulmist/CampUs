@@ -49,18 +49,11 @@ function removeTag(skill_id: number) {
 }
 
 
-const [segments, setSegments] = useState<Segment[]>([
-  {
-    id: generateId(),
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    startTime: "",
-    endTime: "",
-    location: ""
-  }
-]);
+const [segments, setSegments] = useState<Segment[]>([]);
+
+  // event-level start/end (separate from per-segment dates)
+  const [eventStartDate, setEventStartDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
 
 
 
@@ -80,16 +73,9 @@ const [segments, setSegments] = useState<Segment[]>([
   setDescription(""); 
   setLocation(""); 
   setTitleError(false);
-  setSegments([{
-    id: generateId(),
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    startTime: "",
-    endTime: "",
-    location: ""
-  }]);
+  setSegments([]);
+  setEventStartDate("");
+  setEventEndDate("");
   setTags([]);
   setSearchTerm("");
   setSuggestions([]);
@@ -180,6 +166,10 @@ const [segments, setSegments] = useState<Segment[]>([
     addSegment,
     updateSegment,
     removeSegment,
+    eventStartDate,
+    setEventStartDate,
+    eventEndDate,
+    setEventEndDate,
     tags, 
     addTagFromSuggestion, 
     removeTag, 

@@ -13,12 +13,12 @@ export default function ImageUploader({
 }: Props) {
   return (
     <div className="mt-6">
-      <label className="block mb-2 font-medium text-text-lm">
+      <h6 className="font-medium text-text-lm">
         Upload Image
-      </label>
+      </h6>
 
-      <div className="flex gap-3 items-center">
-        <label className="bg-accent-lm text-white px-5 py-2 rounded-lg cursor-pointer">
+      <div className="flex gap-3 items-center lg:mt-3">
+        <label className="bg-accent-lm text-primary-lm px-5 py-2 rounded-lg hover:bg-hover-btn-lm transition duration-150 cursor-pointer">
           Choose File
           <input
             type="file"
@@ -28,9 +28,9 @@ export default function ImageUploader({
           />
         </label>
 
-        <div className="flex-1 border border-stroke-grey rounded-lg px-3 py-2 flex items-center">
+        <div className="flex-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 flex items-center">
           {!image ? (
-            <span className="text-sm text-text-lighter-lm">
+            <span className="text-text-lighter-lm">
               No file chosen
             </span>
           ) : (

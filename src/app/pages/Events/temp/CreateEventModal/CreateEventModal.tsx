@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import type { EventPostType } from "../../components/EventPost";
 import CategorySelector from "./CategorySelector";
 import TitleInput from "./TitleInput";
@@ -12,6 +12,7 @@ import { supabase } from "../../../../../../supabase/supabaseClient";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { ensureSkillId } from "../../backend/skillsService";
 import { toast } from "react-hot-toast";
+import { ButtonCTA } from "@/components/ButtonCTA";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -20,6 +21,9 @@ interface Props {
 
 export default function CreateEventModal({ open, onClose, onCreate }: Props) {
   const form = useCreateEventForm(open);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const tagInputRef = useRef<HTMLInputElement | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
 
   if (!open) return null;
 
@@ -29,7 +33,39 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
     async function handlePost() {
     
 
-      if (!form.validate()) return;
+      setIsPosting(true);
+      // Use browser native validation first so required fields show native messages
+      if (formRef.current) {
+        const valid = formRef.current.reportValidity();
+        if (!valid) {
+          // highlight all invalid fields briefly and focus first
+          const invalids = Array.from(formRef.current.querySelectorAll(':invalid')) as HTMLElement[];
+          invalids.forEach(el => {
+            const prev = el.style.boxShadow;
+            el.style.boxShadow = '0 0 0 3px rgba(194,61,0,0.18)';
+            setTimeout(() => { el.style.boxShadow = prev; }, 3000);
+          });
+          if (invalids[0]) invalids[0].focus();
+          toast.error("Please fill all required fields");
+          setIsPosting(false);
+          return;
+        }
+      }
+
+      // Ensure at least one tag selected
+      if (form.tags.length === 0) {
+        toast.error("Please fill all required fields");
+        if (tagInputRef.current) {
+          tagInputRef.current.focus();
+        }
+        setIsPosting(false);
+        return;
+      }
+
+      if (!form.validate()) {
+        setIsPosting(false);
+        return;
+      }
 
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -53,11 +89,8 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
               // event_posts fields
               location: post.location ?? "",
-              event_start_date: post.segments?.[0]?.startDate ?? null,
-              event_end_date: post.segments?.[0]?.endDate ?? null,
-              event_start_time: post.segments?.[0]?.startTime
-                ? post.segments[0].startTime + ":00+06"
-                : null,
+              event_start_date: form.eventStartDate ?? post.segments?.[0]?.startDate ?? null,
+              event_end_date: form.eventEndDate ?? post.segments?.[0]?.endDate ?? null,
             
               img_url: post.image ?? null,
               category_id: form.category,
@@ -78,27 +111,38 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
 
         const tags_data = form.tags.map(tag => ({ skill_id: tag.skill_id }));
 
-        console.log("RPC payload:", { event_data, segments_data, tags_data });
+        console.log("Event payload:", { event_data, segments_data, tags_data });
 
-        // RPC call
-        const { data, error } = await supabase.rpc("create_event_with_segments", {
-          event_data,
-          segments_data,
-          tags_data,
-        });
-
-        if (error) {
-          console.error("RPC error:", error);
-          toast.error("Failed to save event: " + error.message);
+        // Use client-side multi-insert helper instead of RPC (server function still references removed column)
+        try {
+          await createEvent({
+            type: event_data.type,
+            title: event_data.title,
+            description: event_data.description,
+            author_id: event_data.author_id,
+            location: event_data.location,
+            event_start_date: event_data.event_start_date,
+            event_end_date: event_data.event_end_date,
+            registration_link: event_data.registration_link ?? null,
+            img_url: event_data.img_url ?? null,
+            category_id: event_data.category_id,
+            segments: segments_data,
+            tags: tags_data,
+          });
+        } catch (err: any) {
+          console.error("createEvent error:", err);
+          toast.error("Failed to save event: " + (err.message ?? JSON.stringify(err)));
+          setIsPosting(false);
           return;
         }
-         
         toast.success("Event added successfully!");
         form.resetForm();
-        onClose();
+        // reload page to ensure fresh data
+        window.location.reload();
       } catch (err: any) {
         console.error("Unexpected error:", err);
         toast.error("Failed to save event: " + (err.message ?? JSON.stringify(err)));
+        setIsPosting(false);
       }
     }
 
@@ -140,7 +184,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             </button>
           </div>
 
-          <div className="lg:space-y-6">
+          <form ref={formRef} className="lg:space-y-6" onSubmit={e => { e.preventDefault(); void handlePost(); }}>
             <CategorySelector category={form.category} onChange={form.setCategory} />
            <div className="bg-secondary-lm lg:p-5 border border-stroke-grey rounded-lg">
               <TitleInput
@@ -150,31 +194,44 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                 onDescriptionChange={form.setDescription}
                 location={form.location}
                 onLocationChange={form.setLocation}
-                startDate={form.segments?.[0]?.startDate ?? ""}
-                onStartDateChange={v => form.updateSegment(form.segments[0].id, { startDate: v })}
-                endDate={form.segments?.[0]?.endDate ?? ""}
-                onEndDateChange={v => form.updateSegment(form.segments[0].id, { endDate: v })}
+                startDate={form.eventStartDate}
+                onStartDateChange={form.setEventStartDate}
+                endDate={form.eventEndDate}
+                onEndDateChange={form.setEventEndDate}
               />
 
-            <SegmentList
-              segments={form.segments}
-              onAdd={form.addSegment}
-              onUpdate={form.updateSegment}
-              onRemove={form.removeSegment}
-            />
+            {/* Add Segment button shown when no segments exist */}
+            {form.segments.length === 0 ? (
+              <div className="text-right">
+                <button
+                  onClick={() => form.addSegment()}
+                  className="bg-accent-lm text-primary-lm font-medium px-5 py-2 rounded-lg hover:bg-hover-btn-lm transition duration-150 cursor-pointer lg:mt-5"
+                >
+                  + Add segment
+                </button>
+              </div>
+            ) : (
+              <SegmentList
+                segments={form.segments}
+                onAdd={form.addSegment}
+                onUpdate={form.updateSegment}
+                onRemove={form.removeSegment}
+              />
+            )}
             
             {/* Tags box with heading */}
           <div>
-            <h3 className="text-lg font-semibold mb-2">Tags</h3>
+            <h6 className="font-medium mb-2">Tags</h6>
 
             {/* Input + Add button */}
             <div className="flex items-center gap-2 mb-3">
               <input
                 type="text"
+                ref={tagInputRef}
                 value={form.searchTerm}
                 onChange={(e) => form.setSearchTerm(e.target.value)}
                 placeholder="Type to add tags"
-                className="border px-3 py-2 rounded flex-1"
+                className="border px-3 py-2 rounded-lg flex-1 bg-primary-lm border-stroke-grey focus:outline-0 focus:border-accent-lm"
               />
               <button
                 onClick={() => {
@@ -182,7 +239,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                     form.addTagFromSuggestion({ id: Date.now(), skill: form.searchTerm });
                   }
                 }}
-                className="bg-accent-lm text-background-lm px-3 py-1 rounded"
+                className="bg-accent-lm text-primary-lm font-medium px-4 py-2 rounded-lg hover:bg-hover-btn-lm transition duration-150 cursor-pointer"
               >
                 Add
               </button>
@@ -195,7 +252,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                   <button
                     key={skill.id}
                     onClick={() => form.addTagFromSuggestion(skill)}
-                    className="px-3 py-1 rounded-2xl bg-stroke-grey hover:bg-stroke-grey text-sm"
+                    className="px-3 py-1 rounded-2xl text-accent-lm bg-primary-lm border border-stroke-peach hover:bg-hover-lm duration-150 transition text-sm"
                   >
                     {skill.skill}
                   </button>
@@ -208,7 +265,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               {form.tags.map(tag => (
                 <span
                   key={tag.skill_id}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium  bg-accent-lm text-background-lm"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium  bg-accent-lm text-primary-lm"
                 >
                   {tag.name}
                   <button
@@ -232,15 +289,14 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             </div>
 
             <div className="text-right lg:pt-4">
-              <button
-                onClick={handlePost}
-                className="bg-[#C23D00] text-white lg:px-6 lg:py-2 lg:rounded-full"
-                style={{ color: "white" }}
-              >
-                Post
-              </button>
+              <ButtonCTA
+                type="submit"
+                label={isPosting ? "Posting..." : "Post"}
+                loading={isPosting}
+                disabled={isPosting}
+              />
             </div>
-          </div>
+          </form>
         </div>
       </div>
 

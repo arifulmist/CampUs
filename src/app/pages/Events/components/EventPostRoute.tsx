@@ -345,7 +345,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
           <img
             src={detail.imageUrl}
             alt="event post"
-            className="lg:object-cover lg:object-center lg:w-full lg:h-full lg:rounded-lg"
+            className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
           />
         </div>
       ) : null}
