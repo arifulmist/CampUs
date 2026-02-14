@@ -11,7 +11,7 @@ export function ShareModal()
       </div>
       {/* modal body */}
       <div>
-        
+
       </div>
     </div>
   );

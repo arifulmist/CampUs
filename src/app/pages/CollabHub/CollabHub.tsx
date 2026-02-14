@@ -4,6 +4,7 @@ import {
   CommentButton,
   ShareButton,
 } from "../../../components/PostButtons";
+import { getCategoryClass } from "@/utils/categoryColors";
 
 import { UserInfo } from "@/components/UserInfo";
 import { Button } from "@/components/ui/button";
@@ -268,7 +269,7 @@ export function CollabHub() {
                   }`}
                 >
                   {/* CATEGORY TAG */}
-                  <span className="lg:absolute lg:top-4 lg:right-4 lg:font-bold bg-accent-lm text-primary-lm lg:px-3 lg:py-1 lg:rounded-full text-m lg:uppercase lg:tracking-wide">
+                  <span className={`lg:absolute lg:top-4 lg:right-4 lg:font-bold text-primary-lm lg:px-3 lg:py-1 lg:rounded-full text-m lg:uppercase lg:tracking-wide ${getCategoryClass(p.category, "collab")}`}>
                     {p.category}
                   </span>
                   <UserInfo

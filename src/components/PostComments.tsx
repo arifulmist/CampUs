@@ -197,7 +197,7 @@ export function PostComments({ postId }: { postId: string }) {
         <select
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value as SortMode)}
-          className="bg-primary-lm border border-stroke-grey rounded-md lg:p-2 text-accent-lm cursor-pointer hover:border-stroke-peach"
+          className="bg-primary-lm border border-stroke-grey rounded-md lg:p-2 text-accent-lm cursor-pointer hover:border-stroke-peach focus:outline-0 focus:border-stroke-grey"
         >
           <option value="best">Best</option>
           <option value="latest">Latest</option>
@@ -209,7 +209,7 @@ export function PostComments({ postId }: { postId: string }) {
       ) : sortedParents.length === 0 ? (
         <div className="flex flex-col lg:gap-2 items-center lg:mt-4">
           <img src={messageEmptyState}/>
-          <p className="text-text-lighter-lm">No comments yet.</p>
+          <p className="text-text-lighter-lm">No comments yet</p>
         </div>
       ) : (
         <div className="lg:flex lg:flex-col lg:gap-6">

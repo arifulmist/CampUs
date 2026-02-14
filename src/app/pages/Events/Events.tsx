@@ -195,7 +195,7 @@ const mergedPosts = (events ?? []).map((ev: any) => {
           </button>
 
           <div className="lg:flex lg:items-center lg:justify-center">
-            <div className="lg:w-[60vw]">
+            <div className="lg:w-[60vw] flex flex-col lg:gap-10">
               {loading ? (
                 <p>Loading events...</p>
               ) : filtered.length === 0 ? (

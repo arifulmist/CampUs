@@ -1,10 +1,12 @@
 import { UserInfo } from "./UserInfo";
 import { CommentButton, LikeButton, ShareButton } from "./PostButtons";
+import { getCategoryClass } from "@/utils/categoryColors";
 
 interface PostContent {
   postId?: string;
   initialLikeCount?: number;
   initialCommentCount?: number;
+  categorySet?: "events" | "collab" | "lostfound";
   title: string;
   user: {
     name: string;
@@ -26,6 +28,7 @@ export function PostBody({
   postId,
   initialLikeCount,
   initialCommentCount,
+  categorySet,
   title,
   user,
   content,
@@ -33,21 +36,8 @@ export function PostBody({
   category,
   formattedDate,
 }: PostContent) {
-  const categoryClassMap: Record<string, string> = {
-    workshop: "bg-[#75ea92]",
-    seminar: "bg-[#71bdff]",
-    course: "bg-[#c09ffa]",
-    competition: "bg-[#e98181]",
-  };
-
-  const categoryLabel = category
-    ? category.charAt(0).toUpperCase() + category.slice(1)
-    : "";
-
-  const categoryClasses = category
-    ? categoryClassMap[category.toLowerCase()] ??
-      "bg-secondary-lm border border-stroke-grey"
-    : "";
+  const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : "";
+  const categoryClasses = category ? getCategoryClass(category, categorySet) : "";
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">

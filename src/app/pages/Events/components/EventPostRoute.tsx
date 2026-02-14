@@ -4,6 +4,8 @@ import { Navigate } from "react-router-dom";
 
 import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
+import { getCategoryClass } from "@/utils/categoryColors";
+import { EventSegment } from "./EventSegment";
 import { supabase } from "../../../../../supabase/supabaseClient";
 
 type EventPostsRow = {
@@ -67,6 +69,16 @@ type EventDetail = {
   imageUrl: string | null;
   likeCount: number;
   commentCount: number;
+  segments?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    location?: string | null;
+  }>;
 };
 
 function formatRelativeTime(dateString?: string | null) {
@@ -91,6 +103,8 @@ function formatRelativeTime(dateString?: string | null) {
     hour12: true,
   });
 }
+
+
 
 export function EventPostRoute({ postId }: { postId: string }) {
   const [loading, setLoading] = useState(true);
@@ -136,7 +150,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
 
         const authorId: string | null = eventRow.all_posts.author_id ?? null;
 
-        const [authorInfoRes, authorProfileRes, tagsRes, skillsRes, departmentsRes] =
+        const [authorInfoRes, authorProfileRes, tagsRes, skillsRes, segmentsRes, departmentsRes] =
           await Promise.all([
             authorId
               ? supabase
@@ -154,6 +168,16 @@ export function EventPostRoute({ postId }: { postId: string }) {
               : Promise.resolve({ data: null as UserProfileRow | null, error: null as unknown }),
             supabase.from("post_tags").select("skill_id").eq("post_id", postId),
             supabase.from("skills_lookup").select("id, skill"),
+            supabase.from("event_segment").select(`
+              segment_id,
+              segment_title,
+              segment_description,
+              segment_start_date,
+              segment_end_date,
+              segment_start_time,
+              segment_end_time,
+              segment_location
+            `).eq("post_id", postId),
             supabase.from("departments_lookup").select("dept_id, department_name"),
           ]);
 
@@ -161,6 +185,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
         if (authorProfileRes.error) throw authorProfileRes.error;
         if (tagsRes.error) throw tagsRes.error;
         if (skillsRes.error) throw skillsRes.error;
+        if (segmentsRes && segmentsRes.error) throw segmentsRes.error;
         if (departmentsRes.error) throw departmentsRes.error;
 
         const userInfo = (authorInfoRes.data as unknown as UserInfoRow | null) ?? null;
@@ -209,7 +234,27 @@ export function EventPostRoute({ postId }: { postId: string }) {
           imageUrl: typeof eventRow.img_url === "string" ? eventRow.img_url : null,
           likeCount: Number(eventRow.all_posts.like_count ?? 0),
           commentCount: Number(eventRow.all_posts.comment_count ?? 0),
+          segments: [],
         };
+
+        // attach segments result if available
+        try {
+          const segRes = (segmentsRes as any) ?? null;
+          if (segRes && !segRes.error && Array.isArray(segRes.data)) {
+            d.segments = segRes.data.map((s: any) => ({
+              id: s.segment_id,
+              title: s.segment_title,
+              description: s.segment_description,
+              startDate: s.segment_start_date,
+              endDate: s.segment_end_date,
+              startTime: s.segment_start_time,
+              endTime: s.segment_end_time,
+              location: s.segment_location,
+            }));
+          }
+        } catch (e) {
+          console.warn("Failed to attach segments", e);
+        }
 
         if (!alive) return;
         setDetail(d);
@@ -244,7 +289,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
       <div className="lg:mt-1 lg:mb-3">
-        <p className="inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base">
+        <p className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(detail.category, "events")}`}>
           {detail.category}
         </p>
       </div>
@@ -276,6 +321,24 @@ export function EventPostRoute({ postId }: { postId: string }) {
       </div>
 
       <p className="mt-2 text-text-lm whitespace-pre-wrap">{detail.description}</p>
+
+      {detail.segments && detail.segments.length > 0 && (
+        <div className="flex flex-col lg:gap-3 lg:mt-4 lg:mb-3">
+          {detail.segments.map((seg) => (
+            <div key={seg.id} className="lg:rounded-lg">
+              <EventSegment
+                segmentTitle={seg.title}
+                segmentDescription={seg.description}
+                segmentStartDate={seg.startDate}
+                segmentEndDate={seg.endDate}
+                segmentStartTime={seg.startTime}
+                segmentEndTime={seg.endTime}
+                segmentLocation={seg.location ?? undefined}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {detail.imageUrl ? (
         <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">

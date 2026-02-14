@@ -16,7 +16,7 @@ export function EventPostDetailRoute() {
   }
 
   return (
-    <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
+    <div className="lg:flex lg:flex-col lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
       <EventPostRoute postId={postId} />
       <PostComments postId={postId} />
     </div>
