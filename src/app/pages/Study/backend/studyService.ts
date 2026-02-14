@@ -390,7 +390,15 @@ export async function uploadNoteFile(file: File): Promise<string> {
 
   const { error } = await supabase.storage.from("notes").upload(fileName, file);
 
-  if (error) throw error;
+  if (error) {
+    // Provide a clearer message for missing bucket to help debugging
+    if (String(error.message).toLowerCase().includes("bucket not found")) {
+      throw new Error(
+        'Storage bucket "notes" not found. Create a bucket named "notes" in your Supabase project (Storage → Buckets) or update the code to use the correct bucket name.',
+      );
+    }
+    throw error;
+  }
 
   // Get public URL
   const { data: urlData } = supabase.storage

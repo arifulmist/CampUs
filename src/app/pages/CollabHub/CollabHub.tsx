@@ -57,41 +57,76 @@ export function CollabHub() {
       if (postsError) throw postsError;
       if (metaError) throw metaError;
 
-      const [categoriesRes, tagsRes, usersRes, profilesRes, departmentsRes] =
-        await Promise.all([
-          supabase.from("collab_category").select("category_id,category"),
-          supabase.from("collab_tags").select("post_id,tag"),
-          supabase
-            .from("user_info")
-            .select(
-              "auth_uid,name,batch,department,departments_lookup(department_name)"
-            ),
-          supabase.from("user_profile").select("auth_uid,profile_picture_url"),
-          supabase.from("departments_lookup").select("dept_id,department_name"),
-        ]);
+      // After fetching posts/meta, fetch related lookup tables. Use
+      // `post_tags` + `skills_lookup` for tags (post_tags stores skill IDs).
+      const postIds = (postRows ?? []).filter(Boolean).map((r: any) => r.post_id);
+
+      const [
+        categoriesRes,
+        postTagsRes,
+        skillsRes,
+        usersRes,
+        profilesRes,
+        departmentsRes,
+      ] = await Promise.all([
+        supabase.from("collab_category").select("category_id,category"),
+        postIds.length
+          ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", postIds)
+          : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
+        postIds.length
+          ? supabase.from("skills_lookup").select("id,skill")
+          : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
+        supabase
+          .from("user_info")
+          .select(
+            "auth_uid,name,batch,department,departments_lookup(department_name)"
+          ),
+        supabase.from("user_profile").select("auth_uid,profile_picture_url"),
+        supabase.from("departments_lookup").select("dept_id,department_name"),
+      ]);
 
       if (categoriesRes.error) throw categoriesRes.error;
-      if (tagsRes.error) throw tagsRes.error;
+
+      if (postTagsRes && (postTagsRes as any).error) {
+        // If post_tags is missing or inaccessible, warn and continue without tags.
+        // eslint-disable-next-line no-console
+        console.warn("post_tags fetch failed; continuing without tags:", (postTagsRes as any).error);
+      }
+      if (skillsRes && (skillsRes as any).error) {
+        // eslint-disable-next-line no-console
+        console.warn("skills_lookup fetch failed; continuing without mapping skill names:", (skillsRes as any).error);
+      }
       if (usersRes.error) throw usersRes.error;
       if (profilesRes.error) throw profilesRes.error;
       if (departmentsRes.error) throw departmentsRes.error;
 
-      const categoryById = new Map<number, Category>();
+      const categoryById = new Map<string, Category>();
       for (const row of (categoriesRes.data ?? []) as Array<Record<string, unknown>>) {
         const id = row.category_id;
         const cat = row.category;
-        if (typeof id === "number" && typeof cat === "string") {
-          categoryById.set(id, cat as Category);
+        if ((typeof id === "number" || typeof id === "string") && typeof cat === "string") {
+          categoryById.set(String(id), cat as Category);
         }
       }
 
       const tagsByPostId = new Map<string, string[]>();
-      for (const row of (tagsRes.data ?? []) as Array<Record<string, unknown>>) {
+      // Map skill id -> skill name
+      const skillNameById = new Map<number | string, string>();
+      for (const row of (skillsRes?.data ?? []) as Array<Record<string, unknown>>) {
+        const id = row.id;
+        const skill = row.skill;
+        if ((typeof id === "number" || typeof id === "string") && typeof skill === "string") {
+          skillNameById.set(id, skill);
+        }
+      }
+
+      for (const row of (postTagsRes?.data ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
-        const tag = row.tag;
-        if (typeof postId === "string" && typeof tag === "string") {
+        const skillId = row.skill_id;
+        if (typeof postId === "string") {
           const arr = tagsByPostId.get(postId) ?? [];
-          arr.push(tag);
+          const skillName = skillNameById.get(skillId as number | string);
+          if (skillName) arr.push(`#${skillName}`);
           tagsByPostId.set(postId, arr);
         }
       }
@@ -140,12 +175,12 @@ export function CollabHub() {
         }
       }
 
-      const metaByPostId = new Map<string, number>();
+      const metaByPostId = new Map<string, string>();
       for (const row of (metaRows ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const categoryId = row.category_id;
-        if (typeof postId === "string" && typeof categoryId === "number") {
-          metaByPostId.set(postId, categoryId);
+        if (typeof postId === "string" && (typeof categoryId === "number" || typeof categoryId === "string")) {
+          metaByPostId.set(postId, String(categoryId));
         }
       }
 
@@ -156,7 +191,7 @@ export function CollabHub() {
         const description = row.description;
         const authorId = row.author_id;
         const categoryId = typeof postId === "string" ? metaByPostId.get(postId) : undefined;
-        const category = categoryId ? categoryById.get(categoryId) : undefined;
+        const category = typeof categoryId === "string" ? categoryById.get(categoryId) : undefined;
 
         if (
           typeof postId !== "string" ||

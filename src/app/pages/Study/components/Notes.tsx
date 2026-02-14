@@ -3,6 +3,7 @@ import docIcon from "@/assets/images/docsImg.svg";
 import pdfIcon from "@/assets/images/pdfImage.svg";
 
 import { useOutletContext } from "react-router";
+import { supabase } from "@/supabase/supabaseClient";
 
 import { type Note, createNote, uploadNoteFile } from "../backend/studyService";
 import { ButtonCTA } from "@/components/ButtonCTA";
@@ -134,8 +135,71 @@ function NoteItem({
   else if (extension === "doc" || extension === "docx") previewImage = docIcon;
   else if (extension === "pdf") previewImage = pdfIcon;
 
+  async function extractObjectPath(url?: string) {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      // Try to find /storage/v1/object/(public/)?<bucket>/path
+      const parts = u.pathname.split("/storage/v1/object/");
+      if (parts.length === 2) {
+        // parts[1] = maybe "public/notes/...." or "notes/..."
+        let after = parts[1];
+          // remove possible "public/"
+          after = after.replace(/^public\//, "");
+          // if the path includes the bucket name (e.g. "notes/..."), remove it so
+          // createSignedUrl receives the object path relative to the bucket root
+          if (after.startsWith("notes/")) return after.slice("notes/".length);
+          return after;
+      }
+    } catch (e) {
+      // fallback: try to locate /notes/ in the URL
+      const idx = url.indexOf("/notes/");
+      if (idx !== -1) return url.substring(idx + "/notes/".length);
+    }
+    return null;
+  }
+
+  async function openFile(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!fileLink) {
+      toast.error("No file link available");
+      return;
+    }
+
+    // Try the public URL first
+    try {
+      const res = await fetch(fileLink, { method: "GET" });
+      if (res.ok) {
+        window.open(fileLink, "_blank", "noopener,noreferrer");
+        return;
+      }
+      // Not ok -> fallthrough to signed URL
+    } catch (err) {
+      // network/CORS/etc. -> try signed URL fallback
+    }
+
+    const objectPath = await extractObjectPath(fileLink);
+    if (!objectPath) {
+      toast.error("Failed to determine storage path for this file");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("notes")
+        .createSignedUrl(objectPath, 60);
+      if (error) throw error;
+      const signedUrl = data.signedUrl ?? (data?.signedURL || data?.signed_url);
+      if (!signedUrl) throw new Error("Failed to obtain signed URL");
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      console.error("Signed URL error:", err);
+      toast.error(err?.message ?? "Unable to open file. Contact admin.");
+    }
+  }
+
   return (
-    <a href={fileLink} target="_blank" rel="noopener noreferrer">
+    <button onClick={openFile} className="w-full text-left" aria-label={`Open ${title}`}>
       <div className="lg:flex lg:flex-col lg:w-70 lg:h-90 lg:rounded-xl bg-primary-lm hover:scale-102 lg:transition lg:duration-300 hover:drop-shadow-lg">
         <img
           src={previewImage}
@@ -152,6 +216,6 @@ function NoteItem({
           </p>
         </div>
       </div>
-    </a>
+    </button>
   );
 }
