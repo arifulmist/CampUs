@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { LucideArrowLeft, LucidePlus } from "lucide-react";
 import { ChatHistory } from "./components/ChatHistory";
 import { NewMessage } from "./components/NewMessage";
+import { useOnlineUsers } from "@/app/OnlineUsersContext";
 import {
   getConversations,
   getExistingConversationId,
@@ -67,7 +68,7 @@ export function MessageDrawer({
     null
   );
 
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const { onlineUserIds } = useOnlineUsers();
 
   const activeTargetUserId = initialUserId ?? manualTargetUser?.id ?? null;
   const activeTargetUserName = initialUserId
@@ -91,81 +92,6 @@ export function MessageDrawer({
 
     return () => {
       cancelled = true;
-    };
-  }, [open]);
-
-  // Presence tracking for online indicators
-  useEffect(() => {
-    if (!open) return;
-
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let presenceInterval: number | null = null;
-    let cancelled = false;
-
-    async function setupPresence() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-
-        channel = supabase.channel("online-users", {
-          config: {
-            presence: { key: user.id },
-          },
-        });
-
-        channel
-          .on("presence", { event: "sync" }, () => {
-            const state = channel?.presenceState?.() ?? {};
-            const online = new Set<string>();
-
-            Object.values(state).forEach((presences) => {
-              (presences as Array<Record<string, unknown>>).forEach((presence) => {
-                const id = presence.auth_uid;
-                if (typeof id === "string") online.add(id);
-              });
-            });
-
-            setOnlineUserIds(online);
-          })
-          .subscribe(async (status) => {
-            if (status !== "SUBSCRIBED" || !channel || cancelled) return;
-
-            await channel.track({
-              auth_uid: user.id,
-              online_at: new Date().toISOString(),
-            });
-
-            presenceInterval = window.setInterval(async () => {
-              try {
-                await channel?.track({
-                  auth_uid: user.id,
-                  online_at: new Date().toISOString(),
-                });
-              } catch {
-                // ignore
-              }
-            }, 30000);
-          });
-      } catch (error) {
-        console.error("Error setting up presence:", error);
-      }
-    }
-
-    setupPresence();
-
-    return () => {
-      cancelled = true;
-      if (presenceInterval) window.clearInterval(presenceInterval);
-      if (channel) {
-        try {
-          channel.untrack();
-        } catch {
-          // ignore
-        }
-        supabase.removeChannel(channel);
-      }
     };
   }, [open]);
 
