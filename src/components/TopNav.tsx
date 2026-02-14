@@ -47,7 +47,7 @@ export function TopNav() {
     id: string | null;
     name?: string;
   } | null>(null);
-  const messageButtonRef = useRef<HTMLButtonElement>(null);
+  const messageButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const unsub = notiSubscribe(() => {
