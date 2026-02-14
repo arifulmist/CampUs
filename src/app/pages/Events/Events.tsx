@@ -7,6 +7,7 @@ import CreateEventModal from "./temp/CreateEventModal/CreateEventModal";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";
+import postEmptyState from "@/assets/images/noPost.svg";
 
 export function Events() {
   const navigate = useNavigate();
@@ -29,7 +30,6 @@ export function Events() {
           location,
           event_start_date,
           event_end_date,
-          event_start_time,
           registration_link,
           img_url,
           category_id,
@@ -52,8 +52,39 @@ export function Events() {
 
       if (eventsError) {
         console.error("Error fetching events:", eventsError);
-        toast.error("Failed to load events");
-        setPosts([]);
+        toast.error("Failed to load events: " + (eventsError?.message ?? "See console for details"));
+        // try a simpler fallback query to determine whether the nested select caused the error
+        const { data: fallbackEvents, error: fallbackError } = await supabase
+          .from("event_posts")
+          .select(`post_id, location, event_start_date, event_end_date, img_url, category_id`)
+          .order("event_start_date", { ascending: false });
+
+        if (fallbackError) {
+          console.error("Fallback fetch also failed:", fallbackError);
+          toast.error("Failed to load events: " + (eventsError?.message ?? "Unknown error"));
+          setPosts([]);
+          return;
+        }
+
+        // map fallback results into minimal post objects so the UI can render something
+        const minimal = (fallbackEvents ?? []).map((ev: any) => ({
+          id: ev.post_id,
+          category: "Uncategorized",
+          title: "Untitled",
+          author: "Unknown",
+          excerpt: "",
+          body: "",
+          location: ev.location,
+          image: ev.img_url,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          createdAt: "",
+          segments: [],
+          tags: [],
+        }));
+
+        setPosts(minimal);
         return;
       }
 
@@ -186,10 +217,10 @@ const mergedPosts = (events ?? []).map((ev: any) => {
     <div className="lg:min-h-screen bg-background-lm">
       <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
         {/* LEFT: Posts */}
-        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
+        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border border-stroke-grey">
           <button
             onClick={() => setModalOpen(true)}
-            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
+            className="lg:w-full lg:rounded-lg lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-accent-lm hover:bg-[#FFF4EE]"
           >
             Click to announce an event here
           </button>
@@ -199,7 +230,10 @@ const mergedPosts = (events ?? []).map((ev: any) => {
               {loading ? (
                 <p>Loading events...</p>
               ) : filtered.length === 0 ? (
-                <p className="text-text-lighter-lm text-lg">No posts in this category</p>
+                <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
+                  <img src={postEmptyState} className="lg:size-50"></img>
+                  <p className="text-text-lighter-lm text-lg">No posts in this category</p>
+                </div>
               ) : (
                 filtered.map((p) => (
                   <EventPost key={p.id} post={p} onClick={() => navigate(`/events/${p.id}`)} />

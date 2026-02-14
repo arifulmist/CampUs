@@ -39,7 +39,7 @@ export default function CategorySelector({ category, onChange }: Props) {
             onChange={() => onChange(c.category_id)}
             className="accent-accent-lm"
           />
-          <span>{c.category_name}</span>
+          <span className="text-text-lm font-medium">{c.category_name}</span>
         </label>
       ))}
     </div>

@@ -21,6 +21,8 @@ import {
   subscribe as interestedSubscribe,
 } from "@/app/pages/UserProfile/backend/interestedStore";
 
+import postEmptyState from "@/assets/images/noPost.svg";
+
 type CollabPost = {
   id: string;
   category: Category;
@@ -236,11 +238,11 @@ export function CollabHub() {
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
       {/* LEFT: Posts */}
       <div className="lg:flex-1">
-        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
+        <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border border-stroke-grey">
           {/* Announce collaboration */}
           <button
             onClick={() => setModalOpen(true)}
-            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-hover-lm lg:transition"
+            className="lg:w-full lg:rounded-lg lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-accent-lm hover:bg-hover-lm lg:transition"
           >
             Click to post a collaboration post here.
           </button>
@@ -251,7 +253,8 @@ export function CollabHub() {
               <p className="text-text-lighter-lm text-lg">Loading…</p>
             </div>
           ) : filteredPosts.length === 0 ? (
-            <div className="lg:flex lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
+            <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
+              <img src={postEmptyState} className="lg:size-50"></img>
               <p className="text-text-lighter-lm text-lg">
                 No posts in this category
               </p>

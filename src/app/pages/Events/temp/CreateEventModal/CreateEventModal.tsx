@@ -9,6 +9,7 @@ import ImagePreview from "./ImagePreview";
 import { useCreateEventForm } from "./useCreateEventForm";
 import { createEvent } from "../../backend/eventService";
 import { supabase } from "../../../../../../supabase/supabaseClient";
+import crossBtn from "@/assets/icons/cross_btn.svg";
 import { ensureSkillId } from "../../backend/skillsService";
 import { toast } from "react-hot-toast";
 interface Props {
@@ -107,15 +108,15 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
     <>
       {/* overlay */}
       <div
-        className="lg:fixed lg:inset-0 lg:z-40"
+        className="lg:fixed lg:inset-0 lg:z-50"
         onClick={onClose}
-        style={{ backgroundColor: "rgba(14,21,31,0.35)" }}
+        style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       />
 
       {/* modal wrapper */}
-      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:p-6">
+      <div className="lg:fixed lg:inset-0 lg:z-51 lg:flex lg:items-center lg:justify-center lg:p-6">
         <div
-          className="lg:w-full lg:max-w-3xl lg:p-6 lg:border border-stroke-grey"
+          className="lg:w-full lg:max-w-3xl lg:p-10 lg:border border-stroke-grey"
           onClick={e => e.stopPropagation()}
           style={{
             backgroundColor: "#ffffff",
@@ -125,6 +126,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             overflowY: "auto",
           }}
         >
+          {/* modal header  */}
           <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
             <h2 className="text-xl lg:font-semibold text-text-lm">
               Announce Event
@@ -134,21 +136,24 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               className="text-text-lighter-lm text-2xl hover:text-gray-900"
               aria-label="Close modal"
             >
-              ✕
+              <img src={crossBtn}></img>
             </button>
           </div>
 
           <div className="lg:space-y-6">
             <CategorySelector category={form.category} onChange={form.setCategory} />
-           
+           <div className="bg-secondary-lm lg:p-5 border border-stroke-grey rounded-lg">
               <TitleInput
                 value={form.title}
-                error={!form.title}
                 onChange={form.setTitle}
                 description={form.description}
                 onDescriptionChange={form.setDescription}
-                location={form.location}             
-                onLocationChange={form.setLocation}  
+                location={form.location}
+                onLocationChange={form.setLocation}
+                startDate={form.segments?.[0]?.startDate ?? ""}
+                onStartDateChange={v => form.updateSegment(form.segments[0].id, { startDate: v })}
+                endDate={form.segments?.[0]?.endDate ?? ""}
+                onEndDateChange={v => form.updateSegment(form.segments[0].id, { endDate: v })}
               />
 
             <SegmentList
@@ -224,6 +229,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               onSelect={form.handleImage}
               onPreview={() => form.setPreviewOpen(true)}
             />
+            </div>
 
             <div className="text-right lg:pt-4">
               <button
