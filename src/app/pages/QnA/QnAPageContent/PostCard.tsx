@@ -35,34 +35,59 @@ export default function PostCard({
       onClick={() => !replying && onOpenDetail()}
       className="lg:relative bg-secondary-lm lg:p-8 lg:rounded-2xl border-2 border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach lg:transition cursor-pointer lg:w-full lg:flex lg:flex-col lg:justify-between lg:min-h-56"
     >
+      {/* Category */}
       <span className={`absolute top-4 right-4 px-3 py-1 font-semibold rounded-full border ${categoryStyles[post.category]}`}>
         {post.category}
       </span>
 
+      {/* Author & Title */}
       <div>
         <UserInfo userImg={post.authorAvatar} userName={post.author} userBatch={post.authorCourse} />
         <h5 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mt-2">{post.title}</h5>
       </div>
-
+        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-3">
+          {post.tags.map((tag) => (
+            <span key={tag} className="lg:font-bold bg-[#C23D00] text-primary-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      {/* Content */}
       <div className="lg:grow lg:mt-3">
         <div ref={contentRef} style={collapsed ? { maxHeight: "6rem", overflow: "hidden" } : {}} className="text-text-lighter-lm text-md lg:leading-relaxed">
           {post.content}
         </div>
 
         {showReadMore && (
-          <button onClick={(e) => { e.stopPropagation(); setCollapsed((c) => !c); if (collapsed) setReplying(true); }} className="text-accent-lm text-sm lg:font-medium lg:mt-1">
-            {collapsed ? "Read more" : "Show less"}
-          </button>
-        )}
+            <button
+                onClick={(e) => {
+                e.stopPropagation();
+                setCollapsed((c) => !c);
+                if (collapsed) setReplying(true);
+                }}
+                className="text-accent-lm text-sm lg:font-medium lg:mt-1"
+            >
+                {collapsed ? "Read more" : "Show less"}
+            </button>
+            )}
 
-        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-3">
-         
-          {post.tags.map((tag) => (
-            <span key={tag} className="lg:font-bold bg-[#C23D00] text-primary-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm">#{tag}</span>
-          ))}
-        </div>
+
+            {post.imageUrl && (
+            <div className="lg:mt-3">
+                <img
+                src={post.imageUrl}
+                alt={post.title}
+                className="rounded-md w-full object-cover"
+                />
+            </div>
+            )}
+
+
+       
+      
       </div>
 
+      {/* Actions */}
       <div>
         <div className="lg:flex lg:gap-4 lg:items-center lg:mt-4">
           <button onClick={(e) => { e.stopPropagation(); onLike(); }}><LikeButton /></button>

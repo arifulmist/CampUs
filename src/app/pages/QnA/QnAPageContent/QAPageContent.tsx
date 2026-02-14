@@ -86,9 +86,10 @@ export default function QAPageContent() {
         timestamp: new Date(p.created_at).toLocaleDateString(),
         imageUrl: p.qna_posts?.img_url || null
       }));
+console.log("Formatted Posts Image URLs:", formattedPosts.map(p => p.imageUrl));
 
-      setPosts(formattedPosts);
-
+setPosts(formattedPosts);
+    
     } catch (err) {
       console.error("Error fetching posts:", err);
     }

@@ -2,7 +2,7 @@ export type Post = {
   id: string;
   title: string;
   author: string;
-  authorAvatar: string;
+  authorAvatar: string ;         
   authorCourse: string;
   content: string;
   category: "Question" | "Advice" | "Resource";
@@ -11,6 +11,7 @@ export type Post = {
   comments: number;
   shares: number;
   timestamp: string;
+  imageUrl?: string | null;            
 };
 
 
