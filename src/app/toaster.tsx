@@ -26,8 +26,8 @@ export function RootLayout({ children }: { children?: React.ReactNode }) {
           },
           success: {
             style: {
-              background: "var(--color-message-user-lm)",
-              color: "white",
+              background: "var(--color-primary-lm)",
+              color: "var(colour-accent-lm)",
             },
           },
           error: {

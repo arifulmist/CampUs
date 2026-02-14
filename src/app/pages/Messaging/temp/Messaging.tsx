@@ -9,7 +9,7 @@ import {
   setupRealtimeSubscription,
   type ChatThread,
 } from "@/app/pages/Messaging/backend/chatStore";
-import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import MessageDrawer from "@/app/pages/Messaging/temp/MessageDrawer";
 import { supabase } from "../../../../supabase/supabaseClient";
 
 export function Messaging() {

@@ -16,7 +16,7 @@ import { Resources } from "./pages/Study/components/Resources";
 import { LostFound } from "./pages/LostAndFound/LostFound";
 import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Error_NotFound";
-import { Messaging } from "./pages/Messaging/Messaging";
+// import { Messaging } from "./pages/Messaging/Messaging";
 import PostView from "./pages/PostView/PostView";
 
 export const router = createBrowserRouter([
@@ -60,7 +60,7 @@ export const router = createBrowserRouter([
       { path: "/lost-and-found/:postId", element: <PostView type="lost-and-found" /> },
       { path: "/profile", element: <UserProfile /> },
       { path: "/profile/:studentId", element: <UserProfile /> },
-      { path: "/messages", element: <Messaging /> },
+      // { path: "/messages", element: <Messaging /> },
       { path: "*", element: <NotFound /> }
     ],
   },

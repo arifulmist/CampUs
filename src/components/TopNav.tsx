@@ -10,7 +10,7 @@ import signoutIcon from "../assets/icons/logout_icon.svg";
 import { UserInfo } from "./UserInfo";
 import { useEffect, useRef, useState } from "react";
 import NotificationsDrawer from "./NotificationsDrawer";
-import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import {MessageDrawer} from "@/app/pages/Messaging/MessageDrawer";
 import {
   subscribe as notiSubscribe,
   getUnreadCount,
@@ -36,7 +36,7 @@ export function TopNav() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(() => getUnreadCount() > 0);
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(() => getUnreadCount() > 0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("Loading...");
@@ -46,10 +46,11 @@ export function TopNav() {
     id: string | null;
     name?: string;
   } | null>(null);
+  const messageButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const unsub = notiSubscribe(() => {
-      setHasUnread(getUnreadCount() > 0);
+      setHasUnreadNotifs(getUnreadCount() > 0);
     });
     return () => unsub();
   }, []);
@@ -168,6 +169,29 @@ export function TopNav() {
     return () => window.removeEventListener("campus:profilePictureUpdated", handler);
   }, [authUid]);
 
+  // Listen for global message open events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ userId: string; userName?: string }>;
+      const { userId, userName } = ce.detail;
+      if (userId) {
+        setMsgTarget({ id: userId, name: userName });
+        setIsMsgOpen(true);
+      }
+    };
+
+    const clearHandler = () => {
+      setMsgTarget(null);
+    };
+
+    window.addEventListener("campus:openMessage", handler);
+    window.addEventListener("campus:clearMessage", clearHandler);
+    return () => {
+      window.removeEventListener("campus:openMessage", handler);
+      window.removeEventListener("campus:clearMessage", clearHandler);
+    };
+  }, []);
+
   return (
     <nav className="bg-primary-lm lg:border border-stroke-grey lg:flex lg:justify-between lg:px-10 lg:py-3">
       <Link to="/home">
@@ -180,16 +204,15 @@ export function TopNav() {
 
         <button onClick={() => setIsNotifOpen(true)} className="lg:relative">
           <img src={bellIcon} className="lg:size-8 cursor-pointer" />
-          {hasUnread && (
+          {hasUnreadNotifs && (
             <span className="lg:absolute lg:-top-0.5 lg:-right-0.5 lg:inline-block lg:h-2.5 lg:w-2.5 lg:rounded-full bg-red-500 ring-2 ring-primary-lm" />
           )}
         </button>
 
         <button
+          ref={messageButtonRef}
           onClick={() => {
-            // Always open inbox list first
-            setMsgTarget({ id: null });
-            setIsMsgOpen(true);
+            setIsMsgOpen((prev) => !prev);
           }}
         >
           <img src={messageIcon} className="lg:size-6 cursor-pointer" />
@@ -230,16 +253,16 @@ export function TopNav() {
           />
         )}
       </div>
+
       <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
-      {isMsgOpen && (
-        <MessageDrawer
-          open={isMsgOpen}
-          onOpenChange={setIsMsgOpen}
-          userId={msgTarget?.id ?? undefined}
-          userName={msgTarget?.name || ""}
-          avatarSrc={undefined}
-        />
-      )}
+
+      <MessageDrawer 
+        open={isMsgOpen}
+        onOpenChange={setIsMsgOpen}
+        messageButtonRef={messageButtonRef}
+        initialUserId={msgTarget?.id}
+        initialUserName={msgTarget?.name}
+      />
     </nav>
   );
 }
