@@ -35,12 +35,14 @@ export default function QAPageContent() {
       qna_category(category_name)
     ),
     author:user_info!fk_author(
-      name,
-      auth_uid,
-      department,
-      batch,
-      user_profile(profile_picture_url)
-    )
+        name,
+        auth_uid,
+        department,
+        batch,
+        user_profile(profile_picture_url),
+        departments_lookup!inner(department_name)
+        )
+
   `)
   .order("created_at", { ascending: false });
 
@@ -75,9 +77,10 @@ export default function QAPageContent() {
         content: p.description,
         author: p.author?.name || "Unknown",
        authorAvatar: p.author?.user_profile?.profile_picture_url || null,
-        authorCourse: p.author?.department && p.author?.batch
-          ? `${p.author.department}-${p.author.batch}`
-          : "N/A",
+       authorCourse: p.author?.departments_lookup?.department_name && p.author?.batch
+        ? `${p.author.departments_lookup.department_name}-${p.author.batch}`
+        : "N/A",
+
         category: p.qna_posts?.qna_category?.category_name || "Question",
         tags: tagsMap[p.post_id] || [],
         reactions: p.like_count || 0,
