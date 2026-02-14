@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
 import { Spinner } from "@/components/ui/spinner";
+import { LucideArrowLeft, LucidePlus } from "lucide-react";
 import type { chatUser } from "./components/ChatHistory";
 import { ChatHistory } from "./components/ChatHistory";
+import { NewMessage, type NewMessageUser } from "./components/NewMessage";
+import messageEmptyState from "@/assets/images/noMessage.svg";
 import {
   getConversations,
   subscribeToConversations,
@@ -40,6 +43,9 @@ export function MessageDrawer({
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
   const [directChatMode, setDirectChatMode] = useState(false); // Track if opening direct chat
   const [directInitLoading, setDirectInitLoading] = useState(false);
+  const [drawerView, setDrawerView] = useState<"list" | "newMessage">("list");
+  const [directTargetUser, setDirectTargetUser] = useState<NewMessageUser | null>(null);
+  const [conversationSearch, setConversationSearch] = useState("");
   const [directUser, setDirectUser] = useState<{
     name: string;
     avatar: string;
@@ -49,6 +55,9 @@ export function MessageDrawer({
   const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const presenceIntervalRef = useRef<number | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
+
+  const activeTargetUserId = initialUserId || directTargetUser?.auth_uid || null;
+  const activeTargetUserName = initialUserName || directTargetUser?.name || undefined;
 
   // Get current user ID
   useEffect(() => {
@@ -123,22 +132,22 @@ export function MessageDrawer({
   // Clear any previous chat header/data BEFORE paint when switching to a new profile target.
   useLayoutEffect(() => {
     if (!open) return;
-    if (!initialUserId) return;
+    if (!activeTargetUserId) return;
     if (!currentUserId) return;
-    if (initialUserId === currentUserId) return;
+    if (activeTargetUserId === currentUserId) return;
 
     setDirectInitLoading(true);
     setDirectChatMode(true);
     setSelectedConversation(null);
     setDirectUser(null);
-  }, [open, initialUserId, currentUserId]);
+  }, [open, activeTargetUserId, currentUserId]);
 
   // Handle initial user conversation opening (async fetch)
   useEffect(() => {
     let cancelled = false;
 
     async function openInitialConversation() {
-      if (!open || !initialUserId || !currentUserId || initialUserId === currentUserId) return;
+      if (!open || !activeTargetUserId || !currentUserId || activeTargetUserId === currentUserId) return;
 
       // Load direct user's meta (avatar + batch) for the header
       try {
@@ -146,18 +155,18 @@ export function MessageDrawer({
           supabase
             .from("user_info")
             .select("name,batch,department,departments_lookup(department_name)")
-            .eq("auth_uid", initialUserId)
+            .eq("auth_uid", activeTargetUserId)
             .maybeSingle(),
           supabase
             .from("user_profile")
             .select("profile_picture_url")
-            .eq("auth_uid", initialUserId)
+            .eq("auth_uid", activeTargetUserId)
             .maybeSingle(),
         ]);
 
         if (cancelled) return;
 
-        const displayName = infoRes.data?.name?.trim() || initialUserName || "User";
+        const displayName = infoRes.data?.name?.trim() || activeTargetUserName || "User";
         const deptName = infoRes.data?.departments_lookup?.department_name || infoRes.data?.department || "";
         const batchValue = infoRes.data?.batch ?? null;
         const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
@@ -170,7 +179,7 @@ export function MessageDrawer({
       } catch {
         if (cancelled) return;
         setDirectUser({
-          name: initialUserName || "User",
+          name: activeTargetUserName || "User",
           avatar: placeholderUserImg,
           batch: "",
         });
@@ -178,7 +187,7 @@ export function MessageDrawer({
 
       try {
         // Only open an existing conversation; do not create one until first message is sent
-        const conversationId = await getExistingConversationId(initialUserId);
+        const conversationId = await getExistingConversationId(activeTargetUserId);
         if (!cancelled && conversationId) setSelectedConversation(conversationId);
 
         // Load conversations for navigation
@@ -200,7 +209,7 @@ export function MessageDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, initialUserId, initialUserName, currentUserId]);
+  }, [open, activeTargetUserId, activeTargetUserName, currentUserId]);
 
   // Fetch conversations on mount (only if not direct chat mode)
   useEffect(() => {
@@ -215,10 +224,10 @@ export function MessageDrawer({
       }
     }
 
-    if (open && !initialUserId) { // Only load when not opening direct chat
+    if (open && !activeTargetUserId) { // Only load when not opening direct chat
       loadConversations();
     }
-  }, [open, initialUserId, directChatMode]);
+  }, [open, activeTargetUserId, directChatMode]);
 
   // Subscribe to real-time conversation updates
   useEffect(() => {
@@ -292,13 +301,16 @@ export function MessageDrawer({
 
   // Reset selected conversation when drawer closes
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number | undefined;
     if (!open) {
       timeoutId = setTimeout(() => {
         setSelectedConversation(null);
         setDirectChatMode(false); // Reset direct chat mode
         setDirectInitLoading(false);
         setDirectUser(null);
+        setDirectTargetUser(null);
+        setDrawerView("list");
+        setConversationSearch("");
         // Clear the message target in TopNav when drawer closes normally
         const event = new CustomEvent('campus:clearMessage');
         window.dispatchEvent(event);
@@ -324,6 +336,8 @@ export function MessageDrawer({
     setSelectedConversation(null);
     setDirectChatMode(false); // Reset direct chat mode when going back
     setDirectUser(null);
+    setDirectTargetUser(null);
+    setDrawerView("list");
     setLoading(true);
     try {
       // Refresh conversations when returning to list
@@ -345,26 +359,65 @@ export function MessageDrawer({
     return truncateMessage(raw);
   };
 
+  const normalizedConversationSearch = conversationSearch.trim().toLowerCase();
+  const filteredConversations = !normalizedConversationSearch
+    ? conversations
+    : conversations.filter((conv) => {
+        const name = (conv.other_user.name || "").toLowerCase();
+        return name.includes(normalizedConversationSearch);
+      });
+
   if (!open) return null;
+
+  const isChatView = !!(selectedConversation || (directChatMode && activeTargetUserId));
+  const isListView = !isChatView && drawerView === "list";
 
   return (
     <div
       ref={drawerRef}
       className="lg:h-screen bg-primary-lm lg:w-[25vw] lg:px-4 lg:py-5 fixed top-30 right-0 bottom-0 border border-stroke-grey lg:rounded-md lg:rounded-b-none z-50"
     >
-      <div>
-        <h5 className="text-accent-lm font-header font-semibold">Messages</h5>
-        <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
-      </div>
+      {drawerView === "newMessage" && !isChatView ? (
+        <div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDrawerView("list")}
+              className="cursor-pointer"
+            >
+              <LucideArrowLeft className="text-accent-lm" />
+            </button>
+            <h5 className="text-accent-lm font-header font-semibold m-0">New Message</h5>
+          </div>
+          <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
+        </div>
+      ) : (
+        <div>
+          <div className="flex items-center justify-between">
+            <h5 className="text-accent-lm font-header font-semibold m-0">Messages</h5>
+            {isListView && (
+              <button
+                type="button"
+                onClick={() => setDrawerView("newMessage")}
+                className="cursor-pointer"
+                aria-label="New message"
+              >
+                <LucidePlus className="text-accent-lm hover:text-hover-btn-lm transition duration-150" />
+              </button>
+            )}
+          </div>
+          <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
+        </div>
+      )}
 
       {/* Content Area - either Chat History or Conversation List */}
       <div className="lg:overflow-y-auto lg:max-h-[calc(100%-80px)]">
-        {selectedConversation || (directChatMode && initialUserId) ? (
+        {isChatView ? (
           // Show ChatHistory embedded in the drawer
           (() => {
             const conversation = conversations.find(c => c.id === selectedConversation);
             const userName = directChatMode
-              ? (directUser?.name || initialUserName || "User")
+              ? (directUser?.name || activeTargetUserName || "User")
               : (conversation?.other_user.name || "User");
             const userAvatar = directChatMode
               ? (directUser?.avatar || placeholderUserImg)
@@ -373,18 +426,18 @@ export function MessageDrawer({
               ? (directUser?.batch || "")
               : (conversation?.other_user.batch || "");
             const metaLoading = directChatMode ? directInitLoading : false;
-            const otherId = directChatMode ? initialUserId : conversation?.other_user.auth_uid;
+            const otherId = directChatMode ? activeTargetUserId : conversation?.other_user.auth_uid;
             const onlineStatus = otherId ? onlineUserIds.has(otherId) : undefined;
             
             return (
                 <ChatHistory
-                  conversationId={selectedConversation || `temp-${initialUserId}`}
+                  conversationId={selectedConversation || `temp-${activeTargetUserId}`}
                   userName={userName}
                   userAvatar={userAvatar}
                   userBatch={userBatch}
                   onlineStatus={onlineStatus}
                   metaLoading={metaLoading}
-                  otherUserId={directChatMode ? initialUserId : undefined}
+                  otherUserId={directChatMode ? activeTargetUserId : undefined}
                   onConversationCreated={async (newConversationId) => {
                     setSelectedConversation(newConversationId);
                     const convs = await getConversations();
@@ -394,9 +447,48 @@ export function MessageDrawer({
                 />
             );
           })()
+        ) : drawerView === "newMessage" ? (
+          currentUserId ? (
+            <NewMessage
+              currentUserId={currentUserId}
+              onSelectUser={async (user) => {
+                setDrawerView("list");
+                setDirectTargetUser(user);
+                setDirectChatMode(true);
+                setDirectInitLoading(true);
+                setSelectedConversation(null);
+                setDirectUser(null);
+
+                const conversationId = await getExistingConversationId(user.auth_uid);
+                if (conversationId) setSelectedConversation(conversationId);
+
+                const convs = await getConversations();
+                setConversations(convs);
+                setDirectInitLoading(false);
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center min-h-[50vh]">
+              <div className="flex flex-col items-center gap-3">
+                <Spinner className="size-12 text-accent-lm" />
+                <p className="text-md text-text-lighter-lm">Loading...</p>
+              </div>
+            </div>
+          )
         ) : (
           // Show conversation list
           <>
+            <div className="lg:py-2 lg:mt-2">
+              <input
+                type="text"
+                value={conversationSearch}
+                onChange={(e) => setConversationSearch(e.target.value)}
+                placeholder="Search conversations..."
+                disabled={loading}
+                className="bg-secondary-lm border border-stroke-grey lg:rounded-md rounded-md text-text-lm lg:px-2 lg:py-2 px-2 py-2 placeholder:text-text-lighter-lm/60 w-full focus:outline-none focus:border-accent-lm disabled:opacity-50 text-sm"
+              />
+            </div>
+
             {loading ? (
               <div className="flex items-center justify-center min-h-[50vh]">
                 <div className="flex flex-col items-center gap-3">
@@ -404,12 +496,15 @@ export function MessageDrawer({
                   <p className="text-md text-text-lighter-lm">Loading...</p>
                 </div>
               </div>
-            ) : conversations.length === 0 ? (
-              <p className="lg:p-4 text-center text-text-lighter-lm">
+            ) : filteredConversations.length === 0 ? (
+              <div className="flex flex-col items-center lg:mt-10">
+                <img src={messageEmptyState} className="lg:size-30"/>
+                <p className="lg:m-0 lg:p-0 text-center text-text-lighter-lm">
                 No conversations.
-              </p>
+                </p>
+              </div>
             ) : (
-              conversations.map((conv) => (
+              filteredConversations.map((conv) => (
                 <div key={conv.id}>
                   <MessageChannel
                     userName={conv.other_user.name}
