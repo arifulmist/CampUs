@@ -28,6 +28,7 @@ h1,h2,h3,h4,h5,h6
   --color-stroke-grey: oklch(84.212% 0.0001 271.152);
   --color-hover-lm: oklch(96.272% 0.0117 59.292);
   --color-hover-btn-lm: oklch(45.513% 0.16317 34.108);
+  --color-danger-lm: #b42318;
   --color-message-user-lm: oklch(63.087% 0.18278 40.91);
   --color-message-other-lm: oklch(89.776% 0.02735 43.486);
   --color-online-indicator: oklch(65.025% 0.20094 145.619);

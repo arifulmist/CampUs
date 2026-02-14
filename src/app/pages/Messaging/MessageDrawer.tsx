@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
-import messageEmptyState from "@/assets/images/noMessage.svg";
+import messageEmptyState from "@/assets/images/noMessage2.svg";
 import { Spinner } from "@/components/ui/spinner";
 import { LucideArrowLeft, LucidePlus } from "lucide-react";
 import { ChatHistory } from "./components/ChatHistory";

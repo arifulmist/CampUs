@@ -216,6 +216,7 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
                 onAdd={form.addSegment}
                 onUpdate={form.updateSegment}
                 onRemove={form.removeSegment}
+                parentOnline={form.location === "Online"}
               />
             )}
             

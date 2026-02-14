@@ -6,6 +6,7 @@ interface Props {
   onAdd: () => void;
   onUpdate: (id: string, data: Partial<Segment>) => void;
   onRemove: (id: string) => void;
+  parentOnline?: boolean;
 }
 
 export default function SegmentList({
@@ -13,6 +14,7 @@ export default function SegmentList({
   onAdd,
   onUpdate,
   onRemove,
+  parentOnline = false,
 }: Props) {
   const [sameMap, setSameMap] = useState<Record<string, boolean>>({});
 
@@ -24,6 +26,17 @@ export default function SegmentList({
     }
     setSameMap(map);
   }, [segments]);
+
+  // When parent event is marked Online, force all segment locations to Online
+  useEffect(() => {
+    if (!parentOnline) return;
+    for (const s of segments) {
+      if (s.location !== "Online") {
+        onUpdate(s.id, { location: "Online" });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentOnline, segments]);
 
   function toggleSame(segId: string, checked: boolean, startDate: string) {
     // don't allow enabling if there's no start date yet
@@ -79,10 +92,11 @@ export default function SegmentList({
               <input
                 type="checkbox"
                 className="lg:size-4 accent-accent-lm"
-                checked={seg.location === "Online"}
+                checked={parentOnline ? true : seg.location === "Online"}
                 onChange={e => onUpdate(seg.id, { location: e.target.checked ? "Online" : "" })}
+                disabled={parentOnline}
               />
-              <p className="text-text-lm">Online Event</p>
+              <p className="text-text-lm">Online Segment</p>
             </label>
             {seg.location !== "Online" && (
               <input

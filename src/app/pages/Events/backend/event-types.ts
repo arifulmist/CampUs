@@ -2,10 +2,11 @@ export interface EventSegment {
   segment_id?: string;
   segment_title: string;
   segment_description: string;
-  segment_start_date: string;
-  segment_end_date: string;
-  segment_start_time: string;
-  segment_end_time: string;
+  segment_location?: string | null;
+  segment_start_date: string | null;
+  segment_end_date: string | null;
+  segment_start_time: string | null;
+  segment_end_time: string | null;
 }
 
 export interface EventTag {
@@ -20,10 +21,10 @@ export interface EventPost {
   description: string;
   author_id: string;
   location: string;
-  event_start_date: string;
-  event_end_date: string;
-  registration_link?: string;
-  img_url?: string;
+  event_start_date: string | null;
+  event_end_date: string | null;
+  registration_link?: string | null;
+  img_url?: string | null;
   category_id: number;
   segments: EventSegment[];
   tags: EventTag[];

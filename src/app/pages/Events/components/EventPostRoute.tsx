@@ -1,15 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import {
+  EllipsisVertical as LucideEllipsisVertical,
+  Pencil as LucidePencil,
+  Trash2 as LucideTrash2,
+} from "lucide-react";
 
 import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
 import { EventSegment } from "./EventSegment";
 import { supabase } from "../../../../../supabase/supabaseClient";
+import { EditEventModal } from "./EditEventModal";
+import { DeleteEventModal } from "./DeleteEventModal";
 
 type EventPostsRow = {
   post_id: string;
+  location: string | null;
+  event_start_date: string | null;
+  event_end_date: string | null;
+  registration_link: string | null;
+  category_id: number | null;
   img_url: string | null;
   all_posts: {
     post_id: string;
@@ -21,6 +33,7 @@ type EventPostsRow = {
     created_at: string | null;
   } | null;
   events_category: {
+    category_id?: number;
     category_name: string;
   } | null;
 };
@@ -56,9 +69,14 @@ type DepartmentRow = {
 
 type EventDetail = {
   postId: string;
+  categoryId: number;
   category: string;
   title: string;
   description: string;
+  location: string;
+  eventStartDate: string;
+  eventEndDate: string;
+  registrationLink: string | null;
   createdAt: string | null;
   authorId: string | null;
   authorStudentId: string | null;
@@ -66,12 +84,13 @@ type EventDetail = {
   authorDeptBatch: string;
   authorProfilePictureUrl: string | null;
   tags: string[];
+  tagObjects: Array<{ skill_id: number; name: string }>;
   imageUrl: string | null;
   likeCount: number;
   commentCount: number;
   segments?: Array<{
     id: string;
-    title: string;
+    name: string;
     description: string;
     startDate: string;
     endDate: string;
@@ -80,6 +99,13 @@ type EventDetail = {
     location?: string | null;
   }>;
 };
+
+function toTimeInputValue(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const m = value.match(/^(\d{2}:\d{2})/);
+  if (m) return m[1];
+  return value.length >= 5 ? value.slice(0, 5) : value;
+}
 
 function formatRelativeTime(dateString?: string | null) {
   if (!dateString) return "";
@@ -107,8 +133,35 @@ function formatRelativeTime(dateString?: string | null) {
 
 
 export function EventPostRoute({ postId }: { postId: string }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<EventDetail | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const isOwner = useMemo(() => {
+    if (!detail?.authorId || !currentUserId) return false;
+    return detail.authorId === currentUserId;
+  }, [detail?.authorId, currentUserId]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && menuRef.current.contains(target)) return;
+      setMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [menuOpen]);
 
   useEffect(() => {
     let alive = true;
@@ -116,11 +169,19 @@ export function EventPostRoute({ postId }: { postId: string }) {
     async function load() {
       setLoading(true);
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const uid = authData?.user?.id ?? null;
+
         const { data: ev, error: evError } = await supabase
           .from("event_posts")
           .select(
             `
             post_id,
+            location,
+            event_start_date,
+            event_end_date,
+            registration_link,
+            category_id,
             img_url,
             all_posts (
               post_id,
@@ -132,6 +193,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
               created_at
             ),
             events_category (
+              category_id,
               category_name
             )
           `
@@ -212,18 +274,30 @@ export function EventPostRoute({ postId }: { postId: string }) {
         }
 
         const tagRows = (tagsRes.data as unknown as PostTagRow[] | null) ?? [];
-        const tags = tagRows
-          .map((t) => (typeof t.skill_id === "number" ? skillById.get(t.skill_id) : null))
-          .filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+        const tagObjects = tagRows
+          .map((t) => {
+            const id = typeof t.skill_id === "number" ? t.skill_id : null;
+            if (!id) return null;
+            const name = skillById.get(id) ?? "";
+            if (!name.trim()) return null;
+            return { skill_id: id, name };
+          })
+          .filter((x): x is { skill_id: number; name: string } => !!x);
+        const tags = tagObjects.map((t) => t.name);
 
         const authorProfile =
           (authorProfileRes.data as unknown as UserProfileRow | null) ?? null;
 
         const d: EventDetail = {
           postId,
+          categoryId: Number(eventRow.category_id ?? eventRow.events_category?.category_id ?? 0),
           category: eventRow.events_category?.category_name ?? "Uncategorized",
           title: eventRow.all_posts.title ?? "Untitled",
           description: eventRow.all_posts.description ?? "",
+          location: eventRow.location ?? "",
+          eventStartDate: eventRow.event_start_date ?? "",
+          eventEndDate: eventRow.event_end_date ?? "",
+          registrationLink: eventRow.registration_link ?? null,
           createdAt: eventRow.all_posts.created_at ?? null,
           authorId,
           authorStudentId: userInfo?.student_id ?? null,
@@ -231,32 +305,49 @@ export function EventPostRoute({ postId }: { postId: string }) {
           authorDeptBatch,
           authorProfilePictureUrl: authorProfile?.profile_picture_url ?? null,
           tags,
+          tagObjects,
           imageUrl: typeof eventRow.img_url === "string" ? eventRow.img_url : null,
           likeCount: Number(eventRow.all_posts.like_count ?? 0),
           commentCount: Number(eventRow.all_posts.comment_count ?? 0),
           segments: [],
         };
 
-        // attach segments result if available
-        try {
-          const segRes = (segmentsRes as any) ?? null;
-          if (segRes && !segRes.error && Array.isArray(segRes.data)) {
-            d.segments = segRes.data.map((s: any) => ({
-              id: s.segment_id,
-              title: s.segment_title,
-              description: s.segment_description,
-              startDate: s.segment_start_date,
-              endDate: s.segment_end_date,
-              startTime: s.segment_start_time,
-              endTime: s.segment_end_time,
-              location: s.segment_location,
-            }));
-          }
-        } catch (e) {
-          console.warn("Failed to attach segments", e);
-        }
+        const segRows =
+          ((segmentsRes.data as unknown as
+            | Array<{
+                segment_id: string;
+                segment_title: string;
+                segment_description: string;
+                segment_start_date: string;
+                segment_end_date: string;
+                segment_start_time: string;
+                segment_end_time: string;
+                segment_location: string | null;
+              }>
+            | null) ?? []) as Array<{
+            segment_id: string;
+            segment_title: string;
+            segment_description: string;
+            segment_start_date: string;
+            segment_end_date: string;
+            segment_start_time: string;
+            segment_end_time: string;
+            segment_location: string | null;
+          }>;
+
+        d.segments = segRows.map((s) => ({
+          id: s.segment_id,
+          name: s.segment_title,
+          description: s.segment_description,
+          startDate: s.segment_start_date,
+          endDate: s.segment_end_date,
+          startTime: toTimeInputValue(s.segment_start_time),
+          endTime: toTimeInputValue(s.segment_end_time),
+          location: s.segment_location,
+        }));
 
         if (!alive) return;
+        setCurrentUserId(uid);
         setDetail(d);
       } catch (e) {
         console.error(e);
@@ -272,7 +363,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
     return () => {
       alive = false;
     };
-  }, [postId]);
+  }, [postId, reloadToken]);
 
   if (loading) {
     return (
@@ -288,10 +379,52 @@ export function EventPostRoute({ postId }: { postId: string }) {
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
-      <div className="lg:mt-1 lg:mb-3">
-        <p className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(detail.category, "events")}`}>
+      <div className="lg:mt-1 lg:mb-3 flex items-center justify-between">
+        <p
+          className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(detail.category, "events")}`}
+        >
           {detail.category}
         </p>
+
+        {isOwner ? (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="p-2 rounded-md hover:bg-hover-lm transition duration-150"
+              aria-label="Post options"
+            >
+              <LucideEllipsisVertical className="h-7 w-7 text-accent-lm" />
+            </button>
+
+            {menuOpen ? (
+              <div className="absolute right-0 mt-2 bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setEditOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-text-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  <LucidePencil className="h-4 w-4" />
+                  Edit Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDeleteOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-danger-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  <LucideTrash2 className="h-4 w-4 text-danger-lm" />
+                  Delete Post
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
@@ -327,7 +460,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
           {detail.segments.map((seg) => (
             <div key={seg.id} className="lg:rounded-lg">
               <EventSegment
-                segmentTitle={seg.title}
+                segmentTitle={seg.name}
                 segmentDescription={seg.description}
                 segmentStartDate={seg.startDate}
                 segmentEndDate={seg.endDate}
@@ -355,6 +488,45 @@ export function EventPostRoute({ postId }: { postId: string }) {
         <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
         <ShareButton />
       </div>
+
+      <EditEventModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        initial={{
+          postId: detail.postId,
+          title: detail.title,
+          description: detail.description,
+          location: detail.location,
+          categoryId: detail.categoryId,
+          eventStartDate: detail.eventStartDate,
+          eventEndDate: detail.eventEndDate,
+          imageUrl: detail.imageUrl,
+          segments: (detail.segments ?? []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            startDate: s.startDate,
+            endDate: s.endDate,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            location: s.location ?? undefined,
+          })),
+          tags: detail.tagObjects,
+        }}
+        onSaved={() => {
+          setReloadToken((t) => t + 1);
+        }}
+      />
+
+      <DeleteEventModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        postId={detail.postId}
+        onDeleted={() => {
+          setDeleteOpen(false);
+          navigate("/events", { replace: true });
+        }}
+      />
     </div>
   );
 }
