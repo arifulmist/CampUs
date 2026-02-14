@@ -10,7 +10,7 @@ import filledBellIcon from "@/assets/icons/FILLEDbell_icon.svg";
 
 // import { ShareModal } from "./ShareModal";
 
-import { supabase } from "../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 
 interface ButtonProps

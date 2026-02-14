@@ -13,7 +13,7 @@ import {
   subscribeToConversations,
   type Conversation,
 } from "./utils/messagingUtils";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 export type MessageDrawerProps = {
   open: boolean;

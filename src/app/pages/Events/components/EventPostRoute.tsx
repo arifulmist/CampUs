@@ -37,7 +37,7 @@ import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/comp
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
 import { EventSegment } from "./EventSegment";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
 

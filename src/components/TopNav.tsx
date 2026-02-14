@@ -17,7 +17,7 @@ import {
   getUnreadCount,
   markAllRead,
 } from "../mockData/notifications";
-import { supabase } from "../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 type UserProfileRow = {
   name: string | null;

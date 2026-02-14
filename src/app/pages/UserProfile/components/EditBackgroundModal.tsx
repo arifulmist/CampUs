@@ -8,7 +8,7 @@ import {
   uploadProfileImage,
   useObjectUrl,
 } from "../userProfileUtils";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 type Props = {
   open: boolean;

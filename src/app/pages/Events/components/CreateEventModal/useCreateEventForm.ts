@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Segment, EventPostType } from "../../components/types";
 import { searchSkills } from "../../backend/eventService"; 
-import {supabase} from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 export function useCreateEventForm(open: boolean) {
   const [category, setCategory] = useState<number>(0); // default to 0 or first category_id
   const [title, setTitle] = useState("");

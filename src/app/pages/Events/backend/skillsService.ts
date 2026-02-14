@@ -1,4 +1,4 @@
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 // Find skill_id by skill name, inserting if missing
 export async function ensureSkillId(skillName: string): Promise<number> {

@@ -90,7 +90,7 @@ export function Notes() {
 
   return (
     <>
-      <div className="lg:flex lg:flex-col lg:gap-y-1 lg:mt-10">
+      <div className="lg:flexxllg:flex-col gap-y-1 lg:startmt-10">
         <ButtonCTA
           label={"Add File"}
           clickEvent={() => setOpenAddModal(true)}

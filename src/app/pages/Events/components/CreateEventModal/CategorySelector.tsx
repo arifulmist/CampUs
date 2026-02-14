@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 interface Category {
   category_id: number;

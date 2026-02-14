@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { EventPostType } from "../../components/EventPost";
 import CategorySelector from "./CategorySelector";
 import TitleInput from "./TitleInput";
@@ -8,9 +8,8 @@ import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreview";
 import { useCreateEventForm } from "./useCreateEventForm";
 import { createEvent } from "../../backend/eventService";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import crossBtn from "@/assets/icons/cross_btn.svg";
-import { ensureSkillId } from "../../backend/skillsService";
 import { toast } from "react-hot-toast";
 import { ButtonCTA } from "@/components/ButtonCTA";
 interface Props {
@@ -19,7 +18,7 @@ interface Props {
   onCreate: (post: EventPostType) => void;
 }
 
-export default function CreateEventModal({ open, onClose, onCreate }: Props) {
+export default function CreateEventModal({ open, onClose }: Props) {
   const form = useCreateEventForm(open);
   const formRef = useRef<HTMLFormElement | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);

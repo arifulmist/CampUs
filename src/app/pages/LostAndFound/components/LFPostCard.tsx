@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 const lfAvatarCacheByAuthUid = new Map<string, string | null>();
 const lfAvatarFetchInFlight = new Map<string, Promise<string | null>>();

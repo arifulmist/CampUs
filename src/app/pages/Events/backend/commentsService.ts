@@ -1,5 +1,5 @@
 // src/app/pages/Events/backend/commentsService.ts
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 /**
  * DB row shape returned for comment rows (adjust if you changed column names).

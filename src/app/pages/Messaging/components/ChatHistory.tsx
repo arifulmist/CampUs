@@ -12,7 +12,7 @@ import {
   subscribeToMessages,
   type Message,
 } from "../utils/messagingUtils";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 export interface chatUser {
   userName: string;

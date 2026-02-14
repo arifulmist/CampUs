@@ -4,7 +4,7 @@ import { UpcomingEvents } from "@/components/UpcomingEvents";
 
 import InterestedPosts from "./components/InterestedPosts";
 import type { InterestedItem } from "./backend/interestedStore";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 import { UserProfileProvider } from "./components/UserProfileProvider";
 import { ProfileSection } from "./components/ProfileSection";

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import PostCard from "./PostCard";
 import type { Post } from "./types";
 import QnaPost from "../components/QnaPost";

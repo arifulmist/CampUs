@@ -3,13 +3,13 @@ import { createPortal } from "react-dom";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { toast } from "react-hot-toast";
 
-import CategorySelector from "../temp/CreateEventModal/CategorySelector";
-import TitleInput from "../temp/CreateEventModal/TitleInput";
-import SegmentList from "../temp/CreateEventModal/SegmentList";
-import ImageUploader from "../temp/CreateEventModal/ImageUploader";
-import ImagePreview from "../temp/CreateEventModal/ImagePreview";
-import { useCreateEventForm } from "../temp/CreateEventModal/useCreateEventForm";
-import { supabase } from "../../../../supabase/supabaseClient";
+import CategorySelector from "./CreateEventModal/CategorySelector";
+import TitleInput from "./CreateEventModal/TitleInput";
+import SegmentList from "./CreateEventModal/SegmentList";
+import ImageUploader from "./CreateEventModal/ImageUploader";
+import ImagePreview from "./CreateEventModal/ImagePreview";
+import { useCreateEventForm } from "./CreateEventModal/useCreateEventForm";
+import { supabase } from "@/supabase/supabaseClient";
 import { updateEvent } from "../backend/eventService";
 import { ButtonCTA } from "@/components/ButtonCTA";
 

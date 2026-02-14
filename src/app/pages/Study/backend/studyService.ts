@@ -1,4 +1,4 @@
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 // Types matching the database schema
 export interface DBNote {

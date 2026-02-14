@@ -10,7 +10,7 @@ import type {
   UserProfileRow,
 } from "../profile-types";
 
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import { UserProfileContextProvider } from "./UserProfileContext";
 import { formatBatchLabel, getErrorMessage } from "../userProfileUtils";
 

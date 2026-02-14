@@ -4,7 +4,7 @@ import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
 import { placeholderUser } from "@/mockData/placeholderUser";
 import placeholderPostImg from "@/assets/images/placeholderPostImg.png";
 import { useEffect, useState } from "react";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 //placeholder data
 const title = "Announcing CyberVoid 2025 by MCSC. Don’t miss it!";

@@ -33,7 +33,7 @@ import CommentThread, {
 } from "./components/CommentThread";
 import { addNotification } from "../../../mockData/notifications";
 import { DialogOverlay } from "@radix-ui/react-dialog";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import { LFPostCard, type LFPost } from "./components/LFPostCard";
 
 // LFPost + LFPostCard moved to ./components/LFPostCard

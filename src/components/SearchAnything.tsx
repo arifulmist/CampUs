@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import searchIcon from "../assets/icons/search_icon.svg";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
-import { supabase } from "../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 type SearchUserItem = {
   authUid: string;

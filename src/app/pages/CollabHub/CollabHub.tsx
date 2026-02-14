@@ -3,7 +3,7 @@ import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter"
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
 import { addNotification } from "../../../mockData/notifications";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import { createCollabPost } from "./backend/collab";
 import {
   addInterested,

@@ -10,7 +10,7 @@ export type InterestedItem = {
   createdAt: number;
 };
 
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 const STORAGE_KEY = "campus_interested_posts";
 const EVENT_NAME = "campus:interested_changed";

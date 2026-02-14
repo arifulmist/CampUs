@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 import EventPost from "./components/EventPost";
 import type { EventPostType } from "./components/EventPost";
-import CreateEventModal from "./temp/CreateEventModal/CreateEventModal";
+import CreateEventModal from "./components/CreateEventModal/CreateEventModal";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";

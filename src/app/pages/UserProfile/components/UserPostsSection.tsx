@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useUserProfileContext } from "./UserProfileContext";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 import EventPost, { type EventPostType } from "../../Events/components/EventPost";
 import {

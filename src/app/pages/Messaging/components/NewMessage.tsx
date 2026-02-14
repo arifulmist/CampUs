@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
 import { Spinner } from "@/components/ui/spinner";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 export type NewMessageUser = {
   auth_uid: string;

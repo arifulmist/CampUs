@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tag as TagIcon, Check } from "lucide-react";
 import toast from "react-hot-toast";
-import {supabase} from "../../../../../supabase/supabaseClient";
+import {supabase} from "@/supabase/supabaseClient";
 
 export default function QnaPost({
   open,
