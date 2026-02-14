@@ -63,10 +63,16 @@ export function MessageDrawer({
   const [directInitLoading, setDirectInitLoading] = useState(false);
   const [directUser, setDirectUser] = useState<DirectUserMeta | null>(null);
 
+  const [manualTargetUser, setManualTargetUser] = useState<{ id: string; name: string } | null>(
+    null
+  );
+
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
-  const activeTargetUserId = initialUserId ?? null;
-  const activeTargetUserName = initialUserName ?? "";
+  const activeTargetUserId = initialUserId ?? manualTargetUser?.id ?? null;
+  const activeTargetUserName = initialUserId
+    ? initialUserName ?? ""
+    : manualTargetUser?.name || initialUserName || "";
 
   // Fetch current auth user id
   useEffect(() => {
@@ -367,6 +373,7 @@ export function MessageDrawer({
         setDirectChatMode(false);
         setDirectInitLoading(false);
         setDirectUser(null);
+        setManualTargetUser(null);
         setDrawerView("list");
         setConversationSearch("");
         const event = new CustomEvent("campus:clearMessage");
@@ -379,6 +386,7 @@ export function MessageDrawer({
   }, [open]);
 
   const handleConversationClick = async (conversationId: string) => {
+    setManualTargetUser(null);
     setDirectChatMode(false);
     setDirectUser(null);
     setSelectedConversation(conversationId);
@@ -391,6 +399,7 @@ export function MessageDrawer({
     setSelectedConversation(null);
     setDirectChatMode(false);
     setDirectUser(null);
+    setManualTargetUser(null);
     setDrawerView("list");
     setLoading(true);
     try {
@@ -493,10 +502,10 @@ export function MessageDrawer({
                   <button
                     type="button"
                     onClick={() => setDrawerView("newMessage")}
-                    className="hover:bg-hover-lm p-1 rounded"
+                    className="cursor-pointer"
                     aria-label="New message"
                   >
-                    <LucidePlus className="text-accent-lm" />
+                    <LucidePlus className="text-accent-lm hover:text-hover-btn-lm duration-150" />
                   </button>
                 )}
               </div>
@@ -511,17 +520,12 @@ export function MessageDrawer({
                   currentUserId={currentUserId}
                   onSelectUser={async (user) => {
                     setDrawerView("list");
+                    setConversationSearch("");
+                    setSelectedConversation(null);
+                    setManualTargetUser({ id: user.auth_uid, name: user.name });
                     setDirectChatMode(true);
                     setDirectInitLoading(true);
-                    setSelectedConversation(null);
                     setDirectUser(null);
-
-                    const conversationId = await getExistingConversationId(user.auth_uid);
-                    if (conversationId) setSelectedConversation(conversationId);
-
-                    const convs = await getConversations();
-                    setConversations(convs);
-                    setDirectInitLoading(false);
                   }}
                 />
               ) : (
@@ -558,7 +562,7 @@ export function MessageDrawer({
                     <p className="lg:m-0 lg:p-0 text-center text-text-lighter-lm">No conversations.</p>
                   </div>
                 ) : (
-                  filteredConversations.map((conv) => (
+                  filteredConversations.map((conv, index) => (
                     <div key={conv.id}>
                       <MessageChannel
                         userName={conv.other_user.name}
@@ -572,7 +576,9 @@ export function MessageDrawer({
                         isUnread={conv.unread_count > 0}
                         onClick={() => handleConversationClick(conv.id)}
                       />
-                      <hr className="border-stroke-grey lg:my-1" />
+                      {index < filteredConversations.length - 1 && (
+                        <hr className="border-stroke-grey lg:my-1" />
+                      )}
                     </div>
                   ))
                 )}
@@ -596,7 +602,7 @@ function MessageChannel({
   return (
     <button
       onClick={onClick}
-      className="flex items-center w-full justify-between lg:px-2 lg:py-4 lg:rounded-lg hover:bg-hover-lm transition duration-150 text-left"
+      className={`flex items-center w-full justify-between lg:px-2 lg:py-4 lg:rounded-lg hover:bg-hover-lm transition duration-150 text-left ${isUnread && "bg-hover-lm"}`}
     >
       <div className="flex items-center gap-4">
         <div className="relative size-10 shrink-0 rounded-full ring ring-stroke-grey overflow-visible">

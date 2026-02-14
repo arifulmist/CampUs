@@ -57,6 +57,7 @@ export function ChatHistory({
   const didInitialScrollRef = useRef(false);
   const scrollRafRef = useRef<number | null>(null);
   const markReadInFlightRef = useRef(false);
+  const prevConversationIdRef = useRef<string | null>(null);
 
   const isTempConversation =
     !conversationId ||
@@ -139,14 +140,29 @@ export function ChatHistory({
 
   // Fetch messages when conversation changes
   useLayoutEffect(() => {
+    const prevId = prevConversationIdRef.current;
+    prevConversationIdRef.current = conversationId ?? null;
+
     // If we just switched from a temp id to a real conversation id,
     // force loading before paint and clear old messages to avoid flicker/stale UI.
     if (!conversationId) return;
     if (conversationId === "loading" || conversationId.startsWith("temp-")) return;
+
+    const expectedTempId = otherUserId ? `temp-${otherUserId}` : null;
+    const switchingFromTempToRealSameChat = !!expectedTempId && prevId === expectedTempId;
+
+    // When we just created a conversation on first send, don't blank the UI.
+    // Keep the optimistic messages and let the background fetch refresh.
+    if (switchingFromTempToRealSameChat) {
+      setLoading(false);
+      didInitialScrollRef.current = false;
+      return;
+    }
+
     setMessages([]);
     setLoading(true);
     didInitialScrollRef.current = false;
-  }, [conversationId]);
+  }, [conversationId, otherUserId]);
 
   useEffect(() => {
     async function loadMessages() {
