@@ -1,174 +1,218 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
+import messageEmptyState from "@/assets/images/noMessage.svg";
 import { Spinner } from "@/components/ui/spinner";
 import { LucideArrowLeft, LucidePlus } from "lucide-react";
-import type { chatUser } from "./components/ChatHistory";
 import { ChatHistory } from "./components/ChatHistory";
-import { NewMessage, type NewMessageUser } from "./components/NewMessage";
-import messageEmptyState from "@/assets/images/noMessage.svg";
+import { NewMessage } from "./components/NewMessage";
 import {
   getConversations,
-  subscribeToConversations,
-  markMessagesAsRead,
   getExistingConversationId,
+  markMessagesAsRead,
+  subscribeToConversations,
   type Conversation,
 } from "./utils/messagingUtils";
 import { supabase } from "../../../../supabase/supabaseClient";
 
-interface MessageDrawerProps {
+export type MessageDrawerProps = {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (v: boolean) => void;
   messageButtonRef?: React.RefObject<HTMLButtonElement>;
   initialUserId?: string | null;
   initialUserName?: string;
-}
+};
 
-interface ListMessages extends chatUser {
+type DirectUserMeta = {
+  name: string;
+  avatar: string;
+  batch: string;
+};
+
+type ListMessages = {
+  userName: string;
+  userAvatar: string;
+  onlineStatus: boolean;
   messagePreview: string;
   isUnread: boolean;
-  onlineStatus?: boolean;
-}
+};
 
-export function MessageDrawer({ 
-  open, 
-  onOpenChange, 
-  messageButtonRef, 
-  initialUserId, 
-  initialUserName
+export function MessageDrawer({
+  open,
+  onOpenChange,
+  messageButtonRef,
+  initialUserId,
+  initialUserName,
 }: MessageDrawerProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // Start with false
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set());
-  const [directChatMode, setDirectChatMode] = useState(false); // Track if opening direct chat
-  const [directInitLoading, setDirectInitLoading] = useState(false);
-  const [drawerView, setDrawerView] = useState<"list" | "newMessage">("list");
-  const [directTargetUser, setDirectTargetUser] = useState<NewMessageUser | null>(null);
-  const [conversationSearch, setConversationSearch] = useState("");
-  const [directUser, setDirectUser] = useState<{
-    name: string;
-    avatar: string;
-    batch: string;
-  } | null>(null);
+  // Match NotificationsDrawer sizing/offset so the drawer height is explicit.
+  const NAVBAR_HEIGHT = 105;
+  const NAVBAR_SPACING = 15;
+
   const drawerRef = useRef<HTMLDivElement>(null);
-  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const presenceIntervalRef = useRef<number | null>(null);
   const refreshTimeoutRef = useRef<number | null>(null);
 
-  const activeTargetUserId = initialUserId || directTargetUser?.auth_uid || null;
-  const activeTargetUserName = initialUserName || directTargetUser?.name || undefined;
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get current user ID
-  useEffect(() => {
-    async function getCurrentUser() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    }
-    getCurrentUser();
-  }, []);
+  const [drawerView, setDrawerView] = useState<"list" | "newMessage">("list");
+  const [conversationSearch, setConversationSearch] = useState("");
 
-  // Track online presence (Supabase Presence)
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+
+  const [directChatMode, setDirectChatMode] = useState(false);
+  const [directInitLoading, setDirectInitLoading] = useState(false);
+  const [directUser, setDirectUser] = useState<DirectUserMeta | null>(null);
+
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+
+  const activeTargetUserId = initialUserId ?? null;
+  const activeTargetUserName = initialUserName ?? "";
+
+  // Fetch current auth user id
   useEffect(() => {
     if (!open) return;
-    if (!currentUserId) return;
+    let cancelled = false;
 
-    // Clean up any previous channel/interval
-    if (presenceIntervalRef.current) {
-      window.clearInterval(presenceIntervalRef.current);
-      presenceIntervalRef.current = null;
-    }
-    if (presenceChannelRef.current) {
-      supabase.removeChannel(presenceChannelRef.current);
-      presenceChannelRef.current = null;
+    async function loadUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setCurrentUserId(user?.id ?? null);
     }
 
-    const channel = supabase.channel("online-users", {
-      config: {
-        presence: { key: currentUserId },
-      },
-    });
-    presenceChannelRef.current = channel;
-
-    channel.on("presence", { event: "sync" }, () => {
-      type PresencePayload = { auth_uid?: string } & Record<string, unknown>;
-      const state = channel.presenceState() as Record<string, PresencePayload[]>;
-      const online = new Set<string>();
-
-      // Keys in presenceState are presence keys; we use auth uid.
-      Object.keys(state).forEach((key) => online.add(key));
-
-      // Also accept auth_uid in payload for robustness.
-      Object.values(state).forEach((presences) => {
-        presences.forEach((presence) => {
-          if (typeof presence.auth_uid === "string") online.add(presence.auth_uid);
-        });
-      });
-
-      setOnlineUserIds(online);
-    });
-
-    channel.subscribe(async (status) => {
-      if (status !== "SUBSCRIBED") return;
-      await channel.track({ auth_uid: currentUserId, online_at: new Date().toISOString() });
-      presenceIntervalRef.current = window.setInterval(async () => {
-        await channel.track({ auth_uid: currentUserId, online_at: new Date().toISOString() });
-      }, 30_000);
-    });
+    loadUser();
 
     return () => {
-      if (presenceIntervalRef.current) {
-        window.clearInterval(presenceIntervalRef.current);
-        presenceIntervalRef.current = null;
-      }
-      if (presenceChannelRef.current) {
-        supabase.removeChannel(presenceChannelRef.current);
-        presenceChannelRef.current = null;
-      }
-      setOnlineUserIds(new Set());
+      cancelled = true;
     };
-  }, [open, currentUserId]);
+  }, [open]);
 
-  // Clear any previous chat header/data BEFORE paint when switching to a new profile target.
-  useLayoutEffect(() => {
-    if (!open) return;
-    if (!activeTargetUserId) return;
-    if (!currentUserId) return;
-    if (activeTargetUserId === currentUserId) return;
-
-    setDirectInitLoading(true);
-    setDirectChatMode(true);
-    setSelectedConversation(null);
-    setDirectUser(null);
-  }, [open, activeTargetUserId, currentUserId]);
-
-  // Handle initial user conversation opening (async fetch)
+  // Presence tracking for online indicators
   useEffect(() => {
+    if (!open) return;
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let presenceInterval: number | null = null;
+    let cancelled = false;
+
+    async function setupPresence() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+
+        channel = supabase.channel("online-users", {
+          config: {
+            presence: { key: user.id },
+          },
+        });
+
+        channel
+          .on("presence", { event: "sync" }, () => {
+            const state = channel?.presenceState?.() ?? {};
+            const online = new Set<string>();
+
+            Object.values(state).forEach((presences) => {
+              (presences as Array<Record<string, unknown>>).forEach((presence) => {
+                const id = presence.auth_uid;
+                if (typeof id === "string") online.add(id);
+              });
+            });
+
+            setOnlineUserIds(online);
+          })
+          .subscribe(async (status) => {
+            if (status !== "SUBSCRIBED" || !channel || cancelled) return;
+
+            await channel.track({
+              auth_uid: user.id,
+              online_at: new Date().toISOString(),
+            });
+
+            presenceInterval = window.setInterval(async () => {
+              try {
+                await channel?.track({
+                  auth_uid: user.id,
+                  online_at: new Date().toISOString(),
+                });
+              } catch {
+                // ignore
+              }
+            }, 30000);
+          });
+      } catch (error) {
+        console.error("Error setting up presence:", error);
+      }
+    }
+
+    setupPresence();
+
+    return () => {
+      cancelled = true;
+      if (presenceInterval) window.clearInterval(presenceInterval);
+      if (channel) {
+        try {
+          channel.untrack();
+        } catch {
+          // ignore
+        }
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [open]);
+
+  // Direct-open: open a chat with an initial user (without creating a conversation until first send)
+  useEffect(() => {
+    if (!open) return;
+    const targetUserId = activeTargetUserId;
+    if (!targetUserId) return;
+    if (!currentUserId) return;
+
     let cancelled = false;
 
     async function openInitialConversation() {
-      if (!open || !activeTargetUserId || !currentUserId || activeTargetUserId === currentUserId) return;
+      const targetId = targetUserId;
+      if (!targetId) return;
 
-      // Load direct user's meta (avatar + batch) for the header
+      setDrawerView("list");
+      setConversationSearch("");
+      setDirectChatMode(true);
+      setDirectInitLoading(true);
+      setSelectedConversation(null);
+      setDirectUser(null);
+
       try {
         const [infoRes, profileRes] = await Promise.all([
           supabase
             .from("user_info")
             .select("name,batch,department,departments_lookup(department_name)")
-            .eq("auth_uid", activeTargetUserId)
+            .eq("auth_uid", targetId)
             .maybeSingle(),
           supabase
             .from("user_profile")
             .select("profile_picture_url")
-            .eq("auth_uid", activeTargetUserId)
+            .eq("auth_uid", targetId)
             .maybeSingle(),
         ]);
 
         if (cancelled) return;
 
-        const displayName = infoRes.data?.name?.trim() || activeTargetUserName || "User";
-        const deptName = infoRes.data?.departments_lookup?.department_name || infoRes.data?.department || "";
-        const batchValue = infoRes.data?.batch ?? null;
+        const infoData = infoRes.data as
+          | {
+              name?: string | null;
+              batch?: number | null;
+              department?: string | null;
+              departments_lookup?: { department_name?: string | null } | null;
+            }
+          | null
+          | undefined;
+
+        const displayName = infoData?.name?.trim() || activeTargetUserName || "User";
+        const deptName =
+          infoData?.departments_lookup?.department_name || infoData?.department || "";
+        const batchValue = infoData?.batch ?? null;
         const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
 
         setDirectUser({
@@ -186,17 +230,14 @@ export function MessageDrawer({
       }
 
       try {
-        // Only open an existing conversation; do not create one until first message is sent
-        const conversationId = await getExistingConversationId(activeTargetUserId);
+        const conversationId = await getExistingConversationId(targetId);
         if (!cancelled && conversationId) setSelectedConversation(conversationId);
 
-        // Load conversations for navigation
         const convs = await getConversations();
         if (!cancelled) setConversations(convs);
       } catch (error) {
-        console.error('Error in openInitialConversation:', error);
+        console.error("Error in openInitialConversation:", error);
         if (!cancelled) {
-          // If error occurred, fall back to conversation list
           setDirectChatMode(false);
         }
       } finally {
@@ -211,23 +252,29 @@ export function MessageDrawer({
     };
   }, [open, activeTargetUserId, activeTargetUserName, currentUserId]);
 
-  // Fetch conversations on mount (only if not direct chat mode)
+  // Fetch conversations when opened normally (not direct-open)
   useEffect(() => {
+    if (!open) return;
+    if (activeTargetUserId) return;
+
+    let cancelled = false;
+
     async function loadConversations() {
-      if (!directChatMode) {
-        setLoading(true);
-      }
-      const convs = await getConversations();
-      setConversations(convs);
-      if (!directChatMode) {
-        setLoading(false);
+      setLoading(true);
+      try {
+        const convs = await getConversations();
+        if (!cancelled) setConversations(convs);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
-    if (open && !activeTargetUserId) { // Only load when not opening direct chat
-      loadConversations();
-    }
-  }, [open, activeTargetUserId, directChatMode]);
+    loadConversations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, activeTargetUserId]);
 
   // Subscribe to real-time conversation updates
   useEffect(() => {
@@ -258,12 +305,13 @@ export function MessageDrawer({
     };
   }, [open, currentUserId]);
 
-  // Fallback: while the drawer is open and we're on the conversation list, periodically refresh.
-  // This keeps the list responsive even if realtime events are delayed/missed.
+  // Polling fallback while the conversation list is visible
   useEffect(() => {
     if (!open) return;
     if (!currentUserId) return;
     if (selectedConversation) return;
+    if (directChatMode && activeTargetUserId) return;
+    if (drawerView !== "list") return;
 
     const intervalId = window.setInterval(async () => {
       const convs = await getConversations();
@@ -273,14 +321,25 @@ export function MessageDrawer({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [open, currentUserId, selectedConversation]);
+  }, [
+    open,
+    currentUserId,
+    selectedConversation,
+    directChatMode,
+    activeTargetUserId,
+    drawerView,
+  ]);
 
   // Handle click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Element | null;
       // Dialogs render in a portal outside the drawer. Don't treat dialog interactions as "outside" clicks.
-      if (target?.closest?.('[data-slot="dialog-content"], [data-slot="dialog-overlay"], [data-slot="dialog-portal"]')) {
+      if (
+        target?.closest?.(
+          '[data-slot="dialog-content"], [data-slot="dialog-overlay"], [data-slot="dialog-portal"]'
+        )
+      ) {
         return;
       }
 
@@ -299,25 +358,23 @@ export function MessageDrawer({
     }
   }, [open, onOpenChange, messageButtonRef]);
 
-  // Reset selected conversation when drawer closes
+  // Reset state when drawer closes
   useEffect(() => {
     let timeoutId: number | undefined;
     if (!open) {
-      timeoutId = setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         setSelectedConversation(null);
-        setDirectChatMode(false); // Reset direct chat mode
+        setDirectChatMode(false);
         setDirectInitLoading(false);
         setDirectUser(null);
-        setDirectTargetUser(null);
         setDrawerView("list");
         setConversationSearch("");
-        // Clear the message target in TopNav when drawer closes normally
-        const event = new CustomEvent('campus:clearMessage');
+        const event = new CustomEvent("campus:clearMessage");
         window.dispatchEvent(event);
       }, 0);
     }
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, [open]);
 
@@ -325,22 +382,18 @@ export function MessageDrawer({
     setDirectChatMode(false);
     setDirectUser(null);
     setSelectedConversation(conversationId);
-    // Mark messages as read when conversation is selected
     await markMessagesAsRead(conversationId);
-    // Refresh conversations to update unread count
     const convs = await getConversations();
     setConversations(convs);
   };
 
   const handleBackToList = async () => {
     setSelectedConversation(null);
-    setDirectChatMode(false); // Reset direct chat mode when going back
+    setDirectChatMode(false);
     setDirectUser(null);
-    setDirectTargetUser(null);
     setDrawerView("list");
     setLoading(true);
     try {
-      // Refresh conversations when returning to list
       const convs = await getConversations();
       setConversations(convs);
     } finally {
@@ -375,158 +428,159 @@ export function MessageDrawer({
   return (
     <div
       ref={drawerRef}
-      className="lg:h-screen bg-primary-lm lg:w-[25vw] lg:px-4 lg:py-5 fixed top-30 right-0 bottom-0 border border-stroke-grey lg:rounded-md lg:rounded-b-none z-50"
+      className="bg-primary-lm lg:w-[25vw] fixed right-0 border border-stroke-grey lg:rounded-md lg:rounded-b-none z-50 flex flex-col overflow-hidden"
+      style={{
+        top: NAVBAR_HEIGHT + NAVBAR_SPACING,
+        height: `calc(100vh - ${NAVBAR_HEIGHT + NAVBAR_SPACING}px)`,
+      }}
     >
-      {drawerView === "newMessage" && !isChatView ? (
-        <div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDrawerView("list")}
-              className="cursor-pointer"
-            >
-              <LucideArrowLeft className="text-accent-lm" />
-            </button>
-            <h5 className="text-accent-lm font-header font-semibold m-0">New Message</h5>
-          </div>
-          <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
-        </div>
-      ) : (
-        <div>
-          <div className="flex items-center justify-between">
-            <h5 className="text-accent-lm font-header font-semibold m-0">Messages</h5>
-            {isListView && (
-              <button
-                type="button"
-                onClick={() => setDrawerView("newMessage")}
-                className="cursor-pointer"
-                aria-label="New message"
-              >
-                <LucidePlus className="text-accent-lm hover:text-hover-btn-lm transition duration-150" />
-              </button>
-            )}
-          </div>
-          <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
-        </div>
-      )}
-
-      {/* Content Area - either Chat History or Conversation List */}
-      <div className="lg:overflow-y-auto lg:max-h-[calc(100%-80px)]">
-        {isChatView ? (
-          // Show ChatHistory embedded in the drawer
-          (() => {
-            const conversation = conversations.find(c => c.id === selectedConversation);
+      {isChatView ? (
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {(() => {
+            const conversation = conversations.find((c) => c.id === selectedConversation);
             const userName = directChatMode
-              ? (directUser?.name || activeTargetUserName || "User")
-              : (conversation?.other_user.name || "User");
+              ? directUser?.name || activeTargetUserName || "User"
+              : conversation?.other_user.name || "User";
             const userAvatar = directChatMode
-              ? (directUser?.avatar || placeholderUserImg)
-              : (conversation?.other_user.profile_picture_url || placeholderUserImg);
+              ? directUser?.avatar || placeholderUserImg
+              : conversation?.other_user.profile_picture_url || placeholderUserImg;
             const userBatch = directChatMode
-              ? (directUser?.batch || "")
-              : (conversation?.other_user.batch || "");
+              ? directUser?.batch || ""
+              : conversation?.other_user.batch || "";
             const metaLoading = directChatMode ? directInitLoading : false;
+
             const otherId = directChatMode ? activeTargetUserId : conversation?.other_user.auth_uid;
             const onlineStatus = otherId ? onlineUserIds.has(otherId) : undefined;
-            
+
             return (
-                <ChatHistory
-                  conversationId={selectedConversation || `temp-${activeTargetUserId}`}
-                  userName={userName}
-                  userAvatar={userAvatar}
-                  userBatch={userBatch}
-                  onlineStatus={onlineStatus}
-                  metaLoading={metaLoading}
-                  otherUserId={directChatMode ? activeTargetUserId : undefined}
-                  onConversationCreated={async (newConversationId) => {
-                    setSelectedConversation(newConversationId);
+              <ChatHistory
+                conversationId={
+                  selectedConversation || (activeTargetUserId ? `temp-${activeTargetUserId}` : "loading")
+                }
+                userName={userName}
+                userAvatar={userAvatar}
+                userBatch={userBatch}
+                onlineStatus={onlineStatus}
+                metaLoading={metaLoading}
+                otherUserId={directChatMode ? (activeTargetUserId ?? undefined) : undefined}
+                onConversationCreated={async (newConversationId) => {
+                  setSelectedConversation(newConversationId);
+                  const convs = await getConversations();
+                  setConversations(convs);
+                }}
+                onBack={handleBackToList}
+              />
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="lg:px-4 lg:py-5 flex flex-col h-full min-h-0">
+          {drawerView === "newMessage" ? (
+            <div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setDrawerView("list")} className="cursor-pointer">
+                  <LucideArrowLeft className="text-accent-lm" />
+                </button>
+                <h5 className="text-accent-lm font-header font-semibold m-0">New Message</h5>
+              </div>
+              <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <h5 className="text-accent-lm font-header font-semibold m-0">Messages</h5>
+                {isListView && (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerView("newMessage")}
+                    className="hover:bg-hover-lm p-1 rounded"
+                    aria-label="New message"
+                  >
+                    <LucidePlus className="text-accent-lm" />
+                  </button>
+                )}
+              </div>
+              <hr className="border-accent-lm lg:mt-3 lg:mb-1" />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {drawerView === "newMessage" ? (
+              currentUserId ? (
+                <NewMessage
+                  currentUserId={currentUserId}
+                  onSelectUser={async (user) => {
+                    setDrawerView("list");
+                    setDirectChatMode(true);
+                    setDirectInitLoading(true);
+                    setSelectedConversation(null);
+                    setDirectUser(null);
+
+                    const conversationId = await getExistingConversationId(user.auth_uid);
+                    if (conversationId) setSelectedConversation(conversationId);
+
                     const convs = await getConversations();
                     setConversations(convs);
+                    setDirectInitLoading(false);
                   }}
-                  onBack={handleBackToList}
                 />
-            );
-          })()
-        ) : drawerView === "newMessage" ? (
-          currentUserId ? (
-            <NewMessage
-              currentUserId={currentUserId}
-              onSelectUser={async (user) => {
-                setDrawerView("list");
-                setDirectTargetUser(user);
-                setDirectChatMode(true);
-                setDirectInitLoading(true);
-                setSelectedConversation(null);
-                setDirectUser(null);
-
-                const conversationId = await getExistingConversationId(user.auth_uid);
-                if (conversationId) setSelectedConversation(conversationId);
-
-                const convs = await getConversations();
-                setConversations(convs);
-                setDirectInitLoading(false);
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-center min-h-[50vh]">
-              <div className="flex flex-col items-center gap-3">
-                <Spinner className="size-12 text-accent-lm" />
-                <p className="text-md text-text-lighter-lm">Loading...</p>
-              </div>
-            </div>
-          )
-        ) : (
-          // Show conversation list
-          <>
-            <div className="lg:py-2 lg:mt-2">
-              <input
-                type="text"
-                value={conversationSearch}
-                onChange={(e) => setConversationSearch(e.target.value)}
-                placeholder="Search conversations..."
-                disabled={loading}
-                className="bg-secondary-lm border border-stroke-grey lg:rounded-md rounded-md text-text-lm lg:px-2 lg:py-2 px-2 py-2 placeholder:text-text-lighter-lm/60 w-full focus:outline-none focus:border-accent-lm disabled:opacity-50 text-sm"
-              />
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="flex flex-col items-center gap-3">
-                  <Spinner className="size-12 text-accent-lm" />
-                  <p className="text-md text-text-lighter-lm">Loading...</p>
+              ) : (
+                <div className="flex items-center justify-center min-h-[50vh]">
+                  <div className="flex flex-col items-center gap-3">
+                    <Spinner className="size-12 text-accent-lm" />
+                    <p className="text-md text-text-lighter-lm">Loading...</p>
+                  </div>
                 </div>
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="flex flex-col items-center lg:mt-10">
-                <img src={messageEmptyState} className="lg:size-30"/>
-                <p className="lg:m-0 lg:p-0 text-center text-text-lighter-lm">
-                No conversations.
-                </p>
-              </div>
+              )
             ) : (
-              filteredConversations.map((conv) => (
-                <div key={conv.id}>
-                  <MessageChannel
-                    userName={conv.other_user.name}
-                    userAvatar={
-                      conv.other_user.profile_picture_url || placeholderUserImg
-                    }
-                    onlineStatus={onlineUserIds.has(conv.other_user.auth_uid)}
-                    messagePreview={
-                      conv.last_message
-                        ? getPreviewText(conv.last_message.message_body)
-                        : "Start a conversation"
-                    }
-                    isUnread={conv.unread_count > 0}
-                    onClick={() => handleConversationClick(conv.id)}
+              <>
+                <div className="lg:py-2 py-2">
+                  <input
+                    type="text"
+                    value={conversationSearch}
+                    onChange={(e) => setConversationSearch(e.target.value)}
+                    placeholder="Search conversations..."
+                    disabled={loading}
+                    className="bg-secondary-lm border border-stroke-grey lg:rounded-md rounded-md text-text-lm lg:px-2 lg:py-2 px-2 py-2 placeholder:text-text-lighter-lm/60 w-full focus:outline-none focus:border-accent-lm disabled:opacity-50 text-sm"
                   />
-                  <hr className="border-stroke-grey lg:my-1" />
                 </div>
-              ))
+
+                {loading ? (
+                  <div className="flex items-center justify-center min-h-[50vh]">
+                    <div className="flex flex-col items-center gap-3">
+                      <Spinner className="size-12 text-accent-lm" />
+                      <p className="text-md text-text-lighter-lm">Loading...</p>
+                    </div>
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="flex flex-col items-center lg:mt-10">
+                    <img src={messageEmptyState} className="lg:size-30" alt="" />
+                    <p className="lg:m-0 lg:p-0 text-center text-text-lighter-lm">No conversations.</p>
+                  </div>
+                ) : (
+                  filteredConversations.map((conv) => (
+                    <div key={conv.id}>
+                      <MessageChannel
+                        userName={conv.other_user.name}
+                        userAvatar={conv.other_user.profile_picture_url || placeholderUserImg}
+                        onlineStatus={onlineUserIds.has(conv.other_user.auth_uid)}
+                        messagePreview={
+                          conv.last_message
+                            ? getPreviewText(conv.last_message.message_body)
+                            : "Start a conversation"
+                        }
+                        isUnread={conv.unread_count > 0}
+                        onClick={() => handleConversationClick(conv.id)}
+                      />
+                      <hr className="border-stroke-grey lg:my-1" />
+                    </div>
+                  ))
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -555,25 +609,19 @@ function MessageChannel({
         </div>
 
         <div className="flex flex-col">
-          <p
-            className={`m-0 p-0 font-medium ${
-              isUnread ? `text-accent-lm` : `text-text-lm`
-            }`}
-          >
+          <p className={`m-0 p-0 font-medium ${isUnread ? "text-accent-lm" : "text-text-lm"}`}>
             {userName}
           </p>
           <p
             className={`m-0 p-0 text-sm ${
-              isUnread ? `text-text-lm text-md` : `text-text-lighter-lm/70`
+              isUnread ? "text-text-lm text-md" : "text-text-lighter-lm/70"
             }`}
           >
             {messagePreview}
           </p>
         </div>
       </div>
-      {isUnread && (
-        <span className="size-2 bg-accent-lm rounded-full animate-pulse"></span>
-      )}
+      {isUnread && <span className="size-2 bg-accent-lm rounded-full animate-pulse"></span>}
     </button>
   );
 }

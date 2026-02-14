@@ -109,8 +109,9 @@ export async function getConversations(): Promise<Conversation[]> {
     // Get other user info and unread counts for each conversation.
     // Also ensure we can display conversations even if last_message_id isn't maintained,
     // by falling back to the most recent message in all_messages.
+    const rows = (data ?? []) as unknown as ConversationRow[];
     const conversationsWithUserInfo = await Promise.all(
-      data.map(async (conv: ConversationRow) => {
+      rows.map(async (conv) => {
         const otherUserId = conv.sender_id === user.id ? conv.receiver_id : conv.sender_id;
         
         // Get other user's profile info
@@ -348,7 +349,7 @@ export function subscribeToMessages(
         filter: `conversation_id=eq.${conversationId}`,
       },
       (payload: RealtimePayload) => {
-        onNewMessage(payload.new as Message);
+        onNewMessage(payload.new as unknown as Message);
       }
     )
     .subscribe();

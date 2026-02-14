@@ -342,7 +342,7 @@ export function ChatHistory({
 
   if (showFullScreenLoading) {
     return (
-      <div className="lg:h-[70vh] bg-primary-lm flex items-center justify-center">
+      <div className="flex-1 min-h-0 bg-primary-lm flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Spinner className="size-12 text-accent-lm" />
           <p className="text-md text-text-lighter-lm">Loading...</p>
@@ -352,7 +352,7 @@ export function ChatHistory({
   }
 
   return (
-    <div className="lg:h-[70vh] flex flex-col bg-primary-lm">
+    <div className="flex flex-col flex-1 min-h-0 bg-primary-lm overflow-hidden">
       {/* Chat header */}
       <div className="bg-primary-lm border-b border-b-stroke-grey lg:p-2 shrink-0">
         {/* holds user details & online status */}
