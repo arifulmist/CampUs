@@ -87,6 +87,9 @@ export default function EventPost({ post, onClick }: Props) {
       aria-pressed={onClick ? false : undefined}
     >
       <PostBody
+  postId={post.id}
+  initialLikeCount={typeof post.likes === "number" ? post.likes : undefined}
+  initialCommentCount={typeof post.comments === "number" ? post.comments : undefined}
   title={post.title}
   user={{
     name: post.author,

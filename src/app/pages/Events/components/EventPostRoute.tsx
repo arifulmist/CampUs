@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { Navigate } from "react-router-dom";
 
 import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
@@ -13,6 +14,8 @@ type EventPostsRow = {
     title: string;
     description: string;
     author_id: string;
+    like_count: number | null;
+    comment_count: number | null;
     created_at: string | null;
   } | null;
   events_category: {
@@ -25,6 +28,7 @@ type UserInfoRow = {
   name: string | null;
   batch: number | null;
   department: string | null;
+  student_id: string | null;
   departments_lookup?: {
     department_name: string | null;
   } | null;
@@ -55,11 +59,14 @@ type EventDetail = {
   description: string;
   createdAt: string | null;
   authorId: string | null;
+  authorStudentId: string | null;
   authorName: string;
   authorDeptBatch: string;
   authorProfilePictureUrl: string | null;
   tags: string[];
   imageUrl: string | null;
+  likeCount: number;
+  commentCount: number;
 };
 
 function formatRelativeTime(dateString?: string | null) {
@@ -106,6 +113,8 @@ export function EventPostRoute({ postId }: { postId: string }) {
               title,
               description,
               author_id,
+              like_count,
+              comment_count,
               created_at
             ),
             events_category (
@@ -132,7 +141,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
             authorId
               ? supabase
                   .from("user_info")
-                  .select("auth_uid,name,batch,department,departments_lookup(department_name)")
+                  .select("auth_uid,name,batch,department,student_id,departments_lookup(department_name)")
                   .eq("auth_uid", authorId)
                   .maybeSingle()
               : Promise.resolve({ data: null as UserInfoRow | null, error: null as unknown }),
@@ -192,11 +201,14 @@ export function EventPostRoute({ postId }: { postId: string }) {
           description: eventRow.all_posts.description ?? "",
           createdAt: eventRow.all_posts.created_at ?? null,
           authorId,
+          authorStudentId: userInfo?.student_id ?? null,
           authorName,
           authorDeptBatch,
           authorProfilePictureUrl: authorProfile?.profile_picture_url ?? null,
           tags,
           imageUrl: typeof eventRow.img_url === "string" ? eventRow.img_url : null,
+          likeCount: Number(eventRow.all_posts.like_count ?? 0),
+          commentCount: Number(eventRow.all_posts.comment_count ?? 0),
         };
 
         if (!alive) return;
@@ -226,15 +238,11 @@ export function EventPostRoute({ postId }: { postId: string }) {
   }
 
   if (!detail) {
-    return (
-      <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl mb-5">
-        <p className="text-text-lighter-lm">Post not found.</p>
-      </div>
-    );
+    return <Navigate to="/404" replace />;
   }
 
   return (
-    <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm lg:transition border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
+    <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
       <div className="lg:mt-1 lg:mb-3">
         <p className="inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base">
           {detail.category}
@@ -244,7 +252,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
       <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
 
       {detail.tags.length > 0 && (
-        <div className="lg:flex lg:gap-2 lg:flex-wrap">
+        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
           {detail.tags.map((t) => (
             <p
               key={t}
@@ -263,6 +271,7 @@ export function EventPostRoute({ postId }: { postId: string }) {
           userImg={detail.authorProfilePictureUrl ?? undefined}
           postDate={formatRelativeTime(detail.createdAt)}
           userId={detail.authorId ?? undefined}
+          studentId={detail.authorStudentId ?? undefined}
         />
       </div>
 
@@ -279,8 +288,8 @@ export function EventPostRoute({ postId }: { postId: string }) {
       ) : null}
 
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-3">
-        <LikeButton />
-        <CommentButton />
+        <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
+        <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
         <ShareButton />
       </div>
     </div>

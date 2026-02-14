@@ -8,6 +8,7 @@ import { UserInfo } from "./UserInfo";
 import heartIcon from "@/assets/icons/heart_icon.svg";
 import filledHeartIcon from "@/assets/icons/FILLEDheart_icon.svg";
 import messageIcon from "@/assets/icons/message_icon.svg";
+import messageEmptyState from "@/assets/images/noMessage.svg";
 
 import {
   addComment,
@@ -63,6 +64,7 @@ export function PostComments({ postId }: { postId: string }) {
   const [sortMode, setSortMode] = useState<SortMode>("best");
 
   const [topCommentText, setTopCommentText] = useState("");
+  const [postingTop, setPostingTop] = useState(false);
 
   const [tree, setTree] = useState<CommentNode[]>([]);
   const [likedById, setLikedById] = useState<Record<string, boolean>>({});
@@ -143,7 +145,9 @@ export function PostComments({ postId }: { postId: string }) {
   async function submitTopLevelComment() {
     const text = topCommentText.trim();
     if (!text) return;
+    if (postingTop) return;
 
+    setPostingTop(true);
     try {
       const me = await getCurrentUserProfile();
       if (!me?.auth_uid) {
@@ -153,14 +157,19 @@ export function PostComments({ postId }: { postId: string }) {
       const inserted = await addComment({ postId, authorId: me.auth_uid, content: text, parentCommentId: null });
       setTopCommentText("");
       setTree((prev) => [inserted, ...prev]);
+
+      // Let any post-level UI (e.g. CommentButton) refresh its count.
+      window.dispatchEvent(new CustomEvent("campus:comments_changed", { detail: { postId } }));
     } catch (e) {
       console.error(e);
       toast.error("Failed to post comment");
+    } finally {
+      setPostingTop(false);
     }
   }
 
   return (
-    <div className="lg:mt-6 lg:flex lg:flex-col lg:gap-4">
+    <div className="lg:mt-6 lg:flex lg:flex-col lg:gap-4 bg-primary-lm lg:p-6 border border-stroke-grey rounded-xl">
       <div className="lg:flex lg:gap-3 lg:items-center">
         <input
           value={topCommentText}
@@ -172,16 +181,23 @@ export function PostComments({ postId }: { postId: string }) {
             }
           }}
           placeholder="Write a comment…"
-          className="lg:flex-1 h-full lg:mt-2 bg-primary-lm border border-stroke-grey rounded-md lg:px-4 py-2 placeholder:text-stroke-peach-lm text-text-lm"
+          className="lg:flex-1 h-full lg:mt-2 bg-secondary-lm border border-stroke-grey rounded-md lg:px-4 py-2 placeholder:text-stroke-peach text-text-lm focus:outline-0 focus:border focus:border-stroke-peach"
+        />
+
+        <ButtonCTA
+          label={postingTop ? "Posting..." : "Post"}
+          loading={postingTop}
+          disabled={postingTop || !topCommentText.trim()}
+          clickEvent={() => void submitTopLevelComment()}
         />
       </div>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-3 items-center lg:mt-4 lg:mb-6">
         <p className="m-0 p-0 text-text-lm">Sort by:</p>
         <select
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value as SortMode)}
-          className="bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 text-accent-lm cursor-pointer hover:border-stroke-peach"
+          className="bg-primary-lm border border-stroke-grey rounded-md lg:p-2 text-accent-lm cursor-pointer hover:border-stroke-peach"
         >
           <option value="best">Best</option>
           <option value="latest">Latest</option>
@@ -191,7 +207,10 @@ export function PostComments({ postId }: { postId: string }) {
       {loading ? (
         <p className="text-text-lighter-lm">Loading comments…</p>
       ) : sortedParents.length === 0 ? (
-        <p className="text-text-lighter-lm">No comments yet.</p>
+        <div className="flex flex-col lg:gap-2 items-center lg:mt-4">
+          <img src={messageEmptyState}/>
+          <p className="text-text-lighter-lm">No comments yet.</p>
+        </div>
       ) : (
         <div className="lg:flex lg:flex-col lg:gap-6">
           {sortedParents.map((c) => (
@@ -291,6 +310,8 @@ function CommentItem({
       setReplyText("");
       setReplying(false);
       onInsertReply(node.id, inserted);
+
+      window.dispatchEvent(new CustomEvent("campus:comments_changed", { detail: { postId } }));
     } catch (e) {
       console.error(e);
       toast.error("Failed to post reply");
@@ -302,9 +323,7 @@ function CommentItem({
   return (
     <div
       className={
-        isReply
-          ? "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey"
-          : "lg:p-6 bg-primary-lm border border-stroke-grey lg:rounded-xl"
+        isReply && "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey"
       }
     >
       <UserInfo
@@ -312,20 +331,21 @@ function CommentItem({
         userBatch={batchLabel}
         postDate={formatRelativeTime(createdAtIso)}
         userId={node.raw?.author_id ?? undefined}
+        studentId={node.raw?.user_info?.student_id ?? undefined}
       />
 
       <p className="m-0 mt-2 p-0 text-text-lm whitespace-pre-wrap">{node.content}</p>
 
       <div className="flex gap-4 mt-3">
         <button
-          className="flex gap-1 items-center"
+          className="flex gap-1 items-center cursor-pointer"
           onClick={() => void onToggleLike(node.id)}
         >
           <img src={getLiked(node.id) ? filledHeartIcon : heartIcon} className="lg:size-4" />
           <p className="m-0 p-0 text-accent-lm text-sm">{node.likes ?? 0}</p>
         </button>
 
-        <button className="flex gap-1 items-center" onClick={() => setReplying((p) => !p)}>
+        <button className="flex gap-1 items-center cursor-pointer" onClick={() => setReplying((p) => !p)}>
           <img src={messageIcon} className="lg:size-4" />
           <p className="m-0 p-0 text-accent-lm text-sm">Reply</p>
         </button>

@@ -2,6 +2,9 @@ import { UserInfo } from "./UserInfo";
 import { CommentButton, LikeButton, ShareButton } from "./PostButtons";
 
 interface PostContent {
+  postId?: string;
+  initialLikeCount?: number;
+  initialCommentCount?: number;
   title: string;
   user: {
     name: string;
@@ -20,6 +23,9 @@ interface PostContent {
 }
 
 export function PostBody({
+  postId,
+  initialLikeCount,
+  initialCommentCount,
   title,
   user,
   content,
@@ -100,8 +106,8 @@ export function PostBody({
 
       {/* Buttons */}
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-3">
-        <LikeButton />
-        <CommentButton />
+        <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
+        <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
         <ShareButton />
       </div>
     </div>

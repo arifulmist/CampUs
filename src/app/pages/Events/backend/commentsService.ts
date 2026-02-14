@@ -8,8 +8,7 @@ export type CommentRow = {
   comment_id: string;
   post_id: string;
   author_id: string | null;
-  comment_creation_date: string | null;
-  comment_creation_time?: string | null;
+  comment_creation_timestamp: string;
   content: string;
   like_count: number | null;
   parent_comment_id: string | null;
@@ -71,8 +70,7 @@ export async function fetchCommentsByPost(postId: string): Promise<CommentRow[]>
       comment_id,
       post_id,
       author_id,
-      comment_creation_date,
-      comment_creation_time,
+      comment_creation_timestamp,
       content,
       like_count,
       parent_comment_id
@@ -81,8 +79,7 @@ export async function fetchCommentsByPost(postId: string): Promise<CommentRow[]>
     .eq("post_id", postId)
     // Keep DB order stable (oldest -> newest). Parent sorting is done in UI,
     // and replies keep their natural order.
-    .order("comment_creation_date", { ascending: true })
-    .order("comment_creation_time", { ascending: true });
+    .order("comment_creation_timestamp", { ascending: true });
 
   if (error) {
     console.error("fetchCommentsByPost error", error);
@@ -157,7 +154,9 @@ export function buildCommentsTree(rows: CommentRow[]): CommentNode[] {
     const batch = r.user_info?.batch ?? null;
     const courseLabel = `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() || null;
     const likes = Number(r.like_count ?? 0);
-    const timestamp = toIsoTimestamp(r.comment_creation_date, r.comment_creation_time ?? null);
+    const timestamp = typeof r.comment_creation_timestamp === "string" && r.comment_creation_timestamp
+      ? new Date(r.comment_creation_timestamp).toISOString()
+      : null;
 
     map.set(id, {
       id,
@@ -187,41 +186,6 @@ export function buildCommentsTree(rows: CommentRow[]): CommentNode[] {
   return roots;
 }
 
-function toIsoTimestamp(dateStr?: string | null, timeStr?: string | null) {
-  const date = typeof dateStr === "string" ? dateStr.trim() : "";
-  const time = typeof timeStr === "string" ? timeStr.trim() : "";
-  if (!date) return null;
-  if (!time) {
-    const d = new Date(date);
-    return Number.isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  const dt = new Date(`${date}T${time}`);
-  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
-}
-
-function nowDateString() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`; // local YYYY-MM-DD
-}
-
-function nowTimeTzString() {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  const ss = String(d.getSeconds()).padStart(2, "0");
-
-  const offsetMinutes = -d.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const abs = Math.abs(offsetMinutes);
-  const offH = String(Math.floor(abs / 60)).padStart(2, "0");
-  const offM = String(abs % 60).padStart(2, "0");
-
-  return `${hh}:${mi}:${ss}${sign}${offH}:${offM}`;
-}
-
 /**
  * Insert a comment (top-level if parentCommentId == null, else a reply).
  * authorId should be the user's auth UID (auth_uid in user_info).
@@ -246,8 +210,6 @@ export async function addComment({
         post_id: postId,
         author_id: authorId || null,
         content,
-        comment_creation_date: nowDateString(),
-        comment_creation_time: nowTimeTzString(),
         like_count: 0,
         parent_comment_id: parentCommentId,
       },
@@ -269,8 +231,7 @@ export async function addComment({
       comment_id,
       post_id,
       author_id,
-      comment_creation_date,
-      comment_creation_time,
+      comment_creation_timestamp,
       content,
       like_count,
       parent_comment_id
@@ -330,7 +291,10 @@ export async function addComment({
     content: row.content,
     likes: Number(row.like_count ?? 0),
     parentId: row.parent_comment_id ?? null,
-    timestamp: toIsoTimestamp(row.comment_creation_date, row.comment_creation_time ?? null),
+    timestamp:
+      typeof row.comment_creation_timestamp === "string" && row.comment_creation_timestamp
+        ? new Date(row.comment_creation_timestamp).toISOString()
+        : null,
     raw: { ...row, user_info: userInfo },
     replies: [],
   };

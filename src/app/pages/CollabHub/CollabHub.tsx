@@ -297,8 +297,8 @@ export function CollabHub() {
 
                   <div className="lg:flex lg:items-center lg:justify-between lg:mt-2">
                     <div className="lg:flex lg:gap-4 lg:items-center">
-                      <LikeButton />
-                      <CommentButton />
+                      <LikeButton postId={p.id} initialLikeCount={p.likes} />
+                      <CommentButton postId={p.id} initialCommentCount={p.comments} />
                       <ShareButton />
                     </div>
                     <Button

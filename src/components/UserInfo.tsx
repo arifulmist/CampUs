@@ -1,16 +1,19 @@
-import { Link } from "react-router";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase/supabaseClient";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
 
 const avatarCacheByAuthUid = new Map<string, string | null>();
 const avatarFetchInFlight = new Map<string, Promise<string | null>>();
+const studentIdCacheByAuthUid = new Map<string, string | null>();
+const studentIdFetchInFlight = new Map<string, Promise<string | null>>();
 
 interface UserDetails {
   userImg?: string | null;
   userName: string;
   userBatch: string;
   userId?: string;
+  studentId?: string;
   disableClick?: boolean;
   postDate?: string | undefined;
 }
@@ -20,9 +23,11 @@ export function UserInfo({
   userName,
   userBatch,
   userId,
+  studentId,
   disableClick,
   postDate,
 }: UserDetails) {
+  const navigate = useNavigate();
   const [resolvedAvatar, setResolvedAvatar] = useState<{ authUid: string; url: string | null } | null>(null);
 
   const cachedAvatar = userId ? avatarCacheByAuthUid.get(userId) : undefined;
@@ -79,6 +84,58 @@ export function UserInfo({
     };
   }, [userId]);
 
+  async function resolveStudentIdFromAuthUid(authUid: string): Promise<string | null> {
+    const cached = studentIdCacheByAuthUid.get(authUid);
+    if (cached !== undefined) return cached;
+
+    const existing = studentIdFetchInFlight.get(authUid);
+    const promise =
+      existing ??
+      (async () => {
+        const { data, error } = await supabase
+          .from("user_info")
+          .select("student_id")
+          .eq("auth_uid", authUid)
+          .maybeSingle();
+        if (error) throw error;
+        const sid = (data as unknown as { student_id?: unknown } | null)?.student_id;
+        return typeof sid === "string" && sid.trim() ? sid : null;
+      })();
+
+    if (!existing) studentIdFetchInFlight.set(authUid, promise);
+
+    try {
+      const sid = await promise;
+      studentIdCacheByAuthUid.set(authUid, sid);
+      studentIdFetchInFlight.delete(authUid);
+      return sid;
+    } catch (e) {
+      studentIdCacheByAuthUid.set(authUid, null);
+      studentIdFetchInFlight.delete(authUid);
+      console.error("Failed to resolve student_id for user:", e);
+      return null;
+    }
+  }
+
+  async function handleNavigateToProfile() {
+    if (disableClick) return;
+
+    if (studentId && studentId.trim()) {
+      navigate(`/profile/${studentId}`);
+      return;
+    }
+
+    if (userId && userId.trim()) {
+      const sid = await resolveStudentIdFromAuthUid(userId);
+      if (sid) {
+        navigate(`/profile/${sid}`);
+        return;
+      }
+    }
+
+    navigate("/profile");
+  }
+
   return (
     <div className="lg:w-fit">
       {disableClick ? (
@@ -101,9 +158,10 @@ export function UserInfo({
           </div>
         </div>
       ) : (
-        <Link
-          to={userId ? `/profile/${userId}` : "/profile"}
-          className="lg:flex lg:gap-2 cursor-pointer"
+        <button
+          type="button"
+          onClick={() => void handleNavigateToProfile()}
+          className="lg:flex lg:gap-2 cursor-pointer text-left"
         >
           <div className="lg:user-img">
             <img
@@ -121,7 +179,7 @@ export function UserInfo({
               {postDate ? ` • ${postDate}` : ""}
             </p>
           </div>
-        </Link>
+        </button>
       )}
     </div>
   );
