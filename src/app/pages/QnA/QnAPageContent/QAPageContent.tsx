@@ -7,7 +7,32 @@ import PostCard from "./PostCard";
 import type { Post } from "./types";
 import QnaPost from "../components/QnaPost";
 import PostDetail from "../components/PostDetail";
+export function formatPostTimestamp(createdAt: string): string {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
 
+  if (diffSeconds < 60) return "Posted just now";
+  if (diffMinutes < 60) return `Posted ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+  if (diffHours < 24) return `Posted ${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays === 1) return "Posted 1 day ago";
+  if (diffDays < 2) return `Posted ${diffDays} days ago`;
+
+  // For older posts, show full date
+  return `posted on ${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}, ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })}`;
+}
 export default function QAPageContent() {
   const [activeTab, setActiveTab] = useState<"All" | "Question" | "Advice" | "Resource">("All");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -86,7 +111,10 @@ export default function QAPageContent() {
         reactions: p.like_count || 0,
         comments: p.comment_count || 0,
         shares: 0,
-        timestamp: new Date(p.created_at).toLocaleDateString(),
+       createdAt: p.created_at,
+       timestamp: formatPostTimestamp(p.created_at),
+
+
         imageUrl: p.qna_posts?.img_url || null
       }));
 console.log("Formatted Posts Image URLs:", formattedPosts.map(p => p.imageUrl));
@@ -130,6 +158,7 @@ setPosts(formattedPosts);
       setSelectedPost(updated);
     }
   };
+  
 
   return (
     <div className="lg:min-h-screen bg-background-lm lg:animate-fade-in" style={{ minHeight: "100vh", overflowY: "auto" }}>

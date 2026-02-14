@@ -10,6 +10,7 @@ export type Post = {
   reactions: number;
   comments: number;
   shares: number;
+  createdAt: string; 
   timestamp: string;
   imageUrl?: string | null;            
 };

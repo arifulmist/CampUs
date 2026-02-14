@@ -5,6 +5,7 @@ import { LikeButton, CommentButton, ShareButton } from "../../../../components/P
 import { Textarea } from "../../../../components/ui/textarea";
 import { Button } from "../../../../components/ui/button";
 import { categoryStyles } from "./types";
+import { formatPostTimestamp } from "./QAPageContent";
 
 export default function PostCard({
   post,
@@ -22,11 +23,20 @@ export default function PostCard({
   const [showReadMore, setShowReadMore] = useState(false);
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [displayTime, setDisplayTime] = useState(formatPostTimestamp(post.createdAt));
+
 
   useEffect(() => {
     if (!contentRef.current) return;
     setShowReadMore(contentRef.current.scrollHeight > contentRef.current.clientHeight + 1);
   }, [post.content]);
+  useEffect(() => {
+  const interval = setInterval(() => {
+    setDisplayTime(formatPostTimestamp(post.createdAt));
+  }, 60000); // update every minute
+
+  return () => clearInterval(interval);
+}, [post.createdAt]);
 
   return (
     <div
@@ -43,6 +53,8 @@ export default function PostCard({
       {/* Author & Title */}
       <div>
         <UserInfo userImg={post.authorAvatar} userName={post.author} userBatch={post.authorCourse} />
+         <p className="text-xs text-accent-lm lg:mt-2">{displayTime}</p>
+
         <h5 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mt-2">{post.title}</h5>
       </div>
         <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-3">
@@ -95,7 +107,7 @@ export default function PostCard({
           <button onClick={(e) => { e.stopPropagation(); alert("Share clicked"); }}><ShareButton /></button>
         </div>
 
-        <p className="text-xs text-text-lighter-lm lg:mt-2">{post.timestamp}</p>
+       
 
         {!collapsed && (
           <div className="lg:mt-4 bg-secondary-lm lg:rounded-2xl lg:p-6 border-2 border-stroke-grey">
