@@ -26,6 +26,8 @@ export type EventPostType = {
   body?: string;
   location?: string;          
   image?: string | null;
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
   segments?: Segment[];
   tags: { skill_id: number; name: string }[];
   likes?: number; 
@@ -110,6 +112,9 @@ export default function EventPost({ post, onClick }: Props) {
   category={post.category}
   deptBatch={deptBatch}
   formattedDate={formattedDate}
+  eventStartDate={post.eventStartDate ?? post.segments?.[0]?.startDate}
+  eventEndDate={post.eventEndDate ?? post.segments?.[0]?.endDate}
+  location={post.location ?? null}
 />
 
 

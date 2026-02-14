@@ -59,12 +59,31 @@ export function EventSegment({
   const st = formatTime12hr(segmentStartTime);
   const et = segmentEndTime ? formatTime12hr(segmentEndTime) : undefined;
 
+  function isSameDay(a?: string, b?: string) {
+    if (!a || !b) return false;
+    try {
+      const da = new Date(a);
+      const db = new Date(b);
+      return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+    } catch {
+      return a === b;
+    }
+  }
+
   return (
     <div className="bg-secondary-lm lg:p-5 border border-stroke-grey rounded-lg flex flex-col lg:gap-2">
       <h5 className="text-text-lm font-semibold">{segmentTitle}</h5>
       <div>
         <p className="text-accent-lm text-sm font-medium m-0 p-0">
-          {sd}{ed && ` - ${ed}`} {sd || ed ? "|" : ""} {st}{et && ` - ${et}`}
+          {sd && ed && isSameDay(segmentStartDate, segmentEndDate)
+            ? sd
+            : (
+                <>
+                  {sd}{sd && ed ? " \u2014 " : ""}{ed ? ed : ""}
+                </>
+              )}
+          { (sd || ed) && (st || et) ? " | " : "" }
+          {st}{et ? ` \u2014 ${et}` : ""}
         </p>
         {segmentLocation ? <p className="m-0 p-0 text-text-lm font-medium text-sm">{segmentLocation}</p> : null}
       </div>

@@ -1,6 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+class LocalErrorBoundary extends React.Component<
+  { children?: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children?: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.error("LocalErrorBoundary caught:", err);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-primary-lm border border-stroke-grey rounded-lg p-4">
+          <p className="text-text-lighter-lm">Something went wrong loading this panel.</p>
+        </div>
+      );
+    }
+    return this.props.children ?? null;
+  }
+}
 import {
   EllipsisVertical as LucideEllipsisVertical,
   Pencil as LucidePencil,
@@ -130,6 +156,27 @@ function formatRelativeTime(dateString?: string | null) {
   });
 }
 
+function formatDateDisplay(dateString?: string | null) {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return String(dateString);
+  }
+}
+
+function isSameDay(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  try {
+    const da = new Date(a);
+    const db = new Date(b);
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  } catch {
+    return a === b;
+  }
+}
+
 
 
 export function EventPostRoute({ postId }: { postId: string }) {
@@ -141,6 +188,8 @@ export function EventPostRoute({ postId }: { postId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+
+  
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -374,7 +423,13 @@ export function EventPostRoute({ postId }: { postId: string }) {
   }
 
   if (!detail) {
-    return <Navigate to="/404" replace />;
+    return (
+      <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
+        <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-6 w-full">
+          <p className="text-text-lighter-lm">Event not found or you do not have access to view it.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -428,6 +483,27 @@ export function EventPostRoute({ postId }: { postId: string }) {
       </div>
 
       <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
+      {(detail.eventStartDate || detail.eventEndDate || detail.location) && (
+        <div className="mt-2">
+          {(detail.eventStartDate || detail.eventEndDate) && (
+            <p className="text-accent-lm font-semibold text-md">
+              {detail.eventStartDate && detail.eventEndDate && isSameDay(detail.eventStartDate, detail.eventEndDate)
+                ? formatDateDisplay(detail.eventStartDate)
+                : (
+                    <>
+                      {detail.eventStartDate ? formatDateDisplay(detail.eventStartDate) : ""}
+                      {detail.eventStartDate && detail.eventEndDate ? " \u2014 " : ""}
+                      {detail.eventEndDate ? formatDateDisplay(detail.eventEndDate) : ""}
+                    </>
+                  )}
+            </p>
+          )}
+
+          {detail.location ? (
+            <p className="text-text-lm font-semibold text-md mt-1">{detail.location}</p>
+          ) : null}
+        </div>
+      )}
 
       {detail.tags.length > 0 && (
         <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
@@ -489,44 +565,48 @@ export function EventPostRoute({ postId }: { postId: string }) {
         <ShareButton />
       </div>
 
-      <EditEventModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        initial={{
-          postId: detail.postId,
-          title: detail.title,
-          description: detail.description,
-          location: detail.location,
-          categoryId: detail.categoryId,
-          eventStartDate: detail.eventStartDate,
-          eventEndDate: detail.eventEndDate,
-          imageUrl: detail.imageUrl,
-          segments: (detail.segments ?? []).map((s) => ({
-            id: s.id,
-            name: s.name,
-            description: s.description,
-            startDate: s.startDate,
-            endDate: s.endDate,
-            startTime: s.startTime,
-            endTime: s.endTime,
-            location: s.location ?? undefined,
-          })),
-          tags: detail.tagObjects,
-        }}
-        onSaved={() => {
-          setReloadToken((t) => t + 1);
-        }}
-      />
+      <LocalErrorBoundary>
+        <EditEventModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          initial={{
+            postId: detail.postId,
+            title: detail.title,
+            description: detail.description,
+            location: detail.location,
+            categoryId: detail.categoryId,
+            eventStartDate: detail.eventStartDate,
+            eventEndDate: detail.eventEndDate,
+            imageUrl: detail.imageUrl,
+            segments: (detail.segments ?? []).map((s) => ({
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              startDate: s.startDate,
+              endDate: s.endDate,
+              startTime: s.startTime,
+              endTime: s.endTime,
+              location: s.location ?? undefined,
+            })),
+            tags: detail.tagObjects,
+          }}
+          onSaved={() => {
+            setReloadToken((t) => t + 1);
+          }}
+        />
+      </LocalErrorBoundary>
 
-      <DeleteEventModal
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        postId={detail.postId}
-        onDeleted={() => {
-          setDeleteOpen(false);
-          navigate("/events", { replace: true });
-        }}
-      />
+      <LocalErrorBoundary>
+        <DeleteEventModal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          postId={detail.postId}
+          onDeleted={() => {
+            setDeleteOpen(false);
+            navigate("/events", { replace: true });
+          }}
+        />
+      </LocalErrorBoundary>
     </div>
   );
 }

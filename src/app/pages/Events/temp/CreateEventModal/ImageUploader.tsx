@@ -3,6 +3,7 @@ interface Props {
   imageName: string | null;
   onSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPreview: () => void;
+  onRemove?: () => void;
 }
 
 export default function ImageUploader({
@@ -10,7 +11,10 @@ export default function ImageUploader({
   imageName,
   onSelect,
   onPreview,
+  onRemove,
 }: Props) {
+  const displayName =
+    imageName && imageName.length > 30 ? imageName.slice(0, 27) + "..." : imageName;
   return (
     <div className="mt-6">
       <h6 className="font-medium text-text-lm">
@@ -28,32 +32,34 @@ export default function ImageUploader({
           />
         </label>
 
-        <div className="flex-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 flex items-center">
+        <div className="flex-1 border border-stroke-grey bg-primary-lm rounded-lg px-3 py-2 flex items-center justify-between">
           {!image ? (
-            <span className="text-text-lighter-lm">
-              No file chosen
-            </span>
+            <span className="text-text-lighter-lm">No file chosen</span>
           ) : (
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={onPreview} className="flex items-center gap-3">
+                <img
+                  src={image}
+                  alt="Preview"
+                  className="h-20 w-28 object-cover rounded-md border border-stroke-grey"
+                />
+                <div className="text-left">
+                  <div className="text-sm font-medium text-text-lm">{displayName}</div>
+                  <div className="text-xs text-text-lighter-lm">Click to expand</div>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {image && onRemove ? (
             <button
               type="button"
-              onClick={onPreview}
-              className="flex items-center gap-3"
+              onClick={onRemove}
+              className="ml-3 text-danger-lm hover:underline text-sm"
             >
-              <img
-                src={image}
-                alt="Preview"
-                className="h-20 w-28 object-cover rounded-md border border-stroke-grey"
-              />
-              <div className="text-left">
-                <div className="text-sm font-medium text-text-lm">
-                  {imageName}
-                </div>
-                <div className="text-xs text-text-lighter-lm">
-                  Click to expand
-                </div>
-              </div>
+              Remove
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

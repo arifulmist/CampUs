@@ -284,8 +284,12 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
             <ImageUploader
               image={form.imageDataUrl}
               imageName={form.imageName}
-              onSelect={form.handleImage}
-              onPreview={() => form.setPreviewOpen(true)}
+                onSelect={form.handleImage}
+                onPreview={() => form.setPreviewOpen(true)}
+                onRemove={() => {
+                  form.setImageDataUrl(null);
+                  form.setImageName(null);
+                }}
             />
             </div>
 

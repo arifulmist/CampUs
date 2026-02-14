@@ -286,6 +286,10 @@ export function EditEventModal({
                 imageName={form.imageName}
                 onSelect={form.handleImage}
                 onPreview={() => form.setPreviewOpen(true)}
+                onRemove={() => {
+                  form.setImageDataUrl(null);
+                  form.setImageName(null);
+                }}
               />
             </div>
 

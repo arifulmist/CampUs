@@ -2,6 +2,27 @@ import { UserInfo } from "./UserInfo";
 import { CommentButton, LikeButton, ShareButton } from "./PostButtons";
 import { getCategoryClass } from "@/utils/categoryColors";
 
+function formatDateDisplay(dateString?: string | null) {
+  if (!dateString) return "";
+  try {
+    const d = new Date(dateString);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return String(dateString);
+  }
+}
+
+function isSameDay(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  try {
+    const da = new Date(a);
+    const db = new Date(b);
+    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+  } catch {
+    return a === b;
+  }
+}
+
 interface PostContent {
   postId?: string;
   initialLikeCount?: number;
@@ -18,6 +39,9 @@ interface PostContent {
     text: string;
     img?: string;
   };
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  location?: string | null;
   tags?: string[];
   category?: string;
   deptBatch?: string;
@@ -35,6 +59,9 @@ export function PostBody({
   tags,
   category,
   formattedDate,
+  eventStartDate,
+  eventEndDate,
+  location,
 }: PostContent) {
   const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : "";
   const categoryClasses = category ? getCategoryClass(category, categorySet) : "";
@@ -54,6 +81,28 @@ export function PostBody({
 
       {/* Title */}
       <h3 className="text-text-lm lg:font-extrabold lg:font-header">{title}</h3>
+
+      {(eventStartDate || eventEndDate || location) && (
+        <div>
+          {(eventStartDate || eventEndDate) && (
+            <p className="text-accent-lm font-semibold text-md">
+              {eventStartDate && eventEndDate && isSameDay(eventStartDate, eventEndDate)
+                ? formatDateDisplay(eventStartDate)
+                : (
+                    <>
+                      {eventStartDate ? formatDateDisplay(eventStartDate) : ""}
+                      {eventStartDate && eventEndDate ? " \u2014 " : ""}
+                      {eventEndDate ? formatDateDisplay(eventEndDate) : ""}
+                    </>
+                  )}
+            </p>
+          )}
+
+          {location ? (
+            <p className="text-text-lm font-semibold text-md mt-1">{location}</p>
+          ) : null}
+        </div>
+      )}
 
       {/* Tags */}
       {tags && tags.length > 0 && (

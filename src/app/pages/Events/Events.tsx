@@ -145,6 +145,8 @@ const mergedPosts = (events ?? []).map((ev: any) => {
     excerpt: postData?.description?.slice(0, 100) ?? "",
     body: postData?.description ?? "",
     location: ev.location,
+    eventStartDate: ev.event_start_date ?? null,
+    eventEndDate: ev.event_end_date ?? null,
     image: ev.img_url,
     likes: postData?.like_count ?? 0,
     comments: postData?.comment_count ?? 0,
