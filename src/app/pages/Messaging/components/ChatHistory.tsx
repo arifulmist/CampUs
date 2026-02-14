@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { LucideArrowLeft, LucidePaperclip, LucideSendHorizontal, LucideX } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   getMessages,
   getOrCreateConversation,
@@ -38,6 +40,7 @@ export function ChatHistory({
   otherUserId = null,
   onConversationCreated,
 }: ChatHistoryProps) {
+  const navigate = useNavigate();
   const IMAGE_PREFIX = "__image__:";
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,6 +62,26 @@ export function ChatHistory({
     !conversationId ||
     conversationId === "loading" ||
     conversationId.startsWith("temp-");
+
+  const handleViewProfile = async () => {
+    if (!otherUserId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_info")
+        .select("student_id")
+        .eq("auth_uid", otherUserId)
+        .maybeSingle();
+
+      if (error) throw error;
+      const studentId = (data as unknown as { student_id?: unknown } | null)?.student_id;
+      if (typeof studentId === "string" && studentId.trim()) {
+        navigate(`/profile/${encodeURIComponent(studentId.trim())}`);
+      }
+    } catch (e) {
+      console.error("Failed to navigate to user profile:", e);
+    }
+  };
 
   const clearAttachment = () => {
     setAttachedImage(null);
@@ -362,19 +385,39 @@ export function ChatHistory({
             <button onClick={onBack} className="cursor-pointer">
               <LucideArrowLeft className="text-accent-lm" />
             </button>
-            <div className="lg:size-10">
-              <img
-                src={userAvatar}
-                className="rounded-full object-cover ring ring-stroke-grey w-full h-full"
-                alt={userName}
-              />
-            </div>
-            <div className="flex flex-col">
-              <p className="m-0 p-0 text-accent-lm font-semibold">{userName}</p>
-              {userBatch && (
-                <p className="m-0 p-0 text-text-lm font-semibold text-sm">{userBatch}</p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleViewProfile}
+                  disabled={!otherUserId}
+                  className="flex items-center lg:gap-2 gap-2 text-left cursor-pointer disabled:cursor-default"
+                >
+                  <div className="lg:size-10">
+                    <img
+                      src={userAvatar}
+                      className="rounded-full object-cover ring ring-stroke-grey w-full h-full"
+                      alt={userName}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="m-0 p-0 text-accent-lm font-semibold">{userName}</p>
+                    {userBatch && (
+                      <p className="m-0 p-0 text-text-lm font-semibold text-sm">{userBatch}</p>
+                    )}
+                  </div>
+                </button>
+              </TooltipTrigger>
+              {otherUserId && (
+                <TooltipContent
+                  sideOffset={8}
+                  showArrow={false}
+                  className="lg:mb-2 rounded-sm bg-text-lighter-lm text-primary-lm text-sm font-medium animate-fade-in duration-150 data-[state=closed]:duration-150"
+                >
+                  View Profile
+                </TooltipContent>
               )}
-            </div>
+            </Tooltip>
           </div>
 
           {/* Online status */}

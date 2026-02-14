@@ -462,7 +462,7 @@ export function MessageDrawer({
                 userBatch={userBatch}
                 onlineStatus={onlineStatus}
                 metaLoading={metaLoading}
-                otherUserId={directChatMode ? (activeTargetUserId ?? undefined) : undefined}
+                otherUserId={otherId ?? undefined}
                 onConversationCreated={async (newConversationId) => {
                   setSelectedConversation(newConversationId);
                   const convs = await getConversations();
@@ -614,7 +614,7 @@ function MessageChannel({
           </p>
           <p
             className={`m-0 p-0 text-sm ${
-              isUnread ? "text-text-lm text-md" : "text-text-lighter-lm/70"
+              isUnread ? "text-text-lm font-medium" : "text-text-lighter-lm/70"
             }`}
           >
             {messagePreview}
