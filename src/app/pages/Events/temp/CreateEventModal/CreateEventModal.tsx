@@ -3,7 +3,7 @@ import type { EventPostType } from "../../components/EventPost";
 import CategorySelector from "./CategorySelector";
 import TitleInput from "./TitleInput";
 import SegmentList from "./SegmentList";
-import TagInput from "./TagInput";
+// import TagInput from "./TagInput";
 import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreview";
 import { useCreateEventForm } from "./useCreateEventForm";
@@ -26,9 +26,6 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
   const [isPosting, setIsPosting] = useState(false);
 
   if (!open) return null;
-
-
-
 
     async function handlePost() {
     
@@ -67,25 +64,28 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
         return;
       }
 
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError) throw authError;
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw authError;
 
-        const authUid = user?.id;
-        if (!authUid) {
-          toast.error("You must be logged in to create an event.");
-          return;
-        }
+      const authUid = user?.id;
+      if (!authUid) {
+        toast.error("You must be logged in to create an event.");
+        return;
+      }
 
-        const post = form.buildPost();
+      const post = form.buildPost();
 
-        // Build payload parts
-        const event_data = {
-                // all_posts fields
-              type: "event",              
-              title: post.title,
-              description: post.body ?? "",
-              author_id: authUid,
+      // Build payload parts
+      const event_data = {
+        // all_posts fields
+        type: "event",
+        title: post.title,
+        description: post.body ?? "",
+        author_id: authUid,
 
               // event_posts fields
               location: post.location ?? "",
@@ -96,20 +96,19 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
               category_id: form.category,
             };
 
+      const segments_data = post.segments?.length
+        ? post.segments.map((seg) => ({
+            segment_title: seg.name ?? "Untitled Segment",
+            segment_description: seg.description ?? "",
+            segment_location: seg.location ?? "",
+            segment_start_date: seg.startDate ?? null,
+            segment_end_date: seg.endDate ?? null,
+            segment_start_time: seg.startTime ? seg.startTime + ":00+06" : null,
+            segment_end_time: seg.endTime ? seg.endTime + ":00+06" : null,
+          }))
+        : [];
 
-        const segments_data = post.segments?.length
-          ? post.segments.map(seg => ({
-              segment_title: seg.name ?? "Untitled Segment",
-              segment_description: seg.description ?? "",
-              segment_location: seg.location ?? "",
-              segment_start_date: seg.startDate ?? null,
-              segment_end_date: seg.endDate ?? null,
-              segment_start_time: seg.startTime ? seg.startTime + ":00+06" : null,
-              segment_end_time: seg.endTime ? seg.endTime + ":00+06" : null,
-            }))
-          : [];
-
-        const tags_data = form.tags.map(tag => ({ skill_id: tag.skill_id }));
+      const tags_data = form.tags.map((tag) => ({ skill_id: tag.skill_id }));
 
         console.log("Event payload:", { event_data, segments_data, tags_data });
 
@@ -145,8 +144,6 @@ export default function CreateEventModal({ open, onClose, onCreate }: Props) {
         setIsPosting(false);
       }
     }
-
-
 
   return (
     <>

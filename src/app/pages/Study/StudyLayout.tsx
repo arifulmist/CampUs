@@ -1,8 +1,13 @@
 import { NavLink, Outlet, useParams, useLocation } from "react-router";
 import { Sidebar } from "./components/Sidebar";
-import { getNotes, getResources, type Note, type ResourceItem } from "@/mockData/studyMock";
 import { useMemo, useState, useEffect } from "react";
 import { placeholderUser } from "@/mockData/placeholderUser";
+import {
+  fetchNotes,
+  fetchResources,
+  type Note,
+  type ResourceItem,
+} from "./backend/studyService";
 
 export function StudyLayout() {
   const { level, term } = useParams();
@@ -10,23 +15,40 @@ export function StudyLayout() {
 
   const notesPath = `/study/${level}/${term}/notes`;
   const resourcesPath = `/study/${level}/${term}/resources`;
-  
-  const [notes, setNotes] = useState<Note[]>(() => getNotes(level, term));
-  const [resources, setResources] = useState<ResourceItem[]>(() => getResources(level, term));
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const viewingResources = location.pathname.includes("/resources");
 
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [selectedUploader, setSelectedUploader] = useState<string | null>(null);
 
+  // Fetch data from backend when level/term changes
   useEffect(() => {
-    // Reset filters when navigating to a different level/term
     setSelectedCourse(null);
     setSelectedUploader(null);
-    // reload base data for new level/term
-    setNotes(getNotes(level, term));
-    setResources(getResources(level, term));
-  }, [level, term]);
+    setLoading(true);
+
+    const levelNum = parseInt(level || "1", 10);
+    const termNum = parseInt(term || "1", 10);
+
+    Promise.all([
+      fetchNotes(batch, levelNum, termNum),
+      fetchResources(batch, levelNum, termNum),
+    ])
+      .then(([notesData, resourcesData]) => {
+        setNotes(notesData);
+        setResources(resourcesData);
+      })
+      .catch((err) => {
+        console.error("Error fetching study data:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [level, term, batch]);
 
   const courses = useMemo(() => {
     return viewingResources
@@ -42,8 +64,12 @@ export function StudyLayout() {
 
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
-      const courseMatch = selectedCourse ? n.courseCode === selectedCourse : true;
-      const uploaderMatch = selectedUploader ? n.uploadedBy === selectedUploader : true;
+      const courseMatch = selectedCourse
+        ? n.courseCode === selectedCourse
+        : true;
+      const uploaderMatch = selectedUploader
+        ? n.uploadedBy === selectedUploader
+        : true;
       return courseMatch && uploaderMatch;
     });
   }, [notes, selectedCourse, selectedUploader]);
@@ -51,7 +77,9 @@ export function StudyLayout() {
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
       const courseMatch = selectedCourse ? r.course === selectedCourse : true;
-      const uploaderMatch = selectedUploader ? r.user.name === selectedUploader : true;
+      const uploaderMatch = selectedUploader
+        ? r.user.name === selectedUploader
+        : true;
       return courseMatch && uploaderMatch;
     });
   }, [resources, selectedCourse, selectedUploader]);
@@ -63,8 +91,8 @@ export function StudyLayout() {
   function addResource(r: ResourceItem) {
     setResources((prev) => [r, ...prev]);
   }
-  
-  return(
+
+  return (
     <main className="lg:w-full lg:h-screen lg:flex">
       <Sidebar batch={batch} />
       <div className="lg:w-full lg:h-full lg:flex lg:flex-col lg:ml-[20vw] lg:px-10 lg:animate-slide-in">
@@ -81,7 +109,11 @@ export function StudyLayout() {
                   name="course"
                   id="course"
                   value={selectedCourse ?? "Course"}
-                  onChange={(e) => setSelectedCourse(e.target.value === "Course" ? null : e.target.value)}
+                  onChange={(e) =>
+                    setSelectedCourse(
+                      e.target.value === "Course" ? null : e.target.value,
+                    )
+                  }
                   className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach focus:border focus:border-stroke-peach"
                 >
                   <option value={"Course"} disabled>
@@ -98,7 +130,11 @@ export function StudyLayout() {
                   name="uploadedby"
                   id="uploadedby"
                   value={selectedUploader ?? "Uploaded by"}
-                  onChange={(e) => setSelectedUploader(e.target.value === "Uploaded by" ? null : e.target.value)}
+                  onChange={(e) =>
+                    setSelectedUploader(
+                      e.target.value === "Uploaded by" ? null : e.target.value,
+                    )
+                  }
                   className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach"
                 >
                   <option value={"Uploaded by"} disabled>
@@ -124,32 +160,39 @@ export function StudyLayout() {
           })()}
         </div>
         <div className="lg:flex lg:flex-col lg:items-center">
-          <Outlet context={{
-            filteredNotes,
-            filteredResources,
-            baseNotes: notes,
-            baseResources: resources,
-            viewingResources,
-            addNote,
-            addResource,
-          }} />
+          <Outlet
+            context={{
+              filteredNotes,
+              filteredResources,
+              baseNotes: notes,
+              baseResources: resources,
+              viewingResources,
+              addNote,
+              addResource,
+              loading,
+              batch,
+              level: parseInt(level || "1", 10),
+              term: parseInt(term || "1", 10),
+            }}
+          />
         </div>
       </div>
     </main>
   );
 }
 
-function TabLink({ linktxt, dest }: { linktxt: string; dest: string }) 
-{
+function TabLink({ linktxt, dest }: { linktxt: string; dest: string }) {
   return (
     <NavLink
       to={dest}
-      className={({ isActive }) => [
-        "px-3 py-2 rounded-md font-medium text-center h-fit w-fit",
-        isActive
-          ? "bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition"
-          : "bg-primary-lm text-accent-lm border border-stroke-grey hover:bg-hover-lm transition",
-      ].join(" ")}
+      className={({ isActive }) =>
+        [
+          "px-3 py-2 rounded-md font-medium text-center h-fit w-fit",
+          isActive
+            ? "bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition"
+            : "bg-primary-lm text-accent-lm border border-stroke-grey hover:bg-hover-lm transition",
+        ].join(" ")
+      }
     >
       {linktxt}
     </NavLink>

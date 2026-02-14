@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { InputField } from "@/components/InputField";
-import { ButtonCTA } from "@/components/ButtonCTA";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import warningIcon from "@/assets/icons/warning_icon.png";
 
@@ -12,9 +11,14 @@ interface ResourceAddModalProps {
     courseCode: string;
     resourceLink: string;
   }) => void;
+  isSubmitting?: boolean;
 }
 
-export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
+export function ResourceAddModal({
+  onClose,
+  onPost,
+  isSubmitting = false,
+}: ResourceAddModalProps) {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -38,7 +42,6 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
     setCourseCode(value);
   }
 
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -48,8 +51,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
       courseCode,
       resourceLink,
     });
-
-    onClose();
+    // Note: onClose is called by parent component after successful submission
   }
 
   return (
@@ -68,17 +70,16 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
             <h4 className="lg:font-header text-text-lm lg:font-medium">
               Add Resource
             </h4>
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer"
-            >
+            <button type="button" onClick={onClose} className="cursor-pointer">
               <img src={crossBtn} alt="Close modal" />
             </button>
           </div>
 
           {/* Fields */}
-          <div className="lg:mt-4 lg:flex lg:flex-col lg:gap-4" onFocusCapture={() => setCourseCodeError("")}>
+          <div
+            className="lg:mt-4 lg:flex lg:flex-col lg:gap-4"
+            onFocusCapture={() => setCourseCodeError("")}
+          >
             <InputField
               label="Title"
               name="title"
@@ -126,10 +127,13 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
 
             {/* Submit */}
             <div className="lg:flex lg:justify-end lg:mt-4">
-              <ButtonCTA
-                label="Post"
+              <button
                 type="submit"
-              />
+                disabled={!resourceLink || isSubmitting}
+                className="lg:px-6 lg:py-2 lg:rounded-lg bg-accent-lm text-primary-lm hover:bg-hover-btn-lm lg:transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Posting..." : "Post"}
+              </button>
             </div>
           </div>
         </form>
