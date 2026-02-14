@@ -9,6 +9,7 @@ export type CommentRow = {
   post_id: string;
   author_id: string | null;
   comment_creation_date: string | null;
+  comment_creation_time?: string | null;
   content: string;
   like_count: number | null;
   parent_comment_id: string | null;
@@ -23,6 +24,26 @@ export type CommentRow = {
     mobile?: string | null;
     created_at?: string | null;
   } | null;
+};
+
+type UserInfoLookupRow = {
+  auth_uid: string;
+  name: string | null;
+  department: string | null;
+  departments_lookup?: {
+    department_name: string | null;
+  } | null;
+  level: number | null;
+  batch: number | null;
+  student_id: string | null;
+  email: string | null;
+  mobile: string | null;
+  created_at: string | null;
+};
+
+type DepartmentRow = {
+  dept_id: string;
+  department_name: string;
 };
 
 export type CommentNode = {
@@ -51,30 +72,74 @@ export async function fetchCommentsByPost(postId: string): Promise<CommentRow[]>
       post_id,
       author_id,
       comment_creation_date,
+      comment_creation_time,
       content,
       like_count,
-      parent_comment_id,
-      user_info(
-        auth_uid,
-        name,
-        department,
-        level,
-        batch,
-        student_id,
-        email,
-        mobile,
-        created_at
-      )
+      parent_comment_id
     `
     )
     .eq("post_id", postId)
-    .order("comment_creation_date", { ascending: false });
+    // Keep DB order stable (oldest -> newest). Parent sorting is done in UI,
+    // and replies keep their natural order.
+    .order("comment_creation_date", { ascending: true })
+    .order("comment_creation_time", { ascending: true });
 
   if (error) {
     console.error("fetchCommentsByPost error", error);
     throw error;
   }
-  return (data as CommentRow[]) || [];
+
+  const rows = ((data as unknown as CommentRow[]) || []).map((r) => ({ ...r, user_info: null }));
+  const authorIds = Array.from(
+    new Set(rows.map((r) => r.author_id).filter((x): x is string => typeof x === "string" && x))
+  );
+
+  if (!authorIds.length) return rows;
+
+  const [{ data: users, error: usersError }, { data: departments, error: deptError }] =
+    await Promise.all([
+      supabase
+    .from("user_info")
+    .select(
+        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at"
+    )
+        .in("auth_uid", authorIds),
+      supabase.from("departments_lookup").select("dept_id,department_name"),
+    ]);
+
+  if (usersError) {
+    console.warn("fetchCommentsByPost user_info lookup error", usersError);
+    return rows;
+  }
+
+  if (deptError) {
+    console.warn("fetchCommentsByPost departments lookup error", deptError);
+  }
+
+  const deptById = new Map<string, string>();
+  for (const d of ((departments ?? []) as unknown as DepartmentRow[])) {
+    if (typeof d.dept_id === "string" && typeof d.department_name === "string") {
+      deptById.set(d.dept_id, d.department_name);
+    }
+  }
+
+  const byId = new Map<string, UserInfoLookupRow>();
+  for (const u of (users ?? []) as unknown as UserInfoLookupRow[]) {
+    if (typeof u.auth_uid !== "string") continue;
+    const deptName =
+      u.departments_lookup?.department_name ??
+      (u.department ? deptById.get(u.department) ?? null : null);
+    const normalized: UserInfoLookupRow = {
+      ...u,
+      department: (deptName ?? u.department) ?? null,
+    };
+    byId.set(u.auth_uid, normalized);
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    user_info: r.author_id ? (byId.get(r.author_id) ?? null) : null,
+  }));
 }
 
 /**
@@ -89,11 +154,10 @@ export function buildCommentsTree(rows: CommentRow[]): CommentNode[] {
     const author = r.user_info?.name ?? "Unknown";
     const avatar = null; // your schema doesn't have avatar; keep null or default on client
     const dept = r.user_info?.department ?? "";
-    const level = r.user_info?.level ?? null;
     const batch = r.user_info?.batch ?? null;
-    const courseLabel = `${dept}${level ? ` • L${level}` : ""}${batch ? ` • B${batch}` : ""}`.trim() || null;
+    const courseLabel = `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() || null;
     const likes = Number(r.like_count ?? 0);
-    const timestamp = r.comment_creation_date ?? null;
+    const timestamp = toIsoTimestamp(r.comment_creation_date, r.comment_creation_time ?? null);
 
     map.set(id, {
       id,
@@ -120,18 +184,42 @@ export function buildCommentsTree(rows: CommentRow[]): CommentNode[] {
     }
   }
 
-  // sort by timestamp descending
-  const sortDesc = (a?: CommentNode, b?: CommentNode) => {
-    const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return tb - ta;
-  };
-  const sortTree = (list: CommentNode[]) => {
-    list.sort(sortDesc);
-    for (const n of list) if (n.replies && n.replies.length) sortTree(n.replies);
-  };
-  sortTree(roots);
   return roots;
+}
+
+function toIsoTimestamp(dateStr?: string | null, timeStr?: string | null) {
+  const date = typeof dateStr === "string" ? dateStr.trim() : "";
+  const time = typeof timeStr === "string" ? timeStr.trim() : "";
+  if (!date) return null;
+  if (!time) {
+    const d = new Date(date);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const dt = new Date(`${date}T${time}`);
+  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
+function nowDateString() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`; // local YYYY-MM-DD
+}
+
+function nowTimeTzString() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+
+  const offsetMinutes = -d.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const abs = Math.abs(offsetMinutes);
+  const offH = String(Math.floor(abs / 60)).padStart(2, "0");
+  const offM = String(abs % 60).padStart(2, "0");
+
+  return `${hh}:${mi}:${ss}${sign}${offH}:${offM}`;
 }
 
 /**
@@ -158,7 +246,8 @@ export async function addComment({
         post_id: postId,
         author_id: authorId || null,
         content,
-        comment_creation_date: new Date().toISOString(),
+        comment_creation_date: nowDateString(),
+        comment_creation_time: nowTimeTzString(),
         like_count: 0,
         parent_comment_id: parentCommentId,
       },
@@ -172,7 +261,7 @@ export async function addComment({
   }
   const inserted = insertData as any;
 
-  // Re-fetch joined row with user_info
+  // Re-fetch row
   const { data, error } = await supabase
     .from("comments")
     .select(
@@ -181,20 +270,10 @@ export async function addComment({
       post_id,
       author_id,
       comment_creation_date,
+      comment_creation_time,
       content,
       like_count,
-      parent_comment_id,
-      user_info(
-        auth_uid,
-        name,
-        department,
-        level,
-        batch,
-        student_id,
-        email,
-        mobile,
-        created_at
-      )
+      parent_comment_id
     `
     )
     .eq("comment_id", inserted.comment_id)
@@ -205,22 +284,54 @@ export async function addComment({
     throw error;
   }
 
-  const row = data as CommentRow;
-  const dept = row.user_info?.department ?? "";
-  const level = row.user_info?.level ?? null;
-  const batch = row.user_info?.batch ?? null;
-  const courseLabel = `${dept}${level ? ` • L${level}` : ""}${batch ? ` • B${batch}` : ""}`.trim() || null;
+  const row = data as unknown as CommentRow;
+
+  let userInfo: UserInfoLookupRow | null = null;
+  if (row.author_id) {
+    const { data: u, error: uErr } = await supabase
+      .from("user_info")
+      .select(
+        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at"
+      )
+      .eq("auth_uid", row.author_id)
+      .maybeSingle();
+    if (!uErr) {
+      const urow = (u as unknown as UserInfoLookupRow | null) ?? null;
+      if (urow) {
+        let deptName = urow.departments_lookup?.department_name ?? null;
+
+        if (!deptName && urow.department) {
+          const { data: departments } = await supabase
+            .from("departments_lookup")
+            .select("dept_id,department_name")
+            .eq("dept_id", urow.department)
+            .maybeSingle();
+          const drow = (departments as unknown as DepartmentRow | null) ?? null;
+          if (drow?.department_name) deptName = drow.department_name;
+        }
+
+        userInfo = {
+          ...urow,
+          department: (deptName ?? urow.department) ?? null,
+        };
+      }
+    }
+  }
+
+  const dept = userInfo?.department ?? "";
+  const batch = userInfo?.batch ?? null;
+  const courseLabel = `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() || null;
 
   const node: CommentNode = {
     id: row.comment_id,
-    author: row.user_info?.name ?? "Unknown",
+    author: userInfo?.name ?? "Unknown",
     avatar: null,
     course: courseLabel,
     content: row.content,
     likes: Number(row.like_count ?? 0),
     parentId: row.parent_comment_id ?? null,
-    timestamp: row.comment_creation_date ?? null,
-    raw: row,
+    timestamp: toIsoTimestamp(row.comment_creation_date, row.comment_creation_time ?? null),
+    raw: { ...row, user_info: userInfo },
     replies: [],
   };
   return node;

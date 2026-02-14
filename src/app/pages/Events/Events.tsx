@@ -1,19 +1,19 @@
 import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../../supabase/supabaseClient";
 import EventPost from "./components/EventPost";
 import type { EventPostType } from "./components/EventPost";
-import EventPostDetail from "./temp/EventPostDetail";
 import CreateEventModal from "./temp/CreateEventModal/CreateEventModal";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";
 
 export function Events() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<EventPostType[]>([]);
   const [categories, setCategories] = useState<Category[]>(["all"]);
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<EventPostType | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch all events and merge related data
@@ -187,26 +187,22 @@ const mergedPosts = (events ?? []).map((ev: any) => {
       <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
         {/* LEFT: Posts */}
         <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border-2 border-stroke-grey">
-          {!selectedPost && (
-            <button
-              onClick={() => setModalOpen(true)}
-              className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
-            >
-              Click to announce an event here
-            </button>
-          )}
+          <button
+            onClick={() => setModalOpen(true)}
+            className="lg:w-full lg:rounded-md lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-sm text-accent-lm hover:bg-[#FFF4EE]"
+          >
+            Click to announce an event here
+          </button>
 
           <div className="lg:flex lg:items-center lg:justify-center">
             <div className="lg:w-[60vw]">
               {loading ? (
                 <p>Loading events...</p>
-              ) : selectedPost ? (
-                <EventPostDetail post={selectedPost} onBack={() => setSelectedPost(null)} />
               ) : filtered.length === 0 ? (
                 <p className="text-text-lighter-lm text-lg">No posts in this category</p>
               ) : (
                 filtered.map((p) => (
-                  <EventPost key={p.id} post={p} onClick={() => setSelectedPost(p)} />
+                  <EventPost key={p.id} post={p} onClick={() => navigate(`/events/${p.id}`)} />
                 ))
               )}
             </div>
@@ -214,9 +210,7 @@ const mergedPosts = (events ?? []).map((ev: any) => {
         </div>
 
         {/* RIGHT: Categories */}
-        {!selectedPost && (
-          <CategoryFilter categories={categories} selected={filter} onChange={setFilter} />
-        )}
+        <CategoryFilter categories={categories} selected={filter} onChange={setFilter} />
       </div>
 
       <CreateEventModal
