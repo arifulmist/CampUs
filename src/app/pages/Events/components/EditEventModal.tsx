@@ -9,7 +9,7 @@ import SegmentList from "../temp/CreateEventModal/SegmentList";
 import ImageUploader from "../temp/CreateEventModal/ImageUploader";
 import ImagePreview from "../temp/CreateEventModal/ImagePreview";
 import { useCreateEventForm } from "../temp/CreateEventModal/useCreateEventForm";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 import { updateEvent } from "../backend/eventService";
 import { ButtonCTA } from "@/components/ButtonCTA";
 

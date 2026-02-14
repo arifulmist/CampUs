@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 
-import { supabase } from "../../supabase/supabaseClient";
+import { supabase } from "../supabase/supabaseClient";
 import { ButtonCTA } from "./ButtonCTA";
 import { UserInfo } from "./UserInfo";
 

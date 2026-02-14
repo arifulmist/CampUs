@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import crossBtnIcon from "@/assets/icons/cross_btn.svg";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 
 export type SkillsLookupItem = {
   id: number;

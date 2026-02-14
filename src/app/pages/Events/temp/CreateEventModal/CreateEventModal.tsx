@@ -8,7 +8,7 @@ import ImageUploader from "./ImageUploader";
 import ImagePreview from "./ImagePreview";
 import { useCreateEventForm } from "./useCreateEventForm";
 import { createEvent } from "../../backend/eventService";
-import { supabase } from "../../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../../supabase/supabaseClient";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { ensureSkillId } from "../../backend/skillsService";
 import { toast } from "react-hot-toast";

@@ -33,11 +33,11 @@ import {
   Trash2 as LucideTrash2,
 } from "lucide-react";
 
-import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
+import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
 import { EventSegment } from "./EventSegment";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
 
@@ -559,10 +559,15 @@ export function EventPostRoute({ postId }: { postId: string }) {
         </div>
       ) : null}
 
-      <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-3">
-        <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
-        <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
-        <ShareButton />
+      <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
+        <div className="lg:flex lg:gap-3 lg:justify-start">
+          <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
+          <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
+          <ShareButton />
+        </div>
+        <div>
+          <InterestedButton postId={detail.postId} />
+        </div>
       </div>
 
       <LocalErrorBoundary>

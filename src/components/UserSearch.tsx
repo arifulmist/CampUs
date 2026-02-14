@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
-import { supabase } from "../../supabase/supabaseClient";
+import { supabase } from "../supabase/supabaseClient";
 
 type SearchUserItem = {
   authUid: string;

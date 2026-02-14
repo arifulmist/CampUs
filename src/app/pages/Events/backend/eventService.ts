@@ -1,4 +1,4 @@
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 import type { EventPost } from "./event-types";
 export async function searchSkills(query: string) {
   const { data, error } = await supabase

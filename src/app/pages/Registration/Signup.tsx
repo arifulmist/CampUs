@@ -5,7 +5,7 @@ import { Password } from "./components/Password";
 import { useLocation } from "react-router";
 import { InputField } from "../../../components/InputField";
 import { ButtonCTA } from "../../../components/ButtonCTA";
-import { supabase } from "../../../../supabase/supabaseClient"; 
+import { supabase } from "../../../supabase/supabaseClient"; 
 import type { PostgrestError } from "@supabase/supabase-js";
 
 const LEVELS = ["1", "2", "3", "4"];

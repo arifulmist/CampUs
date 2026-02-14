@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "../../../supabase/supabaseClient";
 import EventPost from "./components/EventPost";
 import type { EventPostType } from "./components/EventPost";
 import CreateEventModal from "./temp/CreateEventModal/CreateEventModal";

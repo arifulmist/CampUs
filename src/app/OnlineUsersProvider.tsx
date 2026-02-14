@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "../../supabase/supabaseClient";
+import { supabase } from "../supabase/supabaseClient";
 import { OnlineUsersContext } from "./OnlineUsersContext";
 
 export function OnlineUsersProvider({ children }: { children: React.ReactNode }) {

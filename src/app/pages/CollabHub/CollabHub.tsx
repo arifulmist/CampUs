@@ -1,18 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
-import {
-  LikeButton,
-  CommentButton,
-  ShareButton,
-} from "../../../components/PostButtons";
-import { getCategoryClass } from "@/utils/categoryColors";
-
-import { UserInfo } from "@/components/UserInfo";
-import { Button } from "@/components/ui/button";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
 import { addNotification } from "../../../mockData/notifications";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "../../../supabase/supabaseClient";
 import { createCollabPost } from "./backend/collab";
 import {
   addInterested,
@@ -21,21 +12,9 @@ import {
   subscribe as interestedSubscribe,
 } from "@/app/pages/UserProfile/backend/interestedStore";
 
-import postEmptyState from "@/assets/images/noPost.svg";
+import { CollabPostCard, type CollabPost } from "./components/CollabPostCard";
 
-type CollabPost = {
-  id: string;
-  category: Category;
-  title: string;
-  content: string;
-  authorAuthUid: string;
-  authorName: string;
-  authorBatch: string;
-  authorAvatarUrl: string | null;
-  tags: string[];
-  likes: number;
-  comments: number;
-};
+import postEmptyState from "@/assets/images/noPost.svg";
 
 export function CollabHub() {
   const [posts, setPosts] = useState<CollabPost[]>([]);
@@ -98,7 +77,7 @@ export function CollabHub() {
       if (departmentsRes.error) throw departmentsRes.error;
 
       const categoryById = new Map<number, Category>();
-      for (const row of (categoriesRes.data ?? []) as any[]) {
+      for (const row of (categoriesRes.data ?? []) as Array<Record<string, unknown>>) {
         const id = row.category_id;
         const cat = row.category;
         if (typeof id === "number" && typeof cat === "string") {
@@ -107,7 +86,7 @@ export function CollabHub() {
       }
 
       const tagsByPostId = new Map<string, string[]>();
-      for (const row of (tagsRes.data ?? []) as any[]) {
+      for (const row of (tagsRes.data ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const tag = row.tag;
         if (typeof postId === "string" && typeof tag === "string") {
@@ -118,7 +97,7 @@ export function CollabHub() {
       }
 
       const deptNameById = new Map<string, string>();
-      for (const row of (departmentsRes.data ?? []) as any[]) {
+      for (const row of (departmentsRes.data ?? []) as Array<Record<string, unknown>>) {
         const id = row.dept_id;
         const name = row.department_name;
         if (typeof id === "string" && typeof name === "string") {
@@ -127,7 +106,7 @@ export function CollabHub() {
       }
 
       const profilePicByAuthUid = new Map<string, string>();
-      for (const row of (profilesRes.data ?? []) as any[]) {
+      for (const row of (profilesRes.data ?? []) as Array<Record<string, unknown>>) {
         const authUid = row.auth_uid;
         const url = row.profile_picture_url;
         if (typeof authUid === "string" && typeof url === "string" && url.trim()) {
@@ -139,12 +118,12 @@ export function CollabHub() {
         string,
         { name: string; batch: string; avatarUrl: string | null }
       >();
-      for (const row of (usersRes.data ?? []) as any[]) {
+      for (const row of (usersRes.data ?? []) as Array<Record<string, unknown>>) {
         const authUid = row.auth_uid;
         const name = row.name;
         const batchVal = row.batch;
         const deptId = row.department;
-        const deptLookup = row.departments_lookup;
+        const deptLookup = row.departments_lookup as Record<string, unknown> | null | undefined;
         const deptName =
           (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
           (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
@@ -162,7 +141,7 @@ export function CollabHub() {
       }
 
       const metaByPostId = new Map<string, number>();
-      for (const row of (metaRows ?? []) as any[]) {
+      for (const row of (metaRows ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const categoryId = row.category_id;
         if (typeof postId === "string" && typeof categoryId === "number") {
@@ -171,7 +150,7 @@ export function CollabHub() {
       }
 
       const merged: CollabPost[] = [];
-      for (const row of (postRows ?? []) as any[]) {
+      for (const row of (postRows ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const title = row.title;
         const description = row.description;
@@ -225,8 +204,9 @@ export function CollabHub() {
       addInterested({
         id: p.id,
         title: p.title,
+        routeType: "collab",
         category: p.category,
-        tags: p.tags,
+        tags: (p.tags ?? []).map((t) => (t.startsWith("#") ? t.slice(1) : t)),
         userName: p.authorName,
         content: p.content,
         createdAt: Date.now(),
@@ -263,66 +243,12 @@ export function CollabHub() {
             filteredPosts.map((p) => {
               const isInterested = interestedIds.has(p.id);
               return (
-                <div
+                <CollabPostCard
                   key={p.id}
-                  className={`relative bg-secondary-lm hover:bg-hover-lm transition border-2 p-8 rounded-2xl ${
-                    isInterested
-                      ? "border-stroke-peach"
-                      : "border-stroke-grey hover:border-stroke-peach"
-                  }`}
-                >
-                  {/* CATEGORY TAG */}
-                  <span className={`lg:absolute lg:top-4 lg:right-4 lg:font-bold text-primary-lm lg:px-3 lg:py-1 lg:rounded-full text-m lg:uppercase lg:tracking-wide ${getCategoryClass(p.category, "collab")}`}>
-                    {p.category}
-                  </span>
-                  <UserInfo
-                    userImg={p.authorAvatarUrl}
-                    userName={p.authorName}
-                    userBatch={p.authorBatch || "Student"}
-                    userId={p.authorAuthUid}
-                  />
-                  <h3 className="lg:mt-2 lg:font-[Poppins] lg:font-semibold text-xl text-text-lm">
-                    {p.title}
-                  </h3>
-                  <p className="text-text-lighter-lm text-md lg:leading-relaxed">
-                    {p.content}
-                  </p>
-
-                  <div className="lg:my-4 lg:mb-10 lg:flex lg:gap-2 lg:flex-wrap">
-                    {p.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="lg:font-bold text-accent-lm lg:border border-accent-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="lg:flex lg:items-center lg:justify-between lg:mt-2">
-                    <div className="lg:flex lg:gap-4 lg:items-center">
-                      <LikeButton postId={p.id} initialLikeCount={p.likes} />
-                      <CommentButton postId={p.id} initialCommentCount={p.comments} />
-                      <ShareButton />
-                    </div>
-                    <Button
-                      onClick={() => toggleInterested(p)}
-                      className={`${
-                        isInterested
-                          ? "bg-accent-lm text-primary-lm"
-                          : "border border-stroke-peach bg-primary-lm text-accent-lm"
-                      } rounded-full px-4 py-2 hover:bg-hover-btn-lm`}
-                      aria-pressed={isInterested}
-                      title={
-                        isInterested
-                          ? "Marked as Interested"
-                          : "Mark Interested"
-                      }
-                    >
-                      Interested
-                    </Button>
-                  </div>
-                </div>
+                  post={p}
+                  isInterested={isInterested}
+                  onToggleInterested={toggleInterested}
+                />
               );
             })
           )}

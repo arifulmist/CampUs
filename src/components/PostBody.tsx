@@ -1,5 +1,5 @@
 import { UserInfo } from "./UserInfo";
-import { CommentButton, LikeButton, ShareButton } from "./PostButtons";
+import { CommentButton, InterestedButton, LikeButton, ShareButton } from "./PostButtons";
 import { getCategoryClass } from "@/utils/categoryColors";
 
 function formatDateDisplay(dateString?: string | null) {
@@ -144,10 +144,13 @@ export function PostBody({
       )}
 
       {/* Buttons */}
-      <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-3">
-        <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-        <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
-        <ShareButton />
+      <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
+        <div className="lg:flex lg:gap-3 lg:justify-start">
+          <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
+          <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
+          <ShareButton />
+        </div>
+        <div>{postId ? <InterestedButton postId={postId} /> : null}</div>
       </div>
     </div>
   );

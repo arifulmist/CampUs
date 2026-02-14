@@ -8,7 +8,7 @@ import type {
   UserContactItem,
 } from "../profile-types";
 
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 import {
   generateUuidV4,
   getErrorMessage,

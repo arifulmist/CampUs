@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../supabase/supabaseClient";
+import { supabase } from "../supabase/supabaseClient";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
 
 const avatarCacheByAuthUid = new Map<string, string | null>();

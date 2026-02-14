@@ -1,4 +1,4 @@
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "../../../../supabase/supabaseClient";
 
 export interface Conversation {
   id: string;
