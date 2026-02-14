@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Segment, EventPostType } from "../types";
+import type { Segment, EventPostType } from "../../components/types";
 import { searchSkills } from "../../backend/eventService"; 
 import {supabase} from "../../../../../../supabase/supabaseClient";
 export function useCreateEventForm(open: boolean) {

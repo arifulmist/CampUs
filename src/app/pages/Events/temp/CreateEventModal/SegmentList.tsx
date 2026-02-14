@@ -1,4 +1,4 @@
-import type { Segment } from "../types";
+import type { Segment } from "../../components/types";
 
 interface Props {
   segments: Segment[];

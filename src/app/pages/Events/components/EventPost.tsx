@@ -19,6 +19,7 @@ export type EventPostType = {
   category: string;
   title: string;
   author: string;
+  authorAuthUid?: string;
   dept?: string;       
   batch?: string;     
   excerpt?: string;
@@ -91,6 +92,7 @@ export default function EventPost({ post, onClick }: Props) {
     name: post.author,
     batch: deptBatch,
     imgURL: post.profilePictureUrl ?? userImg,
+    userId: post.authorAuthUid,
   }}
   content={{
     text: post.body ?? post.excerpt ?? "",

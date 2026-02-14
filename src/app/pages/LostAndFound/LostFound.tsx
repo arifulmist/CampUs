@@ -33,6 +33,10 @@ import CommentThread, {
 } from "./components/CommentThread";
 import { addNotification } from "../../../mockData/notifications";
 import { DialogOverlay } from "@radix-ui/react-dialog";
+import { supabase } from "../../../../supabase/supabaseClient";
+
+const lfAvatarCacheByAuthUid = new Map<string, string | null>();
+const lfAvatarFetchInFlight = new Map<string, Promise<string | null>>();
 
 type LFPost = {
   id: string;
@@ -40,6 +44,7 @@ type LFPost = {
   author: string;
   authorCourse: string;
   authorAvatar?: string;
+  authorAuthUid?: string;
   description: string;
   imageUrl?: string;
   reactions: number;
@@ -65,6 +70,29 @@ const mockPosts: LFPost[] = [
   },
 ];
 
+function formatRelativeTime(dateString?: string | null) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export function LostFound() {
   const [query] = useState("");
   const [isAnnounceOpen, setIsAnnounceOpen] = useState(false);
@@ -89,6 +117,197 @@ export function LostFound() {
 
   // posts state (initialized from mockPosts)
   const [posts, setPosts] = useState<LFPost[]>(mockPosts);
+
+  const [currentUser, setCurrentUser] = useState<{
+    authUid: string | null;
+    name: string;
+    course: string;
+    avatarUrl: string | null;
+  }>({ authUid: null, name: "You", course: "—", avatarUrl: null });
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadCurrentUser() {
+      const { data } = await supabase.auth.getUser();
+      const authUid = data.user?.id ?? null;
+      if (!alive) return;
+
+      if (!authUid) {
+        setCurrentUser({ authUid: null, name: "You", course: "—", avatarUrl: null });
+        return;
+      }
+
+      const [infoRes, profileRes, departmentsRes] = await Promise.all([
+        supabase
+          .from("user_info")
+          .select("auth_uid,name,batch,department,departments_lookup(department_name)")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase
+          .from("user_profile")
+          .select("profile_picture_url")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase.from("departments_lookup").select("dept_id,department_name"),
+      ]);
+
+      if (!alive) return;
+
+      const deptNameById = new Map<string, string>();
+      for (const row of (departmentsRes.data ?? []) as any[]) {
+        if (typeof row.dept_id === "string" && typeof row.department_name === "string") {
+          deptNameById.set(row.dept_id, row.department_name);
+        }
+      }
+
+      const info = infoRes.data as any;
+      const deptId = info?.department;
+      const deptLookup = info?.departments_lookup;
+      const deptName =
+        (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
+        (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
+      const batchVal = info?.batch;
+      const batch = typeof batchVal === "number" ? String(batchVal) : (typeof batchVal === "string" ? batchVal : "");
+      const course = deptName && batch ? `${deptName}-${batch}` : deptName || "—";
+
+      setCurrentUser({
+        authUid,
+        name: typeof info?.name === "string" && info.name.trim() ? info.name : "You",
+        course,
+        avatarUrl: (profileRes.data as any)?.profile_picture_url ?? null,
+      });
+    }
+
+    loadCurrentUser();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadFeed() {
+      try {
+        const { data: rows, error } = await supabase
+          .from("all_posts")
+          .select("post_id,title,description,author_id,like_count,comment_count,created_at")
+          .eq("type", "lostfound")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (error) throw error;
+
+        const parsed = (rows ?? []) as any[];
+        if (!parsed.length) return;
+
+        const authorIds = Array.from(
+          new Set(
+            parsed
+              .map((r) => r.author_id)
+              .filter((x) => typeof x === "string" && x)
+          )
+        ) as string[];
+
+        const [usersRes, profilesRes, departmentsRes] = await Promise.all([
+          authorIds.length
+            ? supabase
+                .from("user_info")
+                .select(
+                  "auth_uid,name,batch,department,departments_lookup(department_name)"
+                )
+                .in("auth_uid", authorIds)
+            : Promise.resolve({ data: [], error: null } as any),
+          authorIds.length
+            ? supabase
+                .from("user_profile")
+                .select("auth_uid,profile_picture_url")
+                .in("auth_uid", authorIds)
+            : Promise.resolve({ data: [], error: null } as any),
+          supabase.from("departments_lookup").select("dept_id,department_name"),
+        ]);
+
+        if (usersRes.error) throw usersRes.error;
+        if (profilesRes.error) throw profilesRes.error;
+        if (departmentsRes.error) throw departmentsRes.error;
+
+        const deptNameById = new Map<string, string>();
+        for (const row of (departmentsRes.data ?? []) as any[]) {
+          if (typeof row.dept_id === "string" && typeof row.department_name === "string") {
+            deptNameById.set(row.dept_id, row.department_name);
+          }
+        }
+
+        const profilePicByAuthUid = new Map<string, string>();
+        for (const row of (profilesRes.data ?? []) as any[]) {
+          const authUid = row.auth_uid;
+          const url = row.profile_picture_url;
+          if (typeof authUid === "string" && typeof url === "string" && url.trim()) {
+            profilePicByAuthUid.set(authUid, url);
+          }
+        }
+
+        const userByAuthUid = new Map<string, { name: string; course: string }>();
+        for (const row of (usersRes.data ?? []) as any[]) {
+          const authUid = row.auth_uid;
+          const name = row.name;
+          const batchVal = row.batch;
+          const deptId = row.department;
+          const deptLookup = row.departments_lookup;
+          const deptName =
+            (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
+            (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
+          const batch = typeof batchVal === "number" ? String(batchVal) : (typeof batchVal === "string" ? batchVal : "");
+          const course = deptName && batch ? `${deptName}-${batch}` : deptName || "";
+          if (typeof authUid === "string" && typeof name === "string") {
+            userByAuthUid.set(authUid, { name, course });
+          }
+        }
+
+        const mapped: LFPost[] = parsed
+          .map((r) => {
+            const postId = r.post_id;
+            const title = r.title;
+            const description = r.description;
+            const authorId = r.author_id;
+            if (
+              typeof postId !== "string" ||
+              typeof title !== "string" ||
+              typeof description !== "string" ||
+              typeof authorId !== "string"
+            ) {
+              return null;
+            }
+            const u = userByAuthUid.get(authorId);
+            return {
+              id: postId,
+              title,
+              author: u?.name ?? "Unknown",
+              authorCourse: u?.course ?? "",
+              authorAvatar: profilePicByAuthUid.get(authorId) ?? undefined,
+              authorAuthUid: authorId,
+              description,
+              reactions: typeof r.like_count === "number" ? r.like_count : 0,
+              comments: typeof r.comment_count === "number" ? r.comment_count : 0,
+              shares: 0,
+              timestamp: formatRelativeTime(r.created_at ?? null),
+            } as LFPost;
+          })
+          .filter(Boolean) as LFPost[];
+
+        if (!alive) return;
+        if (mapped.length) setPosts(mapped);
+      } catch (e) {
+        // keep mock feed if load fails
+        console.error(e);
+      }
+    }
+
+    loadFeed();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // track whether current user liked each post
   const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
@@ -269,9 +488,10 @@ export function LostFound() {
     const newPost: LFPost = {
       id: generateId("lf-"),
       title: title,
-      author: "Alvi Binte Zamil",
-      authorCourse: "CSE-23",
-      authorAvatar: "/placeholder.svg",
+      author: currentUser.name,
+      authorCourse: currentUser.course,
+      authorAvatar: currentUser.avatarUrl ?? undefined,
+      authorAuthUid: currentUser.authUid ?? undefined,
       description,
       imageUrl,
       reactions: 0,
@@ -626,9 +846,9 @@ export function LostFound() {
                     commentsByPost[activePost.id]
                   )}
                   currentUser={{
-                    name: "Alvi Binte Zamil",
-                    avatar: "/placeholder.svg",
-                    course: "CSE-23",
+                    name: currentUser.name,
+                    avatar: currentUser.avatarUrl ?? "/placeholder.svg",
+                    course: currentUser.course,
                   }}
                   onChange={(newComments) =>
                     handleCommentsChangeForActivePost(newComments)
@@ -751,6 +971,59 @@ function LFPostCard({
   const descRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [showReadMore, setShowReadMore] = useState(false);
+  const [resolvedAvatar, setResolvedAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const authUid = post.authorAuthUid;
+    if (!authUid) {
+      setResolvedAvatar(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const cached = lfAvatarCacheByAuthUid.get(authUid);
+    if (cached !== undefined) {
+      setResolvedAvatar(cached);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const existing = lfAvatarFetchInFlight.get(authUid);
+    const promise =
+      existing ??
+      (async () => {
+        const { data, error } = await supabase
+          .from("user_profile")
+          .select("profile_picture_url")
+          .eq("auth_uid", authUid)
+          .maybeSingle();
+        if (error) throw error;
+        const url = (data as unknown as { profile_picture_url?: unknown } | null)?.profile_picture_url;
+        return typeof url === "string" && url.trim() ? url : null;
+      })();
+
+    if (!existing) lfAvatarFetchInFlight.set(authUid, promise);
+
+    promise
+      .then((url) => {
+        lfAvatarCacheByAuthUid.set(authUid, url);
+        lfAvatarFetchInFlight.delete(authUid);
+        if (mounted) setResolvedAvatar(url);
+      })
+      .catch((e) => {
+        lfAvatarCacheByAuthUid.set(authUid, null);
+        lfAvatarFetchInFlight.delete(authUid);
+        if (mounted) setResolvedAvatar(null);
+        console.error("Failed to load Lost&Found avatar:", e);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [post.authorAuthUid]);
 
   useEffect(() => {
     // measure overflow after render
@@ -783,7 +1056,7 @@ function LFPostCard({
           <h3 className="text-xl lg:font-bold text-text-lm">{post.title}</h3>
           <div className="lg:mt-2 lg:flex lg:items-center lg:gap-2">
             <Avatar className="lg:h-6 lg:w-6">
-              <AvatarImage src={post.authorAvatar || "/placeholder.svg"} />
+              <AvatarImage src={(resolvedAvatar ?? post.authorAvatar) || "/placeholder.svg"} />
               <AvatarFallback>{post.author[0]}</AvatarFallback>
             </Avatar>
             <span className="text-sm lg:font-medium text-text-lm">

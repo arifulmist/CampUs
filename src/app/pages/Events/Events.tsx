@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../../../supabase/supabaseClient";
 import EventPost from "./components/EventPost";
 import type { EventPostType } from "./components/EventPost";
-import EventPostDetail from "./components/EventPostDetail";
-import CreateEventModal from "./components/CreateEventModal/CreateEventModal";
+import EventPostDetail from "./temp/EventPostDetail";
+import CreateEventModal from "./temp/CreateEventModal/CreateEventModal";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";
@@ -108,6 +108,7 @@ const mergedPosts = (events ?? []).map((ev: any) => {
     category: ev.events_category?.category_name ?? "Uncategorized", 
     title: postData?.title ?? "Untitled",
     author: userInfo?.name ?? "Unknown",
+    authorAuthUid: typeof owner?.auth_uid === "string" ? owner.auth_uid : undefined,
     dept: deptName ?? "",
     batch: userInfo?.batch ?? "",
     excerpt: postData?.description?.slice(0, 100) ?? "",

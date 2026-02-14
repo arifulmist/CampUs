@@ -6,7 +6,8 @@ interface PostContent {
   user: {
     name: string;
     batch: string;
-    imgURL: string;
+    imgURL?: string | null;
+    userId?: string;
   };
   content: {
     text: string;
@@ -24,7 +25,6 @@ export function PostBody({
   content,
   tags,
   category,
-  deptBatch,
   formattedDate,
 }: PostContent) {
   const categoryClassMap: Record<string, string> = {
@@ -47,7 +47,7 @@ export function PostBody({
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
       {/* Category chip */}
       {category && (
-        <div className="lg:mt-1">
+        <div className="lg:mt-1 lg:mb-3">
           <p
             className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${categoryClasses}`}
           >
@@ -57,11 +57,11 @@ export function PostBody({
       )}
 
       {/* Title */}
-      <h3 className="text-text-lm lg:font-extrabold lg:font-headgier">{title}</h3>
+      <h3 className="text-text-lm lg:font-extrabold lg:font-header">{title}</h3>
 
       {/* Tags */}
       {tags && tags.length > 0 && (
-        <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
+        <div className="lg:flex lg:gap-2 lg:flex-wrap">
           {tags.map((t) => (
             <p
               key={t}
@@ -74,21 +74,18 @@ export function PostBody({
       )}
 
       {/* User info + dept/batch + date */}
-      <div className="lg:120 lg:items-center lg:justify-between lg:mt-4">
+      <div className="lg:120 lg:items-center lg:justify-between lg:mt-2">
         <UserInfo
           userName={user.name}
           userBatch={user.batch}
           userImg={user.imgURL}
+            postDate={formattedDate}
+            userId={user.userId}
         />
-        {(formattedDate) && (
-          <p className="text-l text-accent-lm">
-             {formattedDate ? " Posted - " : ""} {formattedDate}
-          </p>
-        )}
       </div>
 
       {/* Body text */}
-      <p className="text-xl mt-2">{content.text}</p>
+      <p className="mt-2">{content.text}</p>
 
       {/* Image */}
       {content.img && (

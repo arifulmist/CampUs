@@ -1,5 +1,5 @@
 import React from "react";
-import type { EventPostType } from "../EventPost";
+import type { EventPostType } from "../../components/EventPost";
 import CategorySelector from "./CategorySelector";
 import TitleInput from "./TitleInput";
 import SegmentList from "./SegmentList";

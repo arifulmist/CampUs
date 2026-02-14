@@ -18,12 +18,14 @@ import {
 import { PostDetail } from "./components/PostDetail";
 import { addNotification } from "../../../mockData/notifications";
 import QnaPost from "./components/QnaPost";
+import { supabase } from "../../../../supabase/supabaseClient";
 
 type Post = {
   id: string;
   title: string;
   author: string;
-  authorAvatar: string;
+  authorAvatar?: string | null;
+  authorAuthUid?: string;
   authorCourse: string;
   content: string;
   category: "Question" | "Advice" | "Resource";
@@ -73,6 +75,29 @@ const initialMockPosts: Post[] = [
   },
 ];
 
+function formatRelativeTime(dateString?: string | null) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export function QnA() {
   return (
     <Suspense fallback={null}>
@@ -97,6 +122,199 @@ function QAPageContent() {
 
   // posts are stateful so we can update reactions/comments etc.
   const [posts, setPosts] = useState<Post[]>(initialMockPosts);
+
+  const [currentUser, setCurrentUser] = useState<{
+    authUid: string | null;
+    name: string;
+    course: string;
+    avatarUrl: string | null;
+  }>({ authUid: null, name: "You", course: "—", avatarUrl: null });
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadCurrentUser() {
+      const { data } = await supabase.auth.getUser();
+      const authUid = data.user?.id ?? null;
+      if (!alive) return;
+
+      if (!authUid) {
+        setCurrentUser({ authUid: null, name: "You", course: "—", avatarUrl: null });
+        return;
+      }
+
+      const [infoRes, profileRes, departmentsRes] = await Promise.all([
+        supabase
+          .from("user_info")
+          .select("auth_uid,name,batch,department,departments_lookup(department_name)")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase
+          .from("user_profile")
+          .select("profile_picture_url")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase.from("departments_lookup").select("dept_id,department_name"),
+      ]);
+
+      if (!alive) return;
+
+      const deptNameById = new Map<string, string>();
+      for (const row of (departmentsRes.data ?? []) as any[]) {
+        if (typeof row.dept_id === "string" && typeof row.department_name === "string") {
+          deptNameById.set(row.dept_id, row.department_name);
+        }
+      }
+
+      const info = infoRes.data as any;
+      const deptId = info?.department;
+      const deptLookup = info?.departments_lookup;
+      const deptName =
+        (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
+        (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
+      const batchVal = info?.batch;
+      const batch = typeof batchVal === "number" ? String(batchVal) : (typeof batchVal === "string" ? batchVal : "");
+      const course = deptName && batch ? `${deptName}-${batch}` : deptName || "—";
+
+      setCurrentUser({
+        authUid,
+        name: typeof info?.name === "string" && info.name.trim() ? info.name : "You",
+        course,
+        avatarUrl: (profileRes.data as any)?.profile_picture_url ?? null,
+      });
+    }
+
+    loadCurrentUser();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadQnaFeed() {
+      try {
+        const { data: rows, error } = await supabase
+          .from("all_posts")
+          .select("post_id,title,description,author_id,like_count,comment_count,created_at")
+          .eq("type", "qna")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (error) throw error;
+
+        const parsed = (rows ?? []) as any[];
+        if (!parsed.length) return;
+
+        const authorIds = Array.from(
+          new Set(
+            parsed
+              .map((r) => r.author_id)
+              .filter((x) => typeof x === "string" && x)
+          )
+        ) as string[];
+
+        const [usersRes, profilesRes, departmentsRes] = await Promise.all([
+          authorIds.length
+            ? supabase
+                .from("user_info")
+                .select(
+                  "auth_uid,name,batch,department,departments_lookup(department_name)"
+                )
+                .in("auth_uid", authorIds)
+            : Promise.resolve({ data: [], error: null } as any),
+          authorIds.length
+            ? supabase
+                .from("user_profile")
+                .select("auth_uid,profile_picture_url")
+                .in("auth_uid", authorIds)
+            : Promise.resolve({ data: [], error: null } as any),
+          supabase.from("departments_lookup").select("dept_id,department_name"),
+        ]);
+
+        if (usersRes.error) throw usersRes.error;
+        if (profilesRes.error) throw profilesRes.error;
+        if (departmentsRes.error) throw departmentsRes.error;
+
+        const deptNameById = new Map<string, string>();
+        for (const row of (departmentsRes.data ?? []) as any[]) {
+          if (typeof row.dept_id === "string" && typeof row.department_name === "string") {
+            deptNameById.set(row.dept_id, row.department_name);
+          }
+        }
+
+        const profilePicByAuthUid = new Map<string, string>();
+        for (const row of (profilesRes.data ?? []) as any[]) {
+          const authUid = row.auth_uid;
+          const url = row.profile_picture_url;
+          if (typeof authUid === "string" && typeof url === "string" && url.trim()) {
+            profilePicByAuthUid.set(authUid, url);
+          }
+        }
+
+        const userByAuthUid = new Map<string, { name: string; course: string }>();
+        for (const row of (usersRes.data ?? []) as any[]) {
+          const authUid = row.auth_uid;
+          const name = row.name;
+          const batchVal = row.batch;
+          const deptId = row.department;
+          const deptLookup = row.departments_lookup;
+          const deptName =
+            (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
+            (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
+          const batch = typeof batchVal === "number" ? String(batchVal) : (typeof batchVal === "string" ? batchVal : "");
+          const course = deptName && batch ? `${deptName}-${batch}` : deptName || "";
+          if (typeof authUid === "string" && typeof name === "string") {
+            userByAuthUid.set(authUid, { name, course });
+          }
+        }
+
+        const mapped: Post[] = parsed
+          .map((r) => {
+            const postId = r.post_id;
+            const title = r.title;
+            const description = r.description;
+            const authorId = r.author_id;
+            if (
+              typeof postId !== "string" ||
+              typeof title !== "string" ||
+              typeof description !== "string" ||
+              typeof authorId !== "string"
+            ) {
+              return null;
+            }
+            const user = userByAuthUid.get(authorId);
+            return {
+              id: postId,
+              title,
+              author: user?.name ?? "Unknown",
+              authorAvatar: profilePicByAuthUid.get(authorId) ?? null,
+              authorAuthUid: authorId,
+              authorCourse: user?.course ?? "",
+              content: description,
+              category: "Question",
+              tags: [],
+              reactions: typeof r.like_count === "number" ? r.like_count : 0,
+              comments: typeof r.comment_count === "number" ? r.comment_count : 0,
+              shares: 0,
+              timestamp: formatRelativeTime(r.created_at ?? null),
+            } as Post;
+          })
+          .filter(Boolean) as Post[];
+
+        if (!alive) return;
+        if (mapped.length) setPosts(mapped);
+      } catch (e) {
+        // keep mock posts if load fails
+        console.error(e);
+      }
+    }
+
+    loadQnaFeed();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const filteredPosts = posts.filter(
     (post) =>
@@ -127,9 +345,10 @@ function QAPageContent() {
     const created: Post = {
       id,
       title,
-      author: "You",
-      authorAvatar: "/placeholder.svg",
-      authorCourse: "—",
+      author: currentUser.name,
+      authorAvatar: currentUser.avatarUrl,
+      authorAuthUid: currentUser.authUid ?? undefined,
+      authorCourse: currentUser.course,
       content: newPost.description,
       category: newPost.category,
       tags: newPost.tags,
@@ -295,22 +514,23 @@ function QAPageContent() {
   open={isNewPostOpen}
   onOpenChange={setIsNewPostOpen}
   onCreate={(payload) => {
-    const newPost = {
-      id: Date.now(),
-      author: {
-        name: "You",
-        role: "Student",
-      },
+    const created: Post = {
+      id: Date.now().toString(),
       title: payload.title,
-      description: payload.description,
-      tags: payload.tags,
+      author: currentUser.name,
+      authorAvatar: currentUser.avatarUrl,
+      authorAuthUid: currentUser.authUid ?? undefined,
+      authorCourse: currentUser.course,
+      content: payload.description,
       category: payload.category,
-      likes: 0,
-      comments: [],
-      createdAt: new Date().toISOString(),
+      tags: payload.tags,
+      reactions: 0,
+      comments: 0,
+      shares: 0,
+      timestamp: "Just now",
     };
 
-    setPosts((prev) => [newPost, ...prev]);
+    setPosts((prev) => [created, ...prev]);
   }}
 />
 
@@ -375,9 +595,10 @@ function PostCard({
       {/* Top: user + title */}
       <div>
         <UserInfo
-          userImg={post.authorAvatar}
+          userImg={post.authorAvatar ?? null}
           userName={post.author}
           userBatch={post.authorCourse}
+          userId={post.authorAuthUid}
         />
 
         <h5 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mt-2">

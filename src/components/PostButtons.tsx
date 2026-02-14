@@ -18,8 +18,8 @@ interface ButtonProps
 function ButtonBase({icon, label, clickEvent}:ButtonProps)
 {
   return (
-    <button onClick={clickEvent} className="lg:flex lg:gap-2 lg:px-4 lg:py-2 lg:font-bold text-accent-lm bg-primary-lm hover:bg-accent-lm/10 transition duration-200 border-2 border-stroke-peach lg:rounded-full cursor-pointer">
-      <img src={icon}></img>
+    <button onClick={clickEvent} className="lg:flex lg:gap-2 items-center lg:px-3.5 lg:py-1.5 lg:font-semibold lg:text-[15px] text-accent-lm bg-primary-lm hover:bg-accent-lm/10 transition duration-200 border-2 border-stroke-peach lg:rounded-full cursor-pointer">
+      <img src={icon} className="lg:size-5"></img>
       {label}
     </button>
   );

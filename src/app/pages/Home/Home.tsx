@@ -3,6 +3,8 @@ import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
 
 import { placeholderUser } from "@/mockData/placeholderUser";
 import placeholderPostImg from "@/assets/images/placeholderPostImg.png";
+import { useEffect, useState } from "react";
+import { supabase } from "../../../../supabase/supabaseClient";
 
 //placeholder data
 const title = "Announcing CyberVoid 2025 by MCSC. Don’t miss it!";
@@ -13,11 +15,32 @@ const content = {
 const user = placeholderUser;
 
 export function Home() {
+  const [authUid, setAuthUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setAuthUid(data.user?.id ?? null);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const userForPost = {
+    name: user.name,
+    batch: user.batch,
+    imgURL: null,
+    userId: authUid ?? undefined,
+  };
+
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in justify-center items-start">
       <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-10 lg:w-[70vw]">
-        <PostBody title={title} user={user} content={content}></PostBody>
-        <PostBody title={title} user={user} content={content}></PostBody>
+        <PostBody title={title} user={userForPost} content={content}></PostBody>
+        <PostBody title={title} user={userForPost} content={content}></PostBody>
       </div>
       <div className="lg:w-[20vw]">
       <UpcomingEvents />
