@@ -1,26 +1,20 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
 import { addNotification } from "../../../mockData/notifications";
 import { supabase } from "@/supabase/supabaseClient";
 import { createCollabPost } from "./backend/collab";
-import {
-  addInterested,
-  removeInterested,
-  getInterested,
-  subscribe as interestedSubscribe,
-} from "@/app/pages/UserProfile/backend/interestedStore";
-
 import { CollabPostCard, type CollabPost } from "./components/CollabPostCard";
 
 import postEmptyState from "@/assets/images/noPost.svg";
 
 export function CollabHub() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<CollabPost[]>([]);
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
   const categories: Category[] = ["all", "research", "competition", "project"];
@@ -29,15 +23,6 @@ export function CollabHub() {
     if (filter === "all") return posts;
     return posts.filter((p) => p.category === filter);
   }, [filter, posts]);
-
-  useEffect(() => {
-    // Initialize from store and subscribe for changes
-    setInterestedIds(new Set(getInterested().map((i) => i.id)));
-    const unsub = interestedSubscribe((items) =>
-      setInterestedIds(new Set(items.map((i) => i.id)))
-    );
-    return unsub;
-  }, []);
 
   async function loadPosts() {
     setLoading(true);
@@ -126,7 +111,7 @@ export function CollabHub() {
         if (typeof postId === "string") {
           const arr = tagsByPostId.get(postId) ?? [];
           const skillName = skillNameById.get(skillId as number | string);
-          if (skillName) arr.push(`#${skillName}`);
+          if (skillName) arr.push(skillName);
           tagsByPostId.set(postId, arr);
         }
       }
@@ -213,9 +198,10 @@ export function CollabHub() {
           authorName: user?.name ?? "Unknown",
           authorBatch: user?.batch ?? "",
           authorAvatarUrl: user?.avatarUrl ?? null,
-          tags: (tagsByPostId.get(postId) ?? []).map((t) => `#${t}`),
+          tags: tagsByPostId.get(postId) ?? [],
           likes: typeof row.like_count === "number" ? row.like_count : 0,
           comments: typeof row.comment_count === "number" ? row.comment_count : 0,
+          createdAt: (typeof row.created_at === "string" || row.created_at === null) ? (row.created_at as string | null) : null,
         });
       }
 
@@ -231,23 +217,6 @@ export function CollabHub() {
   useEffect(() => {
     loadPosts();
   }, []);
-
-  const toggleInterested = (p: CollabPost) => {
-    if (interestedIds.has(p.id)) {
-      removeInterested(p.id);
-    } else {
-      addInterested({
-        id: p.id,
-        title: p.title,
-        routeType: "collab",
-        category: p.category,
-        tags: (p.tags ?? []).map((t) => (t.startsWith("#") ? t.slice(1) : t)),
-        userName: p.authorName,
-        content: p.content,
-        createdAt: Date.now(),
-      });
-    }
-  };
 
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
@@ -276,13 +245,11 @@ export function CollabHub() {
             </div>
           ) : (
             filteredPosts.map((p) => {
-              const isInterested = interestedIds.has(p.id);
               return (
                 <CollabPostCard
                   key={p.id}
                   post={p}
-                  isInterested={isInterested}
-                  onToggleInterested={toggleInterested}
+                  onClick={() => navigate(`/collab/${p.id}`)}
                 />
               );
             })
@@ -305,7 +272,13 @@ export function CollabHub() {
             const authUid = data.user?.id;
             if (!authUid) return;
 
-            await createCollabPost({ ...payload, author_id: authUid });
+            await createCollabPost({
+              title: payload.title,
+              description: payload.description,
+              category: payload.category,
+              tags: payload.tags,
+              author_id: authUid,
+            });
 
             // Reload feed so avatar/name reflect DB.
             // (We keep notifications behavior unchanged.)

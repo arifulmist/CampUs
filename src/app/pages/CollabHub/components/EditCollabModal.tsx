@@ -2,27 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { toast } from "react-hot-toast";
+
 import { ButtonCTA } from "@/components/ButtonCTA";
-import { searchSkills, type CollabCategory, type CollabTag } from "../backend/collab";
+import { searchSkills, type CollabCategory, type CollabTag, updateCollabPost } from "../backend/collab";
 
 type SkillSuggestion = { id: number; skill: string };
 type SelectedTag = { skill_id: number; name: string };
 
-type CollabPayload = {
+export type EditCollabInitial = {
+  postId: string;
   title: string;
   description: string;
-  tags: CollabTag[];
   category: CollabCategory;
+  tags: Array<{ skill_id: number; name: string }>;
 };
 
-export default function CreateCollabPost({
+export function EditCollabModal({
   open,
-  onOpenChange,
-  onCreate,
+  onClose,
+  initial,
+  onSaved,
 }: {
   open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onCreate: (payload: CollabPayload) => void;
+  onClose: () => void;
+  initial: EditCollabInitial;
+  onSaved: () => void;
 }) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const tagInputRef = useRef<HTMLInputElement | null>(null);
@@ -30,11 +34,22 @@ export default function CreateCollabPost({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<CollabCategory>("research");
-  const [isPosting, setIsPosting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<SkillSuggestion[]>([]);
   const [tags, setTags] = useState<SelectedTag[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle(initial.title);
+    setDescription(initial.description);
+    setCategory(initial.category);
+    setTags((initial.tags ?? []).map((t) => ({ skill_id: t.skill_id, name: t.name })));
+    setSearchTerm("");
+    setSuggestions([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial.postId]);
 
   useEffect(() => {
     let alive = true;
@@ -72,16 +87,6 @@ export default function CreateCollabPost({
     };
   }, [searchTerm]);
 
-  function reset() {
-    setTitle("");
-    setDescription("");
-    setCategory("research");
-    setSearchTerm("");
-    setSuggestions([]);
-    setTags([]);
-    setIsPosting(false);
-  }
-
   function addTagFromSuggestion(s: SkillSuggestion) {
     const skillId = Number(s.id);
     if (!Number.isFinite(skillId)) return;
@@ -99,15 +104,15 @@ export default function CreateCollabPost({
     setTags((prev) => prev.filter((t) => t.skill_id !== skillId));
   }
 
-  async function handlePost() {
-    if (isPosting) return;
-    setIsPosting(true);
+  async function handleSave() {
+    if (isSaving) return;
+    setIsSaving(true);
 
     if (formRef.current) {
       const valid = formRef.current.reportValidity();
       if (!valid) {
         toast.error("Please fill all required fields");
-        setIsPosting(false);
+        setIsSaving(false);
         return;
       }
     }
@@ -115,21 +120,26 @@ export default function CreateCollabPost({
     if (tags.length === 0) {
       toast.error("Please fill all required fields");
       tagInputRef.current?.focus();
-      setIsPosting(false);
+      setIsSaving(false);
       return;
     }
 
     try {
-      onCreate({
+      const tagPayload: CollabTag[] = tags.map((t) => ({ skill_id: t.skill_id }));
+      await updateCollabPost(initial.postId, {
         title: title.trim(),
         description: description.trim(),
         category,
-        tags: tags.map((t) => ({ skill_id: t.skill_id })),
+        tags: tagPayload,
       });
-      reset();
-      onOpenChange(false);
-    } finally {
-      setIsPosting(false);
+      toast.success("Collaboration post updated successfully!");
+      onClose();
+      onSaved();
+    } catch (err: unknown) {
+      console.error("Failed to update collab post:", err);
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      toast.error("Failed to update post: " + msg);
+      setIsSaving(false);
     }
   }
 
@@ -141,10 +151,7 @@ export default function CreateCollabPost({
       <div
         className="fixed inset-0"
         onClick={() => {
-          if (!isPosting) {
-            reset();
-            onOpenChange(false);
-          }
+          if (!isSaving) onClose();
         }}
         style={{ backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1000 }}
       />
@@ -161,14 +168,11 @@ export default function CreateCollabPost({
             overflowY: "auto",
           }}
         >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl lg:font-semibold text-text-lm">Add Collaboration Post</h2>
+          <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
+            <h2 className="text-xl lg:font-semibold text-text-lm">Edit Collaboration</h2>
             <button
               onClick={() => {
-                if (!isPosting) {
-                  reset();
-                  onOpenChange(false);
-                }
+                if (!isSaving) onClose();
               }}
               className="text-text-lighter-lm text-2xl hover:text-gray-900"
               aria-label="Close modal"
@@ -183,7 +187,7 @@ export default function CreateCollabPost({
             className="lg:space-y-6"
             onSubmit={(e) => {
               e.preventDefault();
-              void handlePost();
+              void handleSave();
             }}
           >
             <div className="bg-secondary-lm lg:p-5 border border-stroke-grey rounded-lg lg:space-y-5">
@@ -283,9 +287,9 @@ export default function CreateCollabPost({
             <div className="text-right lg:pt-4">
               <ButtonCTA
                 type="submit"
-                label={isPosting ? "Posting..." : "Post"}
-                loading={isPosting}
-                disabled={isPosting}
+                label={isSaving ? "Saving..." : "Save"}
+                loading={isSaving}
+                disabled={isSaving}
               />
             </div>
           </form>

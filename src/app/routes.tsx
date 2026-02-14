@@ -8,6 +8,7 @@ import { Login } from "./pages/Registration/Login";
 import { Login2FA } from "./pages/Registration/Login2FA";
 import { Home } from "./pages/Home/Home";
 import { CollabHub } from "./pages/CollabHub/CollabHub";
+import { CollabPostDetailRoute } from "./pages/CollabHub/CollabPostDetailRoute";
 import { Events } from "./pages/Events/Events";
 import { EventPostDetailRoute } from "./pages/Events/EventPostDetailRoute";
 import { QnA } from "./pages/QnA/QnA";
@@ -42,7 +43,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/home", element: <Home />},
       { path: "/collab", element: <CollabHub /> },
-      { path: "/collab/:postId", element: <PostView type="collab" /> },
+      { path: "/collab/:postId", element: <CollabPostDetailRoute /> },
       { path: "/events", element: <Events /> },
       { path: "/events/:postId", element: <EventPostDetailRoute /> },
       { path: "/qna", element: <QnA /> },

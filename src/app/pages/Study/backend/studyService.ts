@@ -66,10 +66,11 @@ export interface Note {
 
 export interface ResourceItem {
   id: string;
+  authorId?: string | null;
   user: {
     name: string;
     batch: string;
-    imgURL: string;
+    imgURL: string | null;
   };
   title: string;
   course: string;
@@ -173,7 +174,10 @@ export async function fetchNotes(
   // otherwise fall back to authorMap lookup and finally "Unknown".
   const result = [];
   for (const n of notes) {
-    const joinedName = n.user_info?.name ?? null;
+    const joinedName =
+      (Array.isArray((n as any).user_info)
+        ? (n as any).user_info?.[0]?.name
+        : (n as any).user_info?.name) ?? null;
     const mappedName = authorMap[n.author_id]?.name ?? null;
     result.push({
       id: n.note_id,
@@ -210,35 +214,97 @@ export async function fetchResources(
 
   if (!semester) return [];
 
-  // Fetch resources
-  const { data: resources, error } = await supabase
-    .from("resources")
-    .select(
-      "resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id",
-    )
-    .eq("semester_id", semester.semester_id)
-    .order("upload_date", { ascending: false });
+  // Try fetching resources with a join to `user_info` (preferred).
+  // If the join fails (some DBs / row-level settings), fall back to a plain select
+  // and batch-fetch authors separately so the UI still receives data.
+  let resources: any[] | null = null;
+  try {
+    const { data, error } = await supabase
+      .from("resources")
+      .select(
+        `resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id, user_info ( auth_uid, name, batch, department, departments_lookup ( department_name ) )`,
+      )
+      .eq("semester_id", semester.semester_id)
+      .order("upload_date", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching resources:", error);
-    return [];
+    if (error) throw error;
+    resources = data as any[];
+  } catch (e: any) {
+    console.error("Joined resource query failed, falling back:", e?.message ?? e);
+    // Fallback: fetch without join
+    const { data, error } = await supabase
+      .from("resources")
+      .select("resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id")
+      .eq("semester_id", semester.semester_id)
+      .order("upload_date", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching resources (fallback):", error);
+      return [];
+    }
+    resources = data as any[];
   }
 
   if (!resources || resources.length === 0) return [];
 
-  // Batch-fetch author info for all unique author_ids
-  const authorIds = [
-    ...new Set(resources.map((r: any) => r.author_id).filter(Boolean)),
-  ];
+  // Batch-fetch author info for all unique author_ids (used by fallback and to fill missing joined fields)
+  const authorIds = [...new Set(resources.map((r: any) => r.author_id).filter(Boolean))];
   const authorMap = await fetchAuthorMap(authorIds);
 
-  // Transform to frontend format
+  // Transform to frontend format, preferring joined `user_info` fields when available
   return resources.map((r: any) => ({
     id: r.resource_id,
+    authorId: r.author_id,
     user: {
-      name: authorMap[r.author_id]?.name ?? "Unknown",
-      batch: String(authorMap[r.author_id]?.batch ?? ""),
-      imgURL: authorMap[r.author_id]?.profile_picture ?? "",
+      name:
+        (() => {
+          const joined = Array.isArray(r.user_info)
+            ? r.user_info?.[0]?.name
+            : r.user_info?.name;
+          return typeof joined === "string" && joined.trim() ? joined : null;
+        })() ??
+        (typeof authorMap[r.author_id]?.name === "string" &&
+        authorMap[r.author_id]?.name.trim()
+          ? authorMap[r.author_id]?.name
+          : null) ??
+        "Unknown",
+      batch: (() => {
+        const ui = Array.isArray(r.user_info) ? r.user_info?.[0] : r.user_info;
+        const joinedDeptLookup = ui?.departments_lookup as
+          | Record<string, unknown>
+          | null
+          | undefined;
+        const joinedDeptName = joinedDeptLookup?.department_name;
+        const joinedDeptFallback = ui?.department;
+
+        const mappedDeptName = authorMap[r.author_id]?.departmentName;
+        const mappedDeptFallback = authorMap[r.author_id]?.department;
+
+        const deptName =
+          (typeof joinedDeptName === "string" && joinedDeptName.trim()
+            ? joinedDeptName
+            : null) ??
+          (typeof mappedDeptName === "string" && mappedDeptName.trim()
+            ? mappedDeptName
+            : null) ??
+          (typeof joinedDeptFallback === "string" && joinedDeptFallback.trim()
+            ? joinedDeptFallback
+            : null) ??
+          (typeof mappedDeptFallback === "string" && mappedDeptFallback.trim()
+            ? mappedDeptFallback
+            : null) ??
+          "";
+
+        const batchValue =
+          (ui?.batch ?? null) ?? (authorMap[r.author_id]?.batch ?? null);
+
+        if (deptName && batchValue !== null && batchValue !== undefined) {
+          return `${deptName}-${batchValue}`;
+        }
+        if (batchValue !== null && batchValue !== undefined) return String(batchValue);
+        return "";
+      })(),
+      imgURL: null,
     },
     title: r.title,
     course: `${r.course}-${r.course_code}`,
@@ -367,16 +433,36 @@ export async function createResource(data: {
   // Get author info
   const { data: authorInfo } = await supabase
     .from("user_info")
-    .select("name, batch, profile_picture")
+    .select("name, batch, department, departments_lookup(department_name)")
     .eq("auth_uid", user.id)
     .single();
 
+  const deptLookup = (authorInfo as any)?.departments_lookup as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const deptName =
+    (typeof deptLookup?.department_name === "string" &&
+    deptLookup.department_name.trim()
+      ? deptLookup.department_name
+      : null) ??
+    (typeof (authorInfo as any)?.department === "string" ? (authorInfo as any).department : "");
+
+  const batchValue = (authorInfo as any)?.batch ?? null;
+  const displayBatch =
+    deptName && batchValue !== null && batchValue !== undefined
+      ? `${deptName}-${batchValue}`
+      : batchValue !== null && batchValue !== undefined
+        ? String(batchValue)
+        : "";
+
   return {
     id: resource.resource_id,
+    authorId: resource.author_id,
     user: {
       name: authorInfo?.name ?? "Unknown",
-      batch: authorInfo?.batch ?? "",
-      imgURL: authorInfo?.profile_picture ?? "",
+      batch: displayBatch,
+      imgURL: null,
     },
     title: resource.title,
     course: `${resource.course}-${resource.course_code}`,
@@ -420,13 +506,13 @@ export async function uploadNoteFile(file: File): Promise<string> {
 async function fetchAuthorMap(
   authorIds: string[],
 ): Promise<
-  Record<string, { name: string; batch: any; profile_picture: string | null }>
+  Record<string, { name: string; batch: any; department: any; departmentName: string | null }>
 > {
   if (authorIds.length === 0) return {};
 
   const { data, error } = await supabase
     .from("user_info")
-    .select("auth_uid, name, batch, profile_picture")
+    .select("auth_uid, name, batch, department, departments_lookup(department_name)")
     .in("auth_uid", authorIds);
 
   if (error) {
@@ -436,13 +522,22 @@ async function fetchAuthorMap(
 
   const map: Record<
     string,
-    { name: string; batch: any; profile_picture: string | null }
+    { name: string; batch: any; department: any; departmentName: string | null }
   > = {};
   for (const author of data || []) {
+    const deptLookup = (author as any).departments_lookup as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const deptName =
+      typeof deptLookup?.department_name === "string" && deptLookup.department_name.trim()
+        ? deptLookup.department_name
+        : null;
     map[author.auth_uid] = {
       name: author.name ?? "Unknown",
       batch: author.batch,
-      profile_picture: author.profile_picture,
+      department: (author as any).department ?? null,
+      departmentName: deptName,
     };
   }
   return map;

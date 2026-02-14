@@ -10,6 +10,7 @@ import { ButtonCTA } from "@/components/ButtonCTA";
 import { useState } from "react";
 import { NotesAddModal } from "./NotesAddModal";
 import { toast } from "react-hot-toast";
+import notesEmptyState from "@/assets/images/noNotes.svg";
 
 export function Notes() {
   const [openAddModal, setOpenAddModal] = useState(false);
@@ -77,7 +78,10 @@ export function Notes() {
         return <h5 className="text-text-lighter-lm">Nothing found</h5>;
       }
       return (
-        <h5 className="text-text-lighter-lm">No notes for this term yet.</h5>
+        <div className="flex flex-col items-center lg:gap-2">
+          <img src={notesEmptyState} className="lg:size-50"></img>
+          <h5 className="text-text-lighter-lm">No notes for this term yet</h5>
+        </div>
       );
     }
     return (
@@ -90,12 +94,14 @@ export function Notes() {
   }
 
   return (
-    <>
-      <div className="lg:flexxllg:flex-col gap-y-1 lg:startmt-10">
-        <ButtonCTA
+    <div className="w-full">
+      <div className="w-full lg:mt-4">
+      <ButtonCTA
           label={"Add File"}
           clickEvent={() => setOpenAddModal(true)}
-        ></ButtonCTA>
+      ></ButtonCTA>
+      </div>
+      <div className="lg:flex lg:flex-col items-center gap-y-1 mt-10">
         {renderContent()}
       </div>
 
@@ -106,7 +112,7 @@ export function Notes() {
           isSubmitting={isSubmitting}
         />
       )}
-    </>
+    </div>
   );
 }
 
