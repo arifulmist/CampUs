@@ -316,6 +316,12 @@ export function MessageDrawer({
     setDirectChatMode(false);
     setDirectUser(null);
     setSelectedConversation(conversationId);
+
+    // Optimistically clear this conversation's unread state immediately.
+    setConversations((prev) =>
+      (prev ?? []).map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
+    );
+
     await markMessagesAsRead(conversationId);
     const convs = await getConversations();
     setConversations(convs);
@@ -363,7 +369,7 @@ export function MessageDrawer({
   return (
     <div
       ref={drawerRef}
-      className="bg-primary-lm lg:w-[25vw] fixed right-0 border border-stroke-grey lg:rounded-md lg:rounded-b-none z-50 flex flex-col overflow-hidden"
+      className={`bg-primary-lm lg:w-[25vw] fixed right-0 border border-stroke-grey lg:rounded-md lg:rounded-b-none z-50 flex flex-col overflow-hidden ${!open ? "animate-slide-out-from-right" : "animate-slide-in-from-right"}`}
       style={{
         top: NAVBAR_HEIGHT + NAVBAR_SPACING,
         height: `calc(100vh - ${NAVBAR_HEIGHT + NAVBAR_SPACING}px)`,

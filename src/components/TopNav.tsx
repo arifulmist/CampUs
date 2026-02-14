@@ -3,6 +3,7 @@ import Logo from "../assets/logo-light.svg";
 
 import placeholderDP from "../assets/images/placeholderUser.png";
 import messageIcon from "../assets/icons/message_icon.svg";
+import messageIconFilled from "../assets/icons/FILLEDmessage_icon.svg";
 import bellIcon from "../assets/icons/bell_icon.svg";
 import userIcon from "../assets/icons/user_icon.svg";
 import signoutIcon from "../assets/icons/logout_icon.svg";
@@ -211,11 +212,15 @@ export function TopNav() {
 
         <button
           ref={messageButtonRef}
+          className="lg:relative"
           onClick={() => {
             setIsMsgOpen((prev) => !prev);
           }}
         >
-          <img src={messageIcon} className="lg:size-6 cursor-pointer" />
+          <img
+            src={isMsgOpen ? messageIconFilled : messageIcon}
+            className="lg:size-6 cursor-pointer"
+          />
         </button>
 
         <button

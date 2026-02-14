@@ -5,7 +5,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  getMessages,
+  getMessagesPage,
   getOrCreateConversation,
   markMessagesAsRead,
   sendMessage,
@@ -47,17 +47,24 @@ export function ChatHistory({
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [oldestCursor, setOldestCursor] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [attachedImagePreviewUrl, setAttachedImagePreviewUrl] = useState<string | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatBodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const didInitialScrollRef = useRef(false);
   const scrollRafRef = useRef<number | null>(null);
   const markReadInFlightRef = useRef(false);
   const prevConversationIdRef = useRef<string | null>(null);
+  const lastUpdateKindRef = useRef<"initial" | "append" | "prepend">("initial");
+
+  const PAGE_SIZE = 50;
 
   const isTempConversation =
     !conversationId ||
@@ -169,6 +176,8 @@ export function ChatHistory({
       if (!conversationId) {
         setMessages([]);
         setLoading(false);
+        setHasOlder(false);
+        setOldestCursor(null);
         return;
       }
 
@@ -176,12 +185,23 @@ export function ChatHistory({
       if (conversationId === "loading" || conversationId.startsWith("temp-")) {
         setMessages([]);
         setLoading(false);
+        setHasOlder(false);
+        setOldestCursor(null);
         return;
       }
 
       setLoading(true);
-      const msgs = await getMessages(conversationId);
-      setMessages(msgs);
+      lastUpdateKindRef.current = "initial";
+
+      // Load newest page first for speed.
+      // Ask for one extra row so we can detect if there are older messages.
+      const page = await getMessagesPage(conversationId, { limit: PAGE_SIZE + 1 });
+      const nextHasOlder = page.length > PAGE_SIZE;
+      const pageTrimmed = nextHasOlder ? page.slice(page.length - PAGE_SIZE) : page;
+
+      setMessages(pageTrimmed);
+      setHasOlder(nextHasOlder);
+      setOldestCursor(pageTrimmed[0]?.created_at ?? null);
       setLoading(false);
 
       // If the user is currently viewing this conversation, treat any existing unread
@@ -199,6 +219,54 @@ export function ChatHistory({
     loadMessages();
   }, [conversationId]);
 
+  const loadOlderMessages = async () => {
+    if (!conversationId) return;
+    if (conversationId === "loading" || conversationId.startsWith("temp-")) return;
+    if (loading || loadingOlder) return;
+    if (!hasOlder) return;
+
+    const container = chatBodyRef.current;
+    if (!container) return;
+
+    const before = oldestCursor;
+    if (!before) {
+      setHasOlder(false);
+      return;
+    }
+
+    setLoadingOlder(true);
+    const prevScrollHeight = container.scrollHeight;
+    const prevScrollTop = container.scrollTop;
+
+    try {
+      lastUpdateKindRef.current = "prepend";
+      const page = await getMessagesPage(conversationId, { before, limit: PAGE_SIZE + 1 });
+      const nextHasOlder = page.length > PAGE_SIZE;
+      const pageTrimmed = nextHasOlder ? page.slice(page.length - PAGE_SIZE) : page;
+
+      if (pageTrimmed.length === 0) {
+        setHasOlder(false);
+        return;
+      }
+
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const toPrepend = pageTrimmed.filter((m) => !existingIds.has(m.id));
+        return [...toPrepend, ...prev];
+      });
+      setHasOlder(nextHasOlder);
+      setOldestCursor(pageTrimmed[0]?.created_at ?? before);
+
+      // Keep the viewport anchored (avoid jumping to bottom due to new content above).
+      requestAnimationFrame(() => {
+        const nextScrollHeight = container.scrollHeight;
+        container.scrollTop = prevScrollTop + (nextScrollHeight - prevScrollHeight);
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
   // Subscribe to real-time message updates
   useEffect(() => {
     if (!conversationId || conversationId === "loading" || conversationId.startsWith("temp-")) return;
@@ -208,6 +276,7 @@ export function ChatHistory({
         // Check if message already exists to avoid duplicates
         const exists = prev.some((msg) => msg.id === newMsg.id);
         if (exists) return prev;
+        lastUpdateKindRef.current = "append";
         return [...prev, newMsg];
       });
 
@@ -258,6 +327,7 @@ export function ChatHistory({
   useEffect(() => {
     if (!didInitialScrollRef.current) return;
     if (messages.length === 0) return;
+    if (lastUpdateKindRef.current === "prepend") return;
     scrollToBottom("smooth");
   }, [messages.length]);
 
@@ -457,7 +527,19 @@ export function ChatHistory({
       </div>
 
       {/* Chat body */}
-      <div className="bg-secondary-lm flex-1 min-h-0 overflow-y-auto lg:p-3 lg:space-y-2 p-3 space-y-2">
+      <div
+        ref={chatBodyRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollTop <= 0) {
+            void loadOlderMessages();
+          }
+        }}
+        className="bg-secondary-lm flex-1 min-h-0 overflow-y-auto lg:p-3 lg:space-y-2 p-3 space-y-2"
+      >
+        {loadingOlder && (
+          <div className="text-center text-text-lighter-lm text-sm">Loading older messages...</div>
+        )}
         {loading && messages.length === 0 ? (
           <div className="text-center lg:py-4 text-text-lighter-lm">
             Loading messages...

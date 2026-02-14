@@ -36,28 +36,40 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
-// Supabase response types
-interface ConversationRow {
+type GetMessagesPageRow = {
   id: string;
+  conversation_id: string;
   sender_id: string;
-  receiver_id: string;
-  last_message_id?: string;
+  message_body: string;
   created_at: string;
-  updated_at: string;
-  last_message?: {
-    id: string;
-    message_body: string;
-    created_at: string;
-    sender_id: string;
-    read_at?: string;
-  } | null;
-}
+  read_at: string | null;
+};
 
 interface RealtimePayload {
   new: Record<string, unknown>;
   old?: Record<string, unknown>;
   eventType: string;
 }
+
+type GetMyConversationsRow = {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  last_message_id: string | null;
+  created_at: string;
+  updated_at: string;
+  other_auth_uid: string;
+  other_name: string | null;
+  other_profile_picture_url: string | null;
+  other_batch: number | null;
+  other_department: string | null;
+  other_department_name: string | null;
+  last_message_body: string | null;
+  last_message_created_at: string | null;
+  last_message_sender_id: string | null;
+  last_message_read_at: string | null;
+  unread_count: number | null;
+};
 
 /**
  * Get all conversations for the current user
@@ -67,115 +79,46 @@ export async function getConversations(): Promise<Conversation[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data, error } = await supabase
-      .from("conversations")
-      .select(`
-        id,
-        sender_id,
-        receiver_id,
-        last_message_id,
-        created_at,
-        updated_at,
-        last_message:all_messages!conversations_last_message_id_fkey(
-          id,
-          message_body,
-          created_at,
-          sender_id,
-          read_at
-        )
-      `)
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
-
+    // Single round-trip: conversation + other user + last message + unread count
+    const { data, error } = await supabase.rpc("get_my_conversations");
     if (error) throw error;
 
-    async function getFallbackLastMessage(conversationId: string) {
-      const { data: lastMsg, error: lastMsgError } = await supabase
-        .from("all_messages")
-        .select("id,message_body,created_at,sender_id,read_at")
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    const rows = (data ?? []) as unknown as GetMyConversationsRow[];
+    const mapped: Conversation[] = rows.map((row) => {
+      const deptName = row.other_department_name || row.other_department || "";
+      const batchValue = typeof row.other_batch === "number" ? row.other_batch : null;
+      const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
 
-      if (lastMsgError) {
-        console.error("Error fetching last message:", lastMsgError);
-        return null;
-      }
+      const lastMessage = row.last_message_body
+        ? {
+            id: row.last_message_id || "",
+            message_body: row.last_message_body,
+            created_at: row.last_message_created_at || row.updated_at,
+            sender_id: row.last_message_sender_id || "",
+            read_at: row.last_message_read_at || undefined,
+          }
+        : undefined;
 
-      return (lastMsg ?? null) as ConversationRow["last_message"];
-    }
-
-    // Get other user info and unread counts for each conversation.
-    // Also ensure we can display conversations even if last_message_id isn't maintained,
-    // by falling back to the most recent message in all_messages.
-    const rows = (data ?? []) as unknown as ConversationRow[];
-    const conversationsWithUserInfo = await Promise.all(
-      rows.map(async (conv) => {
-        const otherUserId = conv.sender_id === user.id ? conv.receiver_id : conv.sender_id;
-        
-        // Get other user's profile info
-        const { data: userInfo, error: userError } = await supabase
-          .from("user_info")
-          .select("auth_uid, name, batch, department, departments_lookup(department_name)")
-          .eq("auth_uid", otherUserId)
-          .single();
-
-        const { data: profileInfo } = await supabase
-          .from("user_profile")
-          .select("profile_picture_url")
-          .eq("auth_uid", otherUserId)
-          .single();
-
-        if (userError) {
-          console.error("Error fetching user info:", userError);
-        }
-
-        // Resolve last message
-        const resolvedLastMessage = conv.last_message ?? (await getFallbackLastMessage(conv.id));
-
-        // Count unread messages
-        const { count: unreadCount } = await supabase
-          .from("all_messages")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", conv.id)
-          .neq("sender_id", user.id)
-          .is("read_at", null);
-
-        // Format batch display like in TopNav
-        const userInfoWithDept = userInfo as typeof userInfo & {
-          departments_lookup?: { department_name: string }
-        };
-        const deptName = userInfoWithDept?.departments_lookup?.department_name || userInfo?.department || "";
-        const batchValue = userInfo?.batch ?? null;
-        const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
-
-        return {
-          ...conv,
-          other_user: {
-            auth_uid: otherUserId,
-            name: userInfo?.name || "Unknown User",
-            profile_picture_url: profileInfo?.profile_picture_url || undefined,
-            batch: displayBatch,
-          },
-          last_message: resolvedLastMessage,
-          unread_count: unreadCount || 0,
-        };
-      })
-    );
-
-    const startedConversations = (conversationsWithUserInfo as Conversation[]).filter(
-      (conv) => !!conv.last_message
-    );
-
-    // Sort by most recent message if available (more reliable than conversations.updated_at)
-    startedConversations.sort((a, b) => {
-      const aTime = a.last_message?.created_at ? new Date(a.last_message.created_at).getTime() : 0;
-      const bTime = b.last_message?.created_at ? new Date(b.last_message.created_at).getTime() : 0;
-      return bTime - aTime;
+      return {
+        id: row.id,
+        sender_id: row.sender_id,
+        receiver_id: row.receiver_id,
+        last_message_id: row.last_message_id || undefined,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        other_user: {
+          auth_uid: row.other_auth_uid,
+          name: row.other_name?.trim() || "Unknown User",
+          profile_picture_url: row.other_profile_picture_url || undefined,
+          batch: displayBatch,
+        },
+        last_message: lastMessage,
+        unread_count: row.unread_count || 0,
+      };
     });
 
-    return startedConversations;
+    // Preserve prior behavior: hide conversations with no messages yet
+    return mapped.filter((c) => !!c.last_message);
   } catch (error) {
     console.error("Error fetching conversations:", error);
     return [];
@@ -212,16 +155,62 @@ export async function getExistingConversationId(otherUserId: string): Promise<st
  */
 export async function getMessages(conversationId: string): Promise<Message[]> {
   try {
-    const { data, error } = await supabase
-      .from("all_messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+    // Back-compat: return full history in ascending order.
+    // Note: the UI should prefer getMessagesPage() for performance.
+    const pageSize = 200;
+    let before: string | null = null;
+    const all: Message[] = [];
 
-    if (error) throw error;
-    return data as Message[];
+    for (;;) {
+      const page = await getMessagesPage(conversationId, { before, limit: pageSize });
+      if (page.length === 0) break;
+
+      // page is ascending; the oldest message is at index 0
+      all.push(...page);
+      before = page[0]?.created_at ?? null;
+
+      // If we got fewer than requested, we reached the beginning.
+      if (page.length < pageSize) break;
+    }
+
+    return all;
   } catch (error) {
     console.error("Error fetching messages:", error);
+    return [];
+  }
+}
+
+export async function getMessagesPage(
+  conversationId: string,
+  opts?: { before?: string | null; limit?: number }
+): Promise<Message[]> {
+  try {
+    const limit = typeof opts?.limit === "number" ? opts.limit : 50;
+    const before = opts?.before ?? null;
+
+    const { data, error } = await supabase.rpc("get_messages_page", {
+      p_conversation_id: conversationId,
+      p_before: before,
+      p_limit: limit,
+    });
+
+    if (error) throw error;
+
+    // RPC returns newest-first (DESC). Convert to ascending for the UI.
+    const rows = (data ?? []) as unknown as GetMessagesPageRow[];
+    const mapped: Message[] = rows.map((r) => ({
+      id: r.id,
+      conversation_id: r.conversation_id,
+      sender_id: r.sender_id,
+      message_body: r.message_body,
+      created_at: r.created_at,
+      read_at: r.read_at ?? undefined,
+    }));
+
+    mapped.reverse();
+    return mapped;
+  } catch (error) {
+    console.error("Error fetching messages page:", error);
     return [];
   }
 }
