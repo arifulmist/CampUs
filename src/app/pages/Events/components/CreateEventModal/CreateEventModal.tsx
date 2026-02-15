@@ -121,7 +121,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
             location: event_data.location,
             event_start_date: event_data.event_start_date,
             event_end_date: event_data.event_end_date,
-            registration_link: event_data.registration_link ?? null,
+      
             img_url: event_data.img_url ?? null,
             category_id: event_data.category_id,
             segments: segments_data,

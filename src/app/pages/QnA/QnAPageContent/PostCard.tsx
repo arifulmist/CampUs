@@ -12,12 +12,17 @@ export default function PostCard({
   onOpenDetail,
   onLike,
   onAddInlineComment,
+  onEdit,
+  onDelete,
 }: {
   post: Post;
   onOpenDetail: () => void;
   onLike: () => void;
   onAddInlineComment: (text: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
+
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [showReadMore, setShowReadMore] = useState(false);
@@ -49,6 +54,24 @@ export default function PostCard({
       <span className={`absolute top-4 right-4 px-3 py-1 font-semibold rounded-full border ${categoryStyles[post.category]}`}>
         {post.category}
       </span>
+      <div className="absolute top-4 right-4 flex gap-2">
+  {onEdit && (
+    <button
+      onClick={(e) => { e.stopPropagation(); onEdit(); }}
+      className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+    >
+      Edit
+    </button>
+  )}
+  {onDelete && (
+    <button
+      onClick={(e) => { e.stopPropagation(); onDelete(); }}
+      className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+    >
+      Delete
+    </button>
+  )}
+</div>
 
       {/* Author & Title */}
       <div>

@@ -1,136 +1,196 @@
-import { useState } from "react";
-import type { ChangeEvent } from "react";
-import {
-  ArrowLeft,
-  Heart,
-  MessageCircle,
-  Share2,
-  MoreVertical,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+// PostDetail.tsx
+import { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
+
+import { supabase } from "@/supabase/supabaseClient";
+import { LikeButton, CommentButton } from "../../../../components/PostButtons";
+import { PostComments } from "../../../../components/PostComments";
+
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
-type Comment = {
-  id: string;
-  author: string;
-  avatar: string;
-  course: string;
-  content: string;
-  likes: number;
-  replies?: Comment[];
-  timestamp: string;
-};
+import { Tag as TagIcon, Check } from "lucide-react";
 
-type Post = {
-  id: string;
-  title: string;
-  author: string;
-  authorAvatar: string;
-  authorCourse: string;
-  content: string;
-  category: string;
-  reactions: number;
-  commentsCount: number;
-  shares: number;
-};
+import type { Post, PostCategory } from "../QnAPageContent/types";
+import { categoryStyles } from "../QnAPageContent/types";
 
 interface PostDetailProps {
   post: Post;
   onBack: () => void;
+  onDelete?: (postId: string) => void;
+  onUpdate?: (updatedPost: Post) => void;
 }
 
-function generateId(prefix = "") {
-  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
+export default function PostDetail({ post, onBack, onDelete, onUpdate }: PostDetailProps) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
-export function PostDetail({ post, onBack }: PostDetailProps) {
-  const [commentText, setCommentText] = useState("");
-  const [isReplying, setIsReplying] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editContent, setEditContent] = useState(post.content);
+  const [editCategory, setEditCategory] = useState<PostCategory>(post.category);
+  const [tags, setTags] = useState<string[]>(post.tags || []);
+  const [tagInput, setTagInput] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
 
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: "c1",
-      author: "Hasan Mahmud",
-      avatar: "/placeholder.svg?key=h1",
-      course: "CSE-22",
-      content: "Hi ! thank you for your post",
-      likes: 5,
-      timestamp: "1h ago",
-      replies: [
-        {
-          id: "c2",
-          author: "Dulal Mia",
-          avatar: "/placeholder.svg?key=d1",
-          course: "NSE-18",
-          content: "Wow!",
-          likes: 3,
-          timestamp: "30m ago",
-        },
-      ],
-    },
-    {
-      id: "c3",
-      author: "Thon Thon Thuy",
-      avatar: "/placeholder.svg?key=t1",
-      course: "CSE-22",
-      content: "Cool Post!",
-      likes: 8,
-      timestamp: "15m ago",
-    },
-  ]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(post.imageUrl || null);
 
-  // add top-level comment
-  function addTopLevelComment() {
-    const txt = commentText.trim();
-    if (!txt) return;
+  const [saving, setSaving] = useState(false);
 
-    const newComment: Comment = {
-      id: generateId("c_"),
-      author: "Alvi Binte Zamil",
-      avatar: "/placeholder.svg?key=h1",
-      course: "CSE-23",
-      content: txt,
-      likes: 0,
-      replies: [],
-      timestamp: "Just now",
-    };
+  // Fetch skills when edit modal opens
+  useEffect(() => {
+    async function fetchSkills() {
+      const { data, error } = await supabase.from("skills_lookup").select("skill");
+      if (error) console.error("Error fetching skills:", error);
+      else setSkills(data.map((s) => s.skill));
+    }
+    if (editOpen) fetchSkills();
+  }, [editOpen]);
 
-    setComments((prev) => [newComment, ...prev]);
-    setCommentText("");
-    setIsReplying(false);
-  }
+  // Current user
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id ?? null);
+    })();
+  }, []);
 
-  // recursive helper to add reply to tree
-  function addReplyToTree(list: Comment[], parentId: string, reply: Comment): Comment[] {
-    return list.map((c) => {
-      if (c.id === parentId) {
-        const nextReplies = c.replies ? [...c.replies, reply] : [reply];
-        return { ...c, replies: nextReplies };
-      }
-      if (c.replies && c.replies.length > 0) {
-        return { ...c, replies: addReplyToTree(c.replies, parentId, reply) };
-      }
-      return c;
+  const isAuthor = userId === post.authorUid;
+
+  // Tags helpers
+  const addTag = (t?: string) => {
+    const v = (t ?? tagInput).trim();
+    if (!v) return;
+    if (!skills.includes(v)) {
+      toast.error("That tag is not available. Please choose from suggestions.");
+      return;
+    }
+    if (!tags.includes(v)) setTags((p) => [...p, v]);
+    setTagInput("");
+  };
+
+  const removeTag = (t: string) => setTags((p) => p.filter((x) => x !== t));
+
+  const filteredSuggestions =
+    tagInput.trim().length >= 1
+      ? skills.filter((s) => s.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(s))
+      : [];
+
+  // Delete post
+  const handleDelete = async () => {
+    if (!post.id) return;
+    if (!confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("all_posts")
+        .delete()
+        .eq("post_id", post.id)
+        .eq("author_uid", userId); // <- corrected column
+      if (error) throw error;
+      toast.success("Post deleted");
+      onDelete?.(post.id);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete post");
+    }
+  };
+
+  
+
+
+async function handleSaveEdit() {
+  if (!post.id) return;
+  setSaving(true);
+
+  try {
+   
+    const { error: postError } = await supabase
+      .from("all_posts")
+      .update({ title: editTitle, description: editContent })
+      .eq("post_id", post.id)
+      .eq("author_id", userId);
+    if (postError) throw postError;
+
+ 
+    let imgUrl = post.imageUrl || null; // fallback to existing image
+
+    if (imageFile) {
+      const filePath = `private/${crypto.randomUUID()}-${imageFile.name}`;
+      const { error: uploadError } = await supabase
+        .storage
+        .from("post_images")
+        .upload(filePath, imageFile);
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase
+        .storage
+        .from("post_images")
+        .getPublicUrl(filePath);
+
+      imgUrl = publicUrl.publicUrl + "?t=" + new Date().getTime(); // cache-busting
+    }
+
+    const { error: qnaError } = await supabase
+      .from("qna_posts")
+      .update({ category_id: editCategory, img_url: imgUrl })
+      .eq("post_id", post.id);
+    if (qnaError) throw qnaError;
+
+    // delete old tags
+    const { error: delError } = await supabase
+      .from("post_tags")
+      .delete()
+      .eq("post_id", post.id);
+    if (delError) throw delError;
+
+    // insert new tags
+    const { data: skillRows } = await supabase
+      .from("skills_lookup")
+      .select("id")
+      .in("skill", tags);
+    const skillIds = skillRows?.map((s) => s.id) ?? [];
+
+    const inserts = skillIds.map((skillId) => ({
+      post_id: post.id,
+      skill_id: skillId,
+    }));
+    if (inserts.length > 0) {
+      const { error: insertError } = await supabase.from("post_tags").insert(inserts);
+      if (insertError) throw insertError;
+    }
+
+    
+    const { data: catRow, error: catError } = await supabase
+      .from("qna_category")
+      .select("category_name")
+      .eq("category_id", editCategory)
+      .maybeSingle();
+    const updatedCategory = catRow?.category_name || editCategory;
+
+   
+    onUpdate?.({
+      ...post,
+      title: editTitle,
+      content: editContent,
+      category: updatedCategory,
+      tags,
+      imageUrl: imgUrl,
     });
-  }
 
-  function handleAddReply(parentId: string, text: string) {
-    const txt = text.trim();
-    if (!txt) return;
-    const reply: Comment = {
-      id: generateId("r_"),
-      author: "Alvi Binte Zamil",
-      avatar: "/placeholder.svg?key=h1",
-      course: "CSE-23",
-      content: txt,
-      likes: 0,
-      replies: [],
-      timestamp: "Just now",
-    };
-    setComments((prev) => addReplyToTree(prev, parentId, reply));
+    toast.success("Post updated successfully!");
+    setEditOpen(false);
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to update post");
+  } finally {
+    setSaving(false);
   }
+}
 
   return (
     <div className="lg:space-y-6 lg:animate-fade-in">
@@ -138,218 +198,227 @@ export function PostDetail({ post, onBack }: PostDetailProps) {
         onClick={onBack}
         className="lg:flex lg:items-center lg:gap-2 text-accent-lm hover:opacity-80 lg:transition-colors"
       >
-        <ArrowLeft className="lg:h-4 lg:w-4" />
-        <span className="text-sm lg:font-medium">Go Back</span>
+        ← Go Back
       </button>
 
-      {/* Main Post Card */}
-      <div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey lg:animate-slide-in">
-        <div className="lg:flex lg:items-start lg:justify-between lg:mb-4">
-          <Badge
-            variant="secondary"
-            className="bg-secondary-lm text-accent-lm border-stroke-peach lg:px-3 lg:py-1"
-          >
-            {post.category}
-          </Badge>
-          <button className="text-accent-lm hover:opacity-80">
-            <MoreVertical className="lg:h-5 lg:w-5" />
-          </button>
+     {/* Post Card */}
+<div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey">
+  <div className="lg:flex lg:items-center lg:justify-between lg:mb-4">
+    <span className={`px-3 py-1 font-semibold rounded-full ${categoryStyles[post.category]}`}>
+      {post.category}
+    </span>
+
+    {isAuthor && (
+      <div className="flex gap-2 items-center">
+        <button
+          className="text-accent-lm hover:underline text-sm"
+          onClick={() => setEditOpen(true)}
+        >
+          Edit
+        </button>
+        <button
+          className="text-accent-lm hover:underline text-sm"
+          onClick={handleDelete}
+        >
+          Delete
+        </button>
+      </div>
+    )}
+  </div>
+
+  <h1 className="text-2xl lg:font-bold text-text-lm lg:mb-4">{post.title}</h1>
+ 
+  <div className="lg:flex lg:items-center lg:gap-3 lg:mb-4">
+    <Avatar className="lg:h-10 lg:w-10 lg:border border-stroke-grey">
+      <AvatarImage src={post.authorAvatar || "/placeholder.svg"} />
+      <AvatarFallback>{post.author[0]}</AvatarFallback>
+    </Avatar>
+    <div>
+      <div className="text-sm lg:font-bold text-accent-lm">{post.author}</div>
+      <div className="text-xs text-text-lighter-lm lg:font-medium">{post.authorCourse}</div>
+    </div>
+  </div>
+   {/* Tags */}
+  {post.tags.length > 0 && (
+    <div className="lg:flex lg:flex-wrap lg:gap-2 lg:mb-4">
+      {post.tags.map((tag) => (
+        <span
+          key={tag}
+          className="bg-secondary-lm text-accent-lm px-3 py-1 rounded-full text-sm"
+        >
+          #{tag}
+        </span>
+      ))}
+    </div>
+  )}
+   <p className="text-text-lm lg:leading-relaxed lg:mb-4">{post.content}</p>
+  {/* Image */}
+  {post.imageUrl && (
+    <div className="lg:mb-4">
+      <img
+        src={post.imageUrl}
+        alt="Post Image"
+        className="max-h-64 w-full object-cover rounded-lg border border-stroke-grey"
+      />
+    </div>
+  )}
+
+ 
+
+ 
+
+  {/* Action Buttons */}
+  <div className="lg:flex lg:items-center lg:gap-4 lg:pt-4 border-t border-stroke-grey">
+    <LikeButton postId={post.id} initialLikeCount={post.reactions} />
+    <CommentButton postId={post.id} initialCommentCount={post.comments} />
+  </div>
+</div>
+
+      {/* Comments */}
+      <PostComments postId={post.id} />
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+  <DialogContent className="sm:max-w-lg bg-primary-lm border-stroke-grey text-text-lm">
+    <DialogHeader>
+      <DialogTitle>Edit Post</DialogTitle>
+    </DialogHeader>
+
+    <div className="lg:space-y-4 mt-2">
+      {/* Title */}
+      <Input
+        placeholder="Title"
+        value={editTitle}
+        onChange={(e) => setEditTitle(e.target.value)}
+        className="bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+      />
+
+      {/* Content */}
+      <Textarea
+        placeholder="Content"
+        rows={5}
+        value={editContent}
+        onChange={(e) => setEditContent(e.target.value)}
+        className="bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
+      />
+
+      {/* Tags */}
+      <div className="lg:space-y-2">
+        <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+          <span className="text-sm lg:font-medium">Tags</span>
+        </div>
+        <div className="lg:flex lg:gap-2 lg:items-center">
+          <Input
+            placeholder="Add tag"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag(tagInput);
+              }
+            }}
+            className="bg-primary-lm border-stroke-grey text-text-lm"
+          />
+          <Button onClick={() => addTag(tagInput)} className="bg-accent-lm text-primary-lm">
+            Add
+          </Button>
         </div>
 
-        <h1 className="text-2xl lg:font-bold text-text-lm lg:mb-4">{post.title}</h1>
-
-        <div className="lg:flex lg:items-center lg:gap-3 lg:mb-4">
-          <Avatar className="lg:h-10 lg:w-10 lg:border border-stroke-grey">
-            <AvatarImage src={post.authorAvatar || "/placeholder.svg"} />
-            <AvatarFallback>{post.author[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <div className="text-sm lg:font-bold text-accent-lm">
-              {post.author}
-            </div>
-            <div className="text-xs text-text-lighter-lm lg:font-medium">
-              {post.authorCourse}
-            </div>
+        {/* Suggestions */}
+        {filteredSuggestions.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {filteredSuggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => addTag(s)}
+                className="px-2 py-1 rounded bg-secondary-lm text-sm hover:bg-hover-lm"
+              >
+                {s}
+              </button>
+            ))}
           </div>
-        </div>
+        )}
 
-        <p className="text-text-lm lg:leading-relaxed lg:mb-6">{post.content}</p>
-
-        <div className="lg:flex lg:items-center lg:gap-4 lg:pt-4 border-t border-stroke-grey">
-          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
-            <Heart className="lg:h-4 lg:w-4" />
-            <span className="text-sm lg:font-bold">{post.reactions}</span>
-          </button>
-          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
-            <MessageCircle className="lg:h-4 lg:w-4" />
-            <span className="text-sm lg:font-bold">{post.commentsCount}</span>
-          </button>
-          <button className="lg:flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 lg:rounded-lg bg-secondary-lm text-accent-lm hover:bg-hover-lm lg:transition-colors">
-            <Share2 className="lg:h-4 lg:w-4" />
-            <span className="text-sm lg:font-bold">{post.shares}</span>
-          </button>
+        {/* Selected tags */}
+        <div className="lg:flex lg:flex-wrap lg:gap-2 mt-2">
+          {tags.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => removeTag(t)}
+              className="lg:inline-flex lg:items-center lg:gap-2 lg:rounded-full lg:px-3 lg:py-1 text-sm lg:border bg-primary-lm"
+            >
+              #{t}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Add Reply Section */}
-      <div className="bg-primary-lm lg:rounded-xl lg:p-4 lg:shadow-sm lg:border border-stroke-grey">
-        {!isReplying ? (
-          <button
-            onClick={() => setIsReplying(true)}
-            className="lg:w-full text-left lg:px-4 lg:py-3 text-text-lighter-lm text-sm hover:bg-hover-lm lg:rounded-lg lg:transition-colors"
-          >
-            Add a reply
-          </button>
-        ) : (
-          <div className="lg:space-y-4">
-            <Textarea
-              placeholder="Add a reply..."
-              value={commentText}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                setCommentText(e.target.value)
-              }
-              className="lg:min-h-25 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
-            />
-            <div className="lg:flex lg:items-center lg:justify-between lg:pt-2 border-t border-stroke-grey">
-              <div className="lg:flex lg:gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsReplying(false)}
-                  className="text-text-lm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4"
-                  onClick={addTopLevelComment}
-                >
-                  Comment
-                </Button>
-              </div>
-            </div>
+      {/* Category */}
+      <div className="lg:space-y-2">
+        <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
+          <span className="text-sm lg:font-medium">Category</span>
+        </div>
+        <div className="lg:flex lg:flex-wrap lg:gap-2">
+          {(["Question", "Advice", "Resource"] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setEditCategory(cat)}
+              aria-pressed={editCategory === cat}
+              className={`group inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm border transition focus:outline-none focus:ring-2 focus:ring-accent-lm ${
+                editCategory === cat
+                  ? "border-stroke-peach bg-secondary-lm text-accent-lm shadow-sm ring-2 ring-accent-lm"
+                  : "border-stroke-grey bg-primary-lm text-text-lm hover:bg-hover-lm"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Image */}
+      <div className="lg:space-y-2">
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null;
+            setImageFile(file);
+            if (file) setImagePreview(URL.createObjectURL(file));
+          }}
+          className="bg-primary-lm border-stroke-grey text-text-lm"
+        />
+        {imagePreview && (
+          <div className="mt-2 space-y-2">
+            <img src={imagePreview} alt="Preview" className="max-h-40 rounded border" />
+            <Button
+              type="button"
+              onClick={() => {
+                setImageFile(null);
+                setImagePreview(null);
+              }}
+              className="bg-accent-lm text-primary-lm hover:ring-hover-btn-lm"
+            >
+              Remove Image
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Comments List */}
-      <div className="bg-primary-lm lg:rounded-xl lg:p-6 lg:shadow-sm lg:border border-stroke-grey">
-        <div className="lg:flex lg:items-center lg:justify-between lg:mb-6">
-          <div className="lg:flex lg:items-center lg:gap-2 text-sm lg:font-medium text-text-lighter-lm">
-            Sort by:
-            <button className="text-accent-lm lg:flex lg:items-center lg:gap-1">
-              Best <span className="text-[10px]">▼</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="lg:space-y-8">
-          {comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} onAddReply={handleAddReply} />
-          ))}
-        </div>
+      {/* Action Buttons */}
+      <div className="flex gap-2 justify-end mt-4">
+        <Button variant="ghost" onClick={() => setEditOpen(false)}>Cancel</Button>
+        <Button onClick={handleSaveEdit} disabled={saving}>
+          {saving ? "Saving..." : "Save"}
+        </Button>
       </div>
+    </div>
+  </DialogContent>
+</Dialog>
+
     </div>
   );
 }
-
-function CommentItem({
-  comment,
-  isReply = false,
-  onAddReply,
-}: {
-  comment: Comment;
-  isReply?: boolean;
-  onAddReply: (parentId: string, text: string) => void;
-}) {
-  const [replying, setReplying] = useState(false);
-  const [replyText, setReplyText] = useState("");
-
-  function submitReply() {
-    const txt = replyText.trim();
-    if (!txt) return;
-    onAddReply(comment.id, txt);
-    setReplyText("");
-    setReplying(false);
-  }
-
-  return (
-    <div className="lg:relative lg:animate-slide-in">
-      <div className="lg:flex lg:gap-3">
-        <div className="lg:relative lg:flex lg:flex-col lg:items-center">
-          <Avatar className="lg:h-8 lg:w-8 lg:z-10 border-2 border-primary-lm">
-            <AvatarImage src={comment.avatar || "/placeholder.svg"} />
-            <AvatarFallback>{comment.author[0]}</AvatarFallback>
-          </Avatar>
-          {!isReply && comment.replies && comment.replies.length > 0 && (
-            <div className="lg:absolute lg:top-8 lg:bottom-0 lg:w-0.5 bg-stroke-grey lg:left-1/2 lg:-translate-x-1/2" />
-          )}
-        </div>
-        <div className="lg:flex-1 lg:pb-2">
-          <div className="lg:flex lg:items-center lg:gap-2 lg:mb-1">
-            <span className="text-sm lg:font-bold text-text-lm">
-              {comment.author}
-            </span>
-            <span className="text-[10px] text-text-lighter-lm lg:font-medium lg:px-1.5 lg:py-0.5 bg-secondary-lm lg:rounded">
-              {comment.course}
-            </span>
-          </div>
-          <p className="text-sm text-text-lm lg:mb-2 lg:leading-snug">
-            {comment.content}
-          </p>
-          <div className="lg:flex lg:items-center lg:gap-4">
-            <button className="lg:flex lg:items-center lg:gap-1 text-[11px] lg:font-bold text-text-lighter-lm hover:text-accent-lm">
-              <Heart className="lg:h-3 lg:w-3" />
-              {comment.likes}
-            </button>
-            <button
-              className="text-[11px] lg:font-bold text-accent-lm hover:underline"
-              onClick={() => setReplying((r) => !r)}
-            >
-              Reply
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Reply form for this comment */}
-      {replying && (
-        <div className="lg:ml-4 lg:mt-4 lg:space-y-3">
-          <Textarea
-            placeholder={`Reply to ${comment.author}...`}
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            className="lg:min-h-20 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
-          />
-          <div className="lg:flex lg:items-center lg:justify-end lg:gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setReplying(false);
-                setReplyText("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4" onClick={submitReply}>
-              Comment
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Nested Replies */}
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="lg:ml-4 lg:mt-4 lg:space-y-4 border-l-2 border-stroke-grey lg:pl-6">
-          {comment.replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} isReply onAddReply={onAddReply} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default PostDetail;

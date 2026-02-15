@@ -12,7 +12,8 @@ export type Post = {
   shares: number;
   createdAt: string; 
   timestamp: string;
-  imageUrl?: string | null;            
+  imageUrl?: string | null;   
+   authorId: string | null;         
 };
 
 

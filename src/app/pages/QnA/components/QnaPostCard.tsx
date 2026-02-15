@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-
 import { UserInfo } from "@/components/UserInfo";
 import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ export type QnaFeedPost = {
   comments: number;
   shares: number;
   timestamp: string;
+  imageUrl?: string | null; // ✅ support image
 };
 
 const categoryStyles = {
@@ -27,12 +27,6 @@ const categoryStyles = {
   Resource: "bg-secondary-lm text-accent-lm border-stroke-peach",
 } as const;
 
-/**
- * PostCard: renders a feed card with a fixed collapsed content height.
- * - Detects overflow and shows "Read More" when needed
- * - Clicking "Read More" or the Comment icon expands the card in-place (revealing full content + inline reply box)
- * - Clicking the card header/title triggers onOpenDetail
- */
 export function QnaPostCard({
   post,
   onOpenDetail,
@@ -65,6 +59,7 @@ export function QnaPostCard({
       }}
       className="lg:relative bg-secondary-lm lg:p-8 lg:rounded-2xl border-2 border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach lg:transition cursor-pointer lg:w-full lg:box-border lg:min-h-56 lg:flex lg:flex-col lg:justify-between"
     >
+      {/* Category badge */}
       <span
         className={
           "absolute top-4 right-4 px-3 py-1 font-semibold rounded-full border " +
@@ -75,6 +70,7 @@ export function QnaPostCard({
       </span>
 
       <div>
+        {/* Author info */}
         <UserInfo
           userImg={post.authorAvatar ?? null}
           userName={post.author}
@@ -87,6 +83,16 @@ export function QnaPostCard({
         </h5>
       </div>
 
+      {/* Image */}
+      {post.imageUrl && (
+        <img
+          src={post.imageUrl + "?t=" + new Date().getTime()} // ✅ cache-busting
+          alt="Post"
+          className="lg:w-full lg:max-h-60 lg:object-cover lg:rounded-lg lg:my-4"
+        />
+      )}
+
+      {/* Content */}
       <div className="lg:grow lg:mt-3">
         <div
           ref={contentRef}
@@ -109,6 +115,7 @@ export function QnaPostCard({
           </button>
         )}
 
+        {/* Tags */}
         <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-3">
           <span className="lg:font-bold bg-[#C23D00] text-primary-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm">
             #{post.category}
@@ -124,6 +131,7 @@ export function QnaPostCard({
         </div>
       </div>
 
+      {/* Action buttons */}
       <div>
         <div className="lg:flex lg:gap-4 lg:items-center lg:mt-4">
           <button
@@ -156,6 +164,7 @@ export function QnaPostCard({
 
         <p className="text-xs text-text-lighter-lm lg:mt-2">{post.timestamp}</p>
 
+        {/* Inline comment box */}
         {!collapsed && (
           <div className="lg:mt-4 bg-secondary-lm lg:rounded-2xl lg:p-6 border-2 border-stroke-grey">
             {!replying ? (

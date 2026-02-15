@@ -7,135 +7,127 @@ import PostCard from "./PostCard";
 import type { Post } from "./types";
 import QnaPost from "../components/QnaPost";
 import PostDetail from "../components/PostDetail";
+import toast from "react-hot-toast";
+
+/* -------------------- TIME FORMATTER -------------------- */
 export function formatPostTimestamp(createdAt: string): string {
   const date = new Date(createdAt);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSeconds < 60) return "Posted just now";
-  if (diffMinutes < 60) return `Posted ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `Posted ${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays === 1) return "Posted 1 day ago";
-  if (diffDays < 2) return `Posted ${diffDays} days ago`;
+  if (diffMinutes < 1) return "Posted just now";
+  if (diffMinutes < 60) return `Posted ${diffMinutes} min ago`;
+  if (diffHours < 24) return `Posted ${diffHours} hr ago`;
+  if (diffDays < 7) return `Posted ${diffDays} days ago`;
 
-  // For older posts, show full date
-  return `posted on ${date.toLocaleDateString("en-GB", {
+  return `Posted on ${date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  })}, ${date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
   })}`;
 }
+
+/* -------------------- MAIN COMPONENT -------------------- */
 export default function QAPageContent() {
+  const [posts, setPosts] = useState<Post[]>([]);
   const [activeTab, setActiveTab] = useState<"All" | "Question" | "Advice" | "Resource">("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isNewPostOpen, setIsNewPostOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
 
-  // Fetch posts from Supabase
- useEffect(() => {
-  async function fetchPosts() {
-    try {
-      // Fetch all posts with author, profile, qna info, category
-     const { data, error } = await supabase
-  .from("all_posts")
-  .select(`
-    post_id,
-    title,
-    description,
-    like_count,
-    comment_count,
-    created_at,
-    qna_posts!inner(
-      img_url,
-      category_id,
-      qna_category(category_name)
-    ),
-    author:user_info!fk_author(
-        name,
-        auth_uid,
-        department,
-        batch,
-        user_profile(profile_picture_url),
-        departments_lookup!inner(department_name)
-        )
+  /* -------------------- AUTH USER -------------------- */
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserUid(data.user?.id ?? null);
+    });
+  }, []);
 
-  `)
-  .order("created_at", { ascending: false });
+  /* -------------------- FETCH POSTS -------------------- */
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const { data, error } = await supabase
+          .from("all_posts")
+          .select(`
+            post_id,
+            title,
+            description,
+            like_count,
+            comment_count,
+            created_at,
+            qna_posts!inner(
+              img_url,
+              qna_category(category_name)
+            ),
+            author:user_info!fk_author(
+              name,
+              auth_uid,
+              batch,
+              user_profile(profile_picture_url),
+              departments_lookup!inner(department_name)
+            )
+          `)
+          .order("created_at", { ascending: false });
 
+        if (error) throw error;
+        if (!data) return;
 
-      if (error) throw error;
+        /* ---- TAGS ---- */
+        const postIds = data.map((p: any) => p.post_id);
+        const { data: tagsData } = await supabase
+          .from("post_tags")
+          .select("post_id, skill:skills_lookup(skill)")
+          .in("post_id", postIds);
 
-      if (!data) return;
+        const tagMap: Record<string, string[]> = {};
+        tagsData?.forEach((t: any) => {
+          if (!tagMap[t.post_id]) tagMap[t.post_id] = [];
+          if (t.skill?.skill) tagMap[t.post_id].push(t.skill.skill);
+        });
 
-      // Fetch tags for all posts in a single query
-      const postIds = data.map((p: any) => p.post_id);
-      const { data: tagsData, error: tagsError } = await supabase
-        .from("post_tags")
-        .select(`
-          post_id,
-          skill:skills_lookup(skill)
-        `)
-        .in("post_id", postIds);
+        const formatted: Post[] = data.map((p: any) => ({
+          id: p.post_id,
+          title: p.title,
+          content: p.description,
+          author: p.author?.name ?? "Unknown",
+          authorAvatar: p.author?.user_profile?.profile_picture_url ?? null,
+          authorCourse:
+            p.author?.departments_lookup?.department_name && p.author?.batch
+              ? `${p.author.departments_lookup.department_name}-${p.author.batch}`
+              : "N/A",
+          category: p.qna_posts?.qna_category?.category_name ?? "Question",
+          tags: tagMap[p.post_id] ?? [],
+          reactions: p.like_count ?? 0,
+          comments: p.comment_count ?? 0,
+          shares: 0,
+          createdAt: p.created_at,
+          timestamp: formatPostTimestamp(p.created_at),
+          imageUrl: p.qna_posts?.img_url ?? null,
+          authorUid: p.author?.auth_uid ?? null, 
+        }));
 
-      if (tagsError) throw tagsError;
-
-      // Group tags by post_id
-      const tagsMap: Record<string, string[]> = {};
-      tagsData?.forEach((t: any) => {
-        if (!tagsMap[t.post_id]) tagsMap[t.post_id] = [];
-        if (t.skill?.skill) tagsMap[t.post_id].push(t.skill.skill);
-      });
-
-      // Map posts to frontend Post type
-      const formattedPosts: Post[] = data.map((p: any) => ({
-        id: p.post_id,
-        title: p.title,
-        content: p.description,
-        author: p.author?.name || "Unknown",
-       authorAvatar: p.author?.user_profile?.profile_picture_url || null,
-       authorCourse: p.author?.departments_lookup?.department_name && p.author?.batch
-        ? `${p.author.departments_lookup.department_name}-${p.author.batch}`
-        : "N/A",
-
-        category: p.qna_posts?.qna_category?.category_name || "Question",
-        tags: tagsMap[p.post_id] || [],
-        reactions: p.like_count || 0,
-        comments: p.comment_count || 0,
-        shares: 0,
-       createdAt: p.created_at,
-       timestamp: formatPostTimestamp(p.created_at),
-
-
-        imageUrl: p.qna_posts?.img_url || null
-      }));
-console.log("Formatted Posts Image URLs:", formattedPosts.map(p => p.imageUrl));
-
-setPosts(formattedPosts);
-    
-    } catch (err) {
-      console.error("Error fetching posts:", err);
+        setPosts(formatted);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load posts");
+      }
     }
-  }
 
-  fetchPosts();
-}, [isNewPostOpen]);
+    fetchPosts();
+  }, [isNewPostOpen]);
 
+  /* -------------------- FILTER -------------------- */
   const filteredPosts = posts.filter(
-    (post) =>
-      (activeTab === "All" || post.category === activeTab) &&
-      post.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (p) =>
+      (activeTab === "All" || p.category === activeTab) &&
+      p.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Increment likes
+  /* -------------------- ACTIONS -------------------- */
   const toggleLike = async (postId: string) => {
     const { error } = await supabase.rpc("increment_post_likes", { p_id: postId });
     if (!error) {
@@ -145,56 +137,47 @@ setPosts(formattedPosts);
     }
   };
 
-  // Add inline comment
-  const addInlineComment = async (postId: string, commentText: string) => {
-    if (!commentText.trim()) return;
-
-    const { error } = await supabase.from("comments").insert({ post_id: postId, content: commentText });
+  const addInlineComment = async (postId: string, text: string) => {
+    if (!text.trim()) return;
+    const { error } = await supabase.from("comments").insert({ post_id: postId, content: text });
     if (!error) {
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, comments: p.comments + 1 } : p))
       );
-      const updated = posts.find((p) => p.id === postId) || null;
-      setSelectedPost(updated);
     }
   };
-  
 
+  /* -------------------- UI -------------------- */
   return (
-    <div className="lg:min-h-screen bg-background-lm lg:animate-fade-in" style={{ minHeight: "100vh", overflowY: "auto" }}>
-      <main className="lg:mx-auto lg:max-w-4xl lg:px-4 lg:py-6">
+    <div className="min-h-screen bg-background-lm">
+      <main className="mx-auto max-w-4xl px-4 py-6">
         {selectedPost ? (
-          <PostDetail post={{ ...selectedPost, commentsCount: selectedPost.comments }} onBack={() => setSelectedPost(null)} />
+          <PostDetail
+            post={{ ...selectedPost, comments: selectedPost.comments }}
+            onBack={() => setSelectedPost(null)}
+          />
         ) : (
           <>
-            {/* Search + New Post */}
-            <div className="lg:mb-6 lg:flex lg:items-center lg:gap-3">
-              <div className="lg:relative lg:flex-1 lg:min-w-0 lg:w-[60vw] lg:rounded-md bg-primary-lm">
-                <Search className="lg:absolute lg:left-3 lg:top-1/2 lg:-translate-y-1/2 lg:h-4 text-accent-lm" />
-                <Input
-                  placeholder="Search anything"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="lg:h-10 lg:w-full lg:min-w-0 lg:pl-9 lg:rounded-full bg-primary-lm lg:border border-stroke-grey placeholder:text-text-lighter-lm focus:ring-2 focus:ring-accent-lm focus:border-accent-lm"
-                />
-              </div>
-              <div className="lg:shrink-0">
-                <Button onClick={() => setIsNewPostOpen(true)} className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4">
-                  New Post
-                </Button>
-              </div>
+            {/* Search */}
+            <div className="flex gap-3 mb-6">
+               <button
+            onClick={() => setIsNewPostOpen(true)}
+            className="lg:w-full lg:rounded-lg lg:border border-stroke-grey bg-secondary-lm lg:px-4 lg:py-3 text-left text-accent-lm hover:bg-[#FFF4EE]"
+          >
+            Add new post
+          </button>
+              
             </div>
-
+             
             {/* Tabs */}
-            <div className="lg:flex lg:gap-2 lg:mb-6 lg:justify-center">
+            <div className="flex justify-center gap-2 mb-6">
               {(["All", "Question", "Advice", "Resource"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`min-w-22 box-border text-center px-3 py-2 rounded-full text-sm font-medium transition focus:outline-none ${
-                    activeTab === tab ? "bg-accent-lm text-primary-lm" : "bg-primary-lm text-text-lm hover:bg-hover-lm"
+                  className={`px-4 py-2 rounded-full ${
+                    activeTab === tab ? "bg-accent-lm text-white" : "bg-primary-lm"
                   }`}
-                  aria-pressed={activeTab === tab}
                 >
                   {tab}
                 </button>
@@ -202,32 +185,26 @@ setPosts(formattedPosts);
             </div>
 
             {/* Posts */}
-            <div className="lg:space-y-4 lg:min-h-48">
-              {filteredPosts.length === 0 ? (
-                <div className="lg:flex lg:items-center lg:justify-center lg:min-h-48">
-                  <p className="text-text-lighter-lm text-lg">No posts in this category</p>
-                </div>
-              ) : (
-                filteredPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onOpenDetail={() => setSelectedPost(post)}
-                    onLike={() => toggleLike(post.id)}
-                    onAddInlineComment={(text) => addInlineComment(post.id, text)}
-                  />
-                ))
-              )}
+            <div className="space-y-4">
+              {filteredPosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  isOwner={post.authorUid === currentUserUid}
+                  onOpenDetail={() => setSelectedPost(post)}
+                  onLike={() => toggleLike(post.id)}
+                  onAddInlineComment={(t) => addInlineComment(post.id, t)}
+                />
+              ))}
             </div>
           </>
         )}
       </main>
 
-      {/* New Post Modal */}
       <QnaPost
         open={isNewPostOpen}
         onOpenChange={setIsNewPostOpen}
-        onCreate={() => setIsNewPostOpen(false)} // already handled inside QnaPost
+        onCreate={() => setIsNewPostOpen(false)}
       />
     </div>
   );
