@@ -113,7 +113,7 @@ async function handleSaveEdit() {
       if (uploadError) throw uploadError;
 
       const { data: publicUrl } = supabase.storage.from("post_images").getPublicUrl(filePath);
-      imgUrl = publicUrl.publicUrl; // ✅ now a valid URL
+      imgUrl = publicUrl.publicUrl; 
     }
 
     // 2️⃣ Update main post table (title, content, image)

@@ -37,7 +37,7 @@ import { DialogOverlay } from "@radix-ui/react-dialog";
 import { supabase } from "@/supabase/supabaseClient";
 import { LFPostCard, type LFPost as UIFeedLFPost } from "./components/LFPostCard";
 
-// backend service (functions)
+// backend services for Lost & Found
 import {
   fetchLostAndFoundPosts,
   createLostAndFoundPost,
@@ -99,7 +99,7 @@ export function LostFound() {
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
-  // posts state (initialized empty; we will fetch)
+  // posts state (will fetch from backend)
   const [posts, setPosts] = useState<UIFeedLFPost[]>([]);
 
   const [currentUser, setCurrentUser] = useState<{
@@ -109,7 +109,7 @@ export function LostFound() {
     avatarUrl: string | null;
   }>({ authUid: null, name: "You", course: "—", avatarUrl: null });
 
-  // load current user info (unchanged behavior but simplified)
+  // load current user info
   useEffect(() => {
     let alive = true;
 
@@ -208,9 +208,7 @@ export function LostFound() {
   // track whether current user liked each post (local)
   const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
 
-  const [commentsByPost, setCommentsByPost] = useState<Record<string, { id: string; author: string; avatar?: string; content: string; timestamp: string }[]>>({
-    // keep any mock defaults if needed
-  });
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, { id: string; author: string; avatar?: string; content: string; timestamp: string }[]>>({});
 
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
@@ -250,7 +248,6 @@ export function LostFound() {
     setIsRemoveConfirmOpen(true);
   };
 
-  // perform removal (backend + UI)
   const removePost = async (postId: string) => {
     try {
       // optimistic UI removal
@@ -271,9 +268,9 @@ export function LostFound() {
       await deleteLostAndFoundPost(postId);
     } catch (err) {
       console.error("Failed to delete post:", err);
-      // On failure, we could reload posts; for now inform user and reload simple way:
+      // reload posts from backend
       try {
-        const backendPosts = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
+        const backendPosts: BackendLFPost[] = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
         const mapped = backendPosts.map((bp) => ({
           id: bp.id,
           title: bp.title,
@@ -388,7 +385,7 @@ export function LostFound() {
         description,
         dateLostOrFound: form.date || undefined,
         timeLostOrFound: form.time || undefined,
-        imgUrl: imageDataUrl ?? undefined, // for now store base64; recommended: upload to storage and pass public url
+        imgUrl: imageDataUrl ?? undefined,
       });
 
       // replace optimistic post with server post mapping
@@ -412,7 +409,6 @@ export function LostFound() {
       console.error("Failed to create lost & found post:", err);
       // rollback optimistic insertion: remove the optimistic post
       setPosts((prev) => prev.filter((p) => p.id !== newId));
-      // optionally notify user
     }
   }
 
@@ -459,7 +455,6 @@ export function LostFound() {
         await changePostCommentCount(activePost.id, delta);
       } catch (err) {
         console.error("Failed to update comment count on backend:", err);
-        // optionally re-sync from backend
       }
     }
   }
@@ -493,7 +488,6 @@ export function LostFound() {
     }
   }
 
-  // toggle like with backend call (optimistic)
   async function toggleLikeBackend(postId: string) {
     setLikedByMe((prevLiked) => {
       const wasLiked = !!prevLiked[postId];
@@ -511,19 +505,15 @@ export function LostFound() {
     });
 
     try {
-      // determine whether we should add or remove like
       const isNowLiked = !likedByMe[postId];
       const delta = isNowLiked ? +1 : -1;
       const newCount = await changePostLikeCount(postId, delta);
-      // sync the count to server value
       setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reactions: newCount } : p)));
     } catch (err) {
       console.error("Failed to toggle like:", err);
-      // revert optimistic toggle on error
       setLikedByMe((prev) => ({ ...prev, [postId]: !!prev[postId] }));
-      // reload count from backend as fallback
       try {
-        const backendPosts = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
+        const backendPosts: BackendLFPost[] = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
         const mapped = backendPosts.map((bp) => ({
           id: bp.id,
           title: bp.title,
@@ -792,12 +782,8 @@ export function LostFound() {
                     course: currentUser.course,
                   }}
                   onCommentsCountChange={async (delta) => {
-                    // update UI count immediately
                     setPosts((prev) => prev.map((p) => p.id === activePost.id ? { ...p, comments: Math.max(0, (p.comments ?? 0) + delta) } : p));
-                    // persist on backend (best-effort)
                     try {
-                      // changePostCommentCount is in your lostAndFoundService.ts
-                      // import it at top of LostFound.tsx: import { changePostCommentCount } from './backend/lostAndFoundService';
                       await changePostCommentCount(activePost.id, delta);
                     } catch (err) {
                       console.error("Failed to update post comment_count:", err);
@@ -808,7 +794,6 @@ export function LostFound() {
             )}
           </DialogContent>
         </Dialog>
-
 
         {/* Edit Post Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
