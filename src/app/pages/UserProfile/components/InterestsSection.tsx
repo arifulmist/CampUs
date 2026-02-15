@@ -4,7 +4,7 @@ import { useState } from "react";
 import AddLookupItemModal from "./AddLookupItemModal";
 import { useUserProfileContext } from "./UserProfileContext";
 import { getErrorMessage } from "../userProfileUtils";
-import { supabase } from "../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 function normalizeText(text: string) {
   return text.trim().toLowerCase();

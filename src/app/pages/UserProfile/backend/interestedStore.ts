@@ -1,6 +1,8 @@
 export type InterestedItem = {
   id: string;
   title: string;
+  /** Route base (e.g. 'event', 'collab', 'qna', 'lostfound'). Falls back to category for legacy items. */
+  routeType?: string;
   category: string;
   tags?: string[];
   userName?: string;
@@ -8,8 +10,10 @@ export type InterestedItem = {
   createdAt: number;
 };
 
+import { supabase } from "@/supabase/supabaseClient";
+
 const STORAGE_KEY = "campus_interested_posts";
-const EVENT_NAME = "campus:interestedChanged";
+const EVENT_NAME = "campus:interested_changed";
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -41,11 +45,40 @@ export function addInterested(item: InterestedItem): void {
   if (exists) return;
   items.push(item);
   save(items);
+
+  // Best-effort DB sync (does not block UI)
+  void (async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("user_interested_posts").insert({
+        post_id: item.id,
+        user_id: user.id,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  })();
 }
 
 export function removeInterested(id: string): void {
   const items = load().filter((i) => i.id !== id);
   save(items);
+
+  // Best-effort DB sync (does not block UI)
+  void (async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("user_interested_posts").delete().eq("post_id", id).eq("user_id", user.id);
+    } catch (e) {
+      console.error(e);
+    }
+  })();
 }
 
 export function clearInterested(): void {

@@ -26,6 +26,6 @@
   },
   "include": [
     "src",
-    "supabase/supabaseClient.ts"
+    "src/supabase/supabaseClient.ts"
   ]
 }

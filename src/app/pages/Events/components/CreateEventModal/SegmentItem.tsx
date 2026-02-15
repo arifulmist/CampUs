@@ -1,4 +1,4 @@
-import type { Segment } from "../types";
+import type { Segment } from "../../components/types";
 
 export default function SegmentItem({
   segment,

@@ -12,7 +12,7 @@ import Discord from "@/assets/icons/discord_icon.svg";
 import { useEffect, useMemo } from "react";
 
 import type { UserInfoRow } from "./profile-types";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 export const PLACEHOLDER_USER_IMG = placeholderUserImg;
 

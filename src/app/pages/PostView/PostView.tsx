@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { supabase } from "../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 type Props = {
   type: string;

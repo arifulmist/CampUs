@@ -1,5 +1,5 @@
 // src/features/feed/components/EventPost.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { PostBody } from "@/components/PostBody";
 import userImg from "@/assets/images/placeholderUser.png";
 
@@ -19,12 +19,15 @@ export type EventPostType = {
   category: string;
   title: string;
   author: string;
+  authorAuthUid?: string;
   dept?: string;       
   batch?: string;     
   excerpt?: string;
   body?: string;
   location?: string;          
   image?: string | null;
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
   segments?: Segment[];
   tags: { skill_id: number; name: string }[];
   likes?: number; 
@@ -49,48 +52,57 @@ export default function EventPost({ post, onClick }: Props) {
   };
 
   
-  function formatRelativeTime(dateString?: string) {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    const diffMs = Date.now() - date.getTime();
+  const [formattedDate, setFormattedDate] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!post.createdAt) {
+      // schedule state update to avoid synchronous setState inside effect
+      setTimeout(() => setFormattedDate(undefined), 0);
+      return;
+    }
+
+    const date = new Date(post.createdAt);
+    const now = Date.now();
+    const diffMs = now - date.getTime();
     const diffMinutes = Math.floor(diffMs / 60000);
 
-    if (diffMinutes < 1) return "just now";
-    if (diffMinutes < 60) return `${diffMinutes} min ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} hr ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    let text: string;
+    if (diffMinutes < 1) text = "just now";
+    else if (diffMinutes < 60) text = `${diffMinutes} min ago`;
+    else {
+      const diffHours = Math.floor(diffMinutes / 60);
+      if (diffHours < 24) text = `${diffHours} hr ago`;
+      else {
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 3) text = `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+        else text = date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+      }
+    }
 
-   
-    return date.toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  }
-
- const formattedDate = formatRelativeTime(post.createdAt) ?? undefined;
+    // schedule to avoid synchronous setState inside effect
+    setTimeout(() => setFormattedDate(text), 0);
+  }, [post.createdAt]);
   const deptBatch = `${post.dept ?? ""}-${post.batch ?? ""}`.trim();
 
   return (
     <article
-      className="lg:rounded-xl lg:border border-stroke-grey bg-primary-lm lg:p-6 lg:shadow-sm"
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       aria-pressed={onClick ? false : undefined}
     >
-      <PostBody
-  title={post.title}
+        <PostBody
+      postId={post.id}
+      initialLikeCount={typeof post.likes === "number" ? post.likes : undefined}
+      initialCommentCount={typeof post.comments === "number" ? post.comments : undefined}
+      categorySet={"events"}
+      title={post.title}
   user={{
     name: post.author,
     batch: deptBatch,
     imgURL: post.profilePictureUrl ?? userImg,
+    userId: post.authorAuthUid,
   }}
   content={{
     text: post.body ?? post.excerpt ?? "",
@@ -100,6 +112,9 @@ export default function EventPost({ post, onClick }: Props) {
   category={post.category}
   deptBatch={deptBatch}
   formattedDate={formattedDate}
+  eventStartDate={post.eventStartDate ?? post.segments?.[0]?.startDate}
+  eventEndDate={post.eventEndDate ?? post.segments?.[0]?.endDate}
+  location={post.location ?? null}
 />
 
 

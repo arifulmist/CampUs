@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import type { Segment, EventPostType } from "../types";
+import type { Segment, EventPostType } from "../../components/types";
 import { searchSkills } from "../../backend/eventService"; 
-import {supabase} from "../../../../../../supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 export function useCreateEventForm(open: boolean) {
   const [category, setCategory] = useState<number>(0); // default to 0 or first category_id
   const [title, setTitle] = useState("");
@@ -49,18 +49,11 @@ function removeTag(skill_id: number) {
 }
 
 
-const [segments, setSegments] = useState<Segment[]>([
-  {
-    id: generateId(),
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    startTime: "",
-    endTime: "",
-    location: ""
-  }
-]);
+const [segments, setSegments] = useState<Segment[]>([]);
+
+  // event-level start/end (separate from per-segment dates)
+  const [eventStartDate, setEventStartDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
 
 
 
@@ -80,16 +73,9 @@ const [segments, setSegments] = useState<Segment[]>([
   setDescription(""); 
   setLocation(""); 
   setTitleError(false);
-  setSegments([{
-    id: generateId(),
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    startTime: "",
-    endTime: "",
-    location: ""
-  }]);
+  setSegments([]);
+  setEventStartDate("");
+  setEventEndDate("");
   setTags([]);
   setSearchTerm("");
   setSuggestions([]);
@@ -177,17 +163,25 @@ const [segments, setSegments] = useState<Segment[]>([
     setLocation,
     titleError,
     segments,
+    setSegments,
     addSegment,
     updateSegment,
     removeSegment,
+    eventStartDate,
+    setEventStartDate,
+    eventEndDate,
+    setEventEndDate,
     tags, 
+    setTags,
     addTagFromSuggestion, 
     removeTag, 
     searchTerm, 
     setSearchTerm, 
     suggestions,
     imageDataUrl,
+    setImageDataUrl,
     imageName,
+    setImageName,
     handleImage,
     previewOpen,
     setPreviewOpen,
