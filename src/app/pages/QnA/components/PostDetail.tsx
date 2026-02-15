@@ -1,20 +1,14 @@
-// PostDetail.tsx
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 import { supabase } from "@/supabase/supabaseClient";
 import { LikeButton, CommentButton } from "../../../../components/PostButtons";
 import { PostComments } from "../../../../components/PostComments";
-
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-
-import { Tag as TagIcon, Check } from "lucide-react";
-
 import type { Post, PostCategory } from "../QnAPageContent/types";
 import { categoryStyles } from "../QnAPageContent/types";
 
@@ -108,7 +102,21 @@ async function handleSaveEdit() {
   setSaving(true);
 
   try {
-   
+    let imgUrl = post.imageUrl || null; // fallback to existing image
+
+    // 1️⃣ Handle image upload if a new file is selected
+    if (imageFile) {
+      const filePath = `private/${crypto.randomUUID()}-${imageFile.name}`; // use public bucket
+      const { error: uploadError } = await supabase.storage
+        .from("post_images")
+        .upload(filePath, imageFile, { cacheControl: "3600", upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage.from("post_images").getPublicUrl(filePath);
+      imgUrl = publicUrl.publicUrl; // ✅ now a valid URL
+    }
+
+    // 2️⃣ Update main post table (title, content, image)
     const { error: postError } = await supabase
       .from("all_posts")
       .update({ title: editTitle, description: editContent })
@@ -116,39 +124,20 @@ async function handleSaveEdit() {
       .eq("author_id", userId);
     if (postError) throw postError;
 
- 
-    let imgUrl = post.imageUrl || null; // fallback to existing image
+    // 3️⃣ Update category
+    const { error: catError } = await supabase
+  .from("qna_posts")
+  .update({ category_id: editCategory, img_url: imgUrl })
+  .eq("post_id", post.id);
 
-    if (imageFile) {
-      const filePath = `private/${crypto.randomUUID()}-${imageFile.name}`;
-      const { error: uploadError } = await supabase
-        .storage
-        .from("post_images")
-        .upload(filePath, imageFile);
-      if (uploadError) throw uploadError;
+    if (catError) throw catError;
 
-      const { data: publicUrl } = supabase
-        .storage
-        .from("post_images")
-        .getPublicUrl(filePath);
-
-      imgUrl = publicUrl.publicUrl + "?t=" + new Date().getTime(); // cache-busting
-    }
-
-    const { error: qnaError } = await supabase
-      .from("qna_posts")
-      .update({ category_id: editCategory, img_url: imgUrl })
-      .eq("post_id", post.id);
-    if (qnaError) throw qnaError;
-
-    // delete old tags
-    const { error: delError } = await supabase
-      .from("post_tags")
-      .delete()
-      .eq("post_id", post.id);
+    // 4️⃣ Update tags
+    // Delete old tags
+    const { error: delError } = await supabase.from("post_tags").delete().eq("post_id", post.id);
     if (delError) throw delError;
 
-    // insert new tags
+    // Insert new tags
     const { data: skillRows } = await supabase
       .from("skills_lookup")
       .select("id")
@@ -164,20 +153,21 @@ async function handleSaveEdit() {
       if (insertError) throw insertError;
     }
 
-    
-    const { data: catRow, error: catError } = await supabase
-      .from("qna_category")
-      .select("category_name")
-      .eq("category_id", editCategory)
-      .maybeSingle();
-    const updatedCategory = catRow?.category_name || editCategory;
+    // 5️⃣ Fetch updated category name for UI
+    const { data: catRow } = await supabase
+  .from("qna_category")
+  .select("category_name")
+  .eq("category_id", editCategory)  
+  .maybeSingle();
 
-   
+    const updatedCategoryName = catRow?.category_name || post.category;
+
+    // 6️⃣ Update local state/UI
     onUpdate?.({
       ...post,
       title: editTitle,
       content: editContent,
-      category: updatedCategory,
+      category: updatedCategoryName,
       tags,
       imageUrl: imgUrl,
     });
