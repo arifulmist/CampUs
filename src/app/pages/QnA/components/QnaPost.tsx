@@ -66,7 +66,7 @@ export default function QnaPost({
             }}
             className="bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
           />
-          {titleError && <p className="text-sm text-red-600">Title is required.</p>}
+          {titleError && <p className="text-sm text-accent-lm">Title is required.</p>}
 
           <Textarea
             placeholder="Description"
@@ -76,7 +76,7 @@ export default function QnaPost({
             className="bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
           />
 
-          <div className="lg:space-y-2">
+          <div className="lg:space-y-4">
             <div className="lg:flex lg:items-center lg:gap-2 text-text-lm">
               <TagIcon className="lg:h-4 lg:w-4 text-accent-lm" />
               <span className="text-sm lg:font-medium text-text-lm">Tag</span>

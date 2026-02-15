@@ -57,7 +57,7 @@ export function PostBody({
       )}
 
       {/* Title */}
-      <h3 className="text-text-lm lg:font-extrabold lg:font-header">{title}</h3>
+      <h3 className="text-text-lm lg:font-extrabold lg:font-headgier">{title}</h3>
 
       {/* Tags */}
       {tags && tags.length > 0 && (

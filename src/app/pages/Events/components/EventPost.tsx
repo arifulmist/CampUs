@@ -48,7 +48,7 @@ export default function EventPost({ post, onClick }: Props) {
     }
   };
 
-  // Format createdAt as relative time with fallback
+  
   function formatRelativeTime(dateString?: string) {
     if (!dateString) return null;
     const date = new Date(dateString);
@@ -62,11 +62,11 @@ export default function EventPost({ post, onClick }: Props) {
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
 
-    // fallback to formatted date
+   
     return date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
-      year: "2-digit",
+      year: "numeric",
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
