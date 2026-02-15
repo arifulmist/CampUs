@@ -1,3 +1,4 @@
+// src/app/pages/LostAndFound/LostFound.tsx
 import { useState, useEffect, useRef } from "react";
 import {
   Heart,
@@ -34,26 +35,21 @@ import CommentThread, {
 import { addNotification } from "../../../mockData/notifications";
 import { DialogOverlay } from "@radix-ui/react-dialog";
 import { supabase } from "@/supabase/supabaseClient";
-import { LFPostCard, type LFPost } from "./components/LFPostCard";
+import { LFPostCard, type LFPost as UIFeedLFPost } from "./components/LFPostCard";
 
-// LFPost + LFPostCard moved to ./components/LFPostCard
+// backend service (functions)
+import {
+  fetchLostAndFoundPosts,
+  createLostAndFoundPost,
+  deleteLostAndFoundPost,
+  changePostLikeCount,
+  changePostCommentCount,
+} from "./backend/lostAndFoundService";
+import type { LFPost as BackendLFPost } from "./backend/lostAndFoundService";
 
-const mockPosts: LFPost[] = [
-  {
-    id: "lf-1",
-    title: "My Cycle is lost!!!!",
-    author: "Ariful Khan Pathan",
-    authorCourse: "CSE-23",
-    authorAvatar: "/abstract-geometric-shapes.png",
-    description:
-      "Bhai amar cycle churi hoye gese MIST theke please bhai keu dekhle boliyen...",
-    imageUrl: cycleImg,
-    reactions: 4,
-    comments: 2,
-    shares: 2,
-    timestamp: "2h ago",
-  },
-];
+/* -------------------------------------------------------------------------- */
+/* helpers / small utilities                                                   */
+/* -------------------------------------------------------------------------- */
 
 function formatRelativeTime(dateString?: string | null) {
   if (!dateString) return "";
@@ -78,6 +74,10 @@ function formatRelativeTime(dateString?: string | null) {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Component                                                                   */
+/* -------------------------------------------------------------------------- */
+
 export function LostFound() {
   const [query] = useState("");
   const [isAnnounceOpen, setIsAnnounceOpen] = useState(false);
@@ -91,17 +91,16 @@ export function LostFound() {
   const [titleError, setTitleError] = useState(false);
 
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [activePost, setActivePost] = useState<LFPost | null>(null);
+  const [activePost, setActivePost] = useState<UIFeedLFPost | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", description: "" });
 
-  // remove confirm dialog state
   const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
-  // posts state (initialized from mockPosts)
-  const [posts, setPosts] = useState<LFPost[]>(mockPosts);
+  // posts state (initialized empty; we will fetch)
+  const [posts, setPosts] = useState<UIFeedLFPost[]>([]);
 
   const [currentUser, setCurrentUser] = useState<{
     authUid: string | null;
@@ -110,6 +109,7 @@ export function LostFound() {
     avatarUrl: string | null;
   }>({ authUid: null, name: "You", course: "—", avatarUrl: null });
 
+  // load current user info (unchanged behavior but simplified)
   useEffect(() => {
     let alive = true;
 
@@ -170,209 +170,66 @@ export function LostFound() {
     };
   }, []);
 
+  // Fetch posts from backend on mount
   useEffect(() => {
     let alive = true;
-
-    async function loadFeed() {
+    (async function load() {
       try {
-        const { data: rows, error } = await supabase
-          .from("all_posts")
-          .select("post_id,title,description,author_id,like_count,comment_count,created_at")
-          .eq("type", "lostfound")
-          .order("created_at", { ascending: false })
-          .limit(50);
-        if (error) throw error;
-
-        const parsed = (rows ?? []) as any[];
-        if (!parsed.length) return;
-
-        const authorIds = Array.from(
-          new Set(
-            parsed
-              .map((r) => r.author_id)
-              .filter((x) => typeof x === "string" && x)
-          )
-        ) as string[];
-
-        const [usersRes, profilesRes, departmentsRes] = await Promise.all([
-          authorIds.length
-            ? supabase
-                .from("user_info")
-                .select(
-                  "auth_uid,name,batch,department,departments_lookup(department_name)"
-                )
-                .in("auth_uid", authorIds)
-            : Promise.resolve({ data: [], error: null } as any),
-          authorIds.length
-            ? supabase
-                .from("user_profile")
-                .select("auth_uid,profile_picture_url")
-                .in("auth_uid", authorIds)
-            : Promise.resolve({ data: [], error: null } as any),
-          supabase.from("departments_lookup").select("dept_id,department_name"),
-        ]);
-
-        if (usersRes.error) throw usersRes.error;
-        if (profilesRes.error) throw profilesRes.error;
-        if (departmentsRes.error) throw departmentsRes.error;
-
-        const deptNameById = new Map<string, string>();
-        for (const row of (departmentsRes.data ?? []) as any[]) {
-          if (typeof row.dept_id === "string" && typeof row.department_name === "string") {
-            deptNameById.set(row.dept_id, row.department_name);
-          }
-        }
-
-        const profilePicByAuthUid = new Map<string, string>();
-        for (const row of (profilesRes.data ?? []) as any[]) {
-          const authUid = row.auth_uid;
-          const url = row.profile_picture_url;
-          if (typeof authUid === "string" && typeof url === "string" && url.trim()) {
-            profilePicByAuthUid.set(authUid, url);
-          }
-        }
-
-        const userByAuthUid = new Map<string, { name: string; course: string }>();
-        for (const row of (usersRes.data ?? []) as any[]) {
-          const authUid = row.auth_uid;
-          const name = row.name;
-          const batchVal = row.batch;
-          const deptId = row.department;
-          const deptLookup = row.departments_lookup;
-          const deptName =
-            (typeof deptLookup?.department_name === "string" && deptLookup.department_name) ||
-            (typeof deptId === "string" ? deptNameById.get(deptId) ?? deptId : "");
-          const batch = typeof batchVal === "number" ? String(batchVal) : (typeof batchVal === "string" ? batchVal : "");
-          const course = deptName && batch ? `${deptName}-${batch}` : deptName || "";
-          if (typeof authUid === "string" && typeof name === "string") {
-            userByAuthUid.set(authUid, { name, course });
-          }
-        }
-
-        const mapped: LFPost[] = parsed
-          .map((r) => {
-            const postId = r.post_id;
-            const title = r.title;
-            const description = r.description;
-            const authorId = r.author_id;
-            if (
-              typeof postId !== "string" ||
-              typeof title !== "string" ||
-              typeof description !== "string" ||
-              typeof authorId !== "string"
-            ) {
-              return null;
-            }
-            const u = userByAuthUid.get(authorId);
-            return {
-              id: postId,
-              title,
-              author: u?.name ?? "Unknown",
-              authorCourse: u?.course ?? "",
-              authorAvatar: profilePicByAuthUid.get(authorId) ?? undefined,
-              authorAuthUid: authorId,
-              description,
-              reactions: typeof r.like_count === "number" ? r.like_count : 0,
-              comments: typeof r.comment_count === "number" ? r.comment_count : 0,
-              shares: 0,
-              timestamp: formatRelativeTime(r.created_at ?? null),
-            } as LFPost;
-          })
-          .filter(Boolean) as LFPost[];
+        const backendPosts: BackendLFPost[] = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
 
         if (!alive) return;
-        if (mapped.length) setPosts(mapped);
-      } catch (e) {
-        // keep mock feed if load fails
-        console.error(e);
-      }
-    }
 
-    loadFeed();
+        // map backend LFPost -> UI LFPost (UI expects fields used by LFPostCard)
+        const mapped: UIFeedLFPost[] = backendPosts.map((bp) => ({
+          id: bp.id,
+          title: bp.title,
+          author: bp.authorName ?? "Unknown",
+          authorCourse: bp.authorCourse ?? "",
+          authorAvatar: bp.authorAvatar ?? undefined,
+          authorAuthUid: bp.authorAuthUid ?? undefined,
+          description: bp.description,
+          imageUrl: bp.imgUrl ?? undefined,
+          reactions: typeof bp.likeCount === "number" ? bp.likeCount : 0,
+          comments: typeof bp.commentCount === "number" ? bp.commentCount : 0,
+          shares: 0,
+          timestamp: formatRelativeTime(bp.createdAt ?? null),
+        }));
+        setPosts(mapped);
+      } catch (err) {
+        console.error("Failed loading Lost & Found posts:", err);
+      }
+    })();
+
     return () => {
       alive = false;
     };
   }, []);
 
-  // track whether current user liked each post
+  // track whether current user liked each post (local)
   const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
 
-  // toggle like/unlike and update reactions count accordingly
-  const toggleLike = (postId: string) => {
-    setLikedByMe((prevLiked) => {
-      const wasLiked = !!prevLiked[postId];
-      // update reactions count based on previous like state
-      setPosts((prevPosts) =>
-        prevPosts.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                reactions: Math.max(0, p.reactions + (wasLiked ? -1 : 1)),
-              }
-            : p
-        )
-      );
-      return { ...prevLiked, [postId]: !wasLiked };
-    });
-  };
-
-  type LFComment = {
-    id: string;
-    author: string;
-    avatar?: string;
-    content: string;
-    timestamp: string;
-  };
-
-  // commentsByPost stores simple comments; we will map to CommentThread's shape on demand
-  const [commentsByPost, setCommentsByPost] = useState<
-    Record<string, LFComment[]>
-  >({
-    "lf-1": [
-      {
-        id: "c1",
-        author: "Hasan Mahmud",
-        avatar: "/placeholder.svg?key=h1",
-        content: "Hi! I saw your cycle in Mist field.",
-        timestamp: "1h ago",
-      },
-      {
-        id: "c2",
-        author: "Dulal Mia",
-        avatar: "/placeholder.svg?key=d1",
-        content: "Ohh! Ami o dekhchi oi khane, akta meye chalachchhilo.",
-        timestamp: "30m ago",
-      },
-    ],
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, { id: string; author: string; avatar?: string; content: string; timestamp: string }[]>>({
+    // keep any mock defaults if needed
   });
 
-  // image preview related
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // control whether Dialog is allowed to close when onOpenChange(false) arrives.
-  // Only set this true when user explicitly clicks the modal's close control (DialogClose)
-  // or we decide to close programmatically (Post).
   const allowCloseRef = useRef(false);
-
-  // ref to native file input so we can clear its value (browsers may keep it)
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // open comments dialog for a post
-  const openComments = (post: LFPost) => {
+  const openComments = (post: UIFeedLFPost) => {
     setActivePost(post);
     setIsCommentsOpen(true);
   };
 
-  // open edit dialog for a post
-  const openEdit = (post: LFPost) => {
+  const openEdit = (post: UIFeedLFPost) => {
     setEditingPostId(post.id);
     setEditForm({ title: post.title, description: post.description });
     setIsEditOpen(true);
   };
 
-  // save edit changes
   const saveEdit = () => {
     if (!editingPostId) return;
     const title = editForm.title.trim();
@@ -388,28 +245,56 @@ export function LostFound() {
     setEditingPostId(null);
   };
 
-  // request to remove: open confirm dialog
   const requestRemove = (postId: string) => {
     setPendingRemoveId(postId);
     setIsRemoveConfirmOpen(true);
   };
 
-  // perform removal (called after confirm)
-  const removePost = (postId: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
-    setCommentsByPost((prev) => {
-      const { [postId]: _removed, ...rest } = prev;
-      return rest;
-    });
-    if (activePost?.id === postId) {
-      setIsCommentsOpen(false);
-      setActivePost(null);
+  // perform removal (backend + UI)
+  const removePost = async (postId: string) => {
+    try {
+      // optimistic UI removal
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      setCommentsByPost((prev) => {
+        const { [postId]: _removed, ...rest } = prev;
+        return rest;
+      });
+
+      if (activePost?.id === postId) {
+        setIsCommentsOpen(false);
+        setActivePost(null);
+      }
+
+      setIsRemoveConfirmOpen(false);
+      setPendingRemoveId(null);
+
+      await deleteLostAndFoundPost(postId);
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+      // On failure, we could reload posts; for now inform user and reload simple way:
+      try {
+        const backendPosts = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
+        const mapped = backendPosts.map((bp) => ({
+          id: bp.id,
+          title: bp.title,
+          author: bp.authorName ?? "Unknown",
+          authorCourse: bp.authorCourse ?? "",
+          authorAvatar: bp.authorAvatar ?? undefined,
+          authorAuthUid: bp.authorAuthUid ?? undefined,
+          description: bp.description,
+          imageUrl: bp.imgUrl ?? undefined,
+          reactions: typeof bp.likeCount === "number" ? bp.likeCount : 0,
+          comments: typeof bp.commentCount === "number" ? bp.commentCount : 0,
+          shares: 0,
+          timestamp: formatRelativeTime(bp.createdAt ?? null),
+        }));
+        setPosts(mapped);
+      } catch (e) {
+        console.error("Error reloading posts after failed delete", e);
+      }
     }
-    setIsRemoveConfirmOpen(false);
-    setPendingRemoveId(null);
   };
 
-  // Filtering posts (search query currently unused)
   const filtered = posts.filter((p) =>
     p.title.toLowerCase().includes(query.toLowerCase())
   );
@@ -420,7 +305,6 @@ export function LostFound() {
       .slice(2)}`;
   }
 
-  // Reset function to clear the announce form and preview and native file input
   function resetForm() {
     setForm({
       title: "",
@@ -433,18 +317,15 @@ export function LostFound() {
     setImageName(null);
     setPreviewOpen(false);
     setTitleError(false);
-
-    // clear native input if available
     if (fileInputRef.current) {
       try {
         fileInputRef.current.value = "";
       } catch {
-        // ignore if browser forbids it
+        // ignore
       }
     }
   }
 
-  // When user picks a file: store file, imageName, and read data URL for preview/storage
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -458,8 +339,8 @@ export function LostFound() {
     reader.readAsDataURL(file);
   }
 
-  // Post creation: require title, use imageDataUrl for post.imageUrl, prepend post and create empty comment array
-  function handlePost() {
+  // Create post -> call backend createLostAndFoundPost
+  async function handlePost() {
     const title = form.title.trim();
     const description = form.description.trim();
 
@@ -468,17 +349,17 @@ export function LostFound() {
       return;
     }
 
-    const imageUrl = imageDataUrl ? imageDataUrl : undefined;
-
-    const newPost: LFPost = {
-      id: generateId("lf-"),
-      title: title,
+    // optimistic UI post
+    const newId = generateId("lf-");
+    const newPost: UIFeedLFPost = {
+      id: newId,
+      title,
       author: currentUser.name,
       authorCourse: currentUser.course,
       authorAvatar: currentUser.avatarUrl ?? undefined,
       authorAuthUid: currentUser.authUid ?? undefined,
       description,
-      imageUrl,
+      imageUrl: imageDataUrl ?? undefined,
       reactions: 0,
       comments: 0,
       shares: 0,
@@ -486,32 +367,57 @@ export function LostFound() {
     };
 
     setPosts((prev) => [newPost, ...prev]);
-
-    // Notify: new Lost & Found post created
     addNotification({
       type: "lostfound",
       title: `Lost & Found: ${newPost.title}`,
       description: newPost.description,
       path: "/lost-and-found",
     });
+    setCommentsByPost((prev) => ({ ...prev, [newPost.id]: prev[newPost.id] ?? [] }));
 
-    // ensure a comments bucket exists for this post
-    setCommentsByPost((prev) => ({
-      ...prev,
-      [newPost.id]: prev[newPost.id] ?? [],
-    }));
-
-    // reset form and preview (clear file input via ref)
     resetForm();
-
-    // allow dialog to close and then close
     allowCloseRef.current = true;
     setIsAnnounceOpen(false);
     setTitleError(false);
+
+    // send to backend
+    try {
+      const created = await createLostAndFoundPost({
+        authorAuthUid: currentUser.authUid,
+        title,
+        description,
+        dateLostOrFound: form.date || undefined,
+        timeLostOrFound: form.time || undefined,
+        imgUrl: imageDataUrl ?? undefined, // for now store base64; recommended: upload to storage and pass public url
+      });
+
+      // replace optimistic post with server post mapping
+      const serverMapped: UIFeedLFPost = {
+        id: created.id,
+        title: created.title,
+        author: created.authorName ?? "Unknown",
+        authorCourse: created.authorCourse ?? "",
+        authorAvatar: created.authorAvatar ?? undefined,
+        authorAuthUid: created.authorAuthUid ?? undefined,
+        description: created.description,
+        imageUrl: created.imgUrl ?? undefined,
+        reactions: typeof created.likeCount === "number" ? created.likeCount : 0,
+        comments: typeof created.commentCount === "number" ? created.commentCount : 0,
+        shares: 0,
+        timestamp: formatRelativeTime(created.createdAt ?? null),
+      };
+
+      setPosts((prev) => [serverMapped, ...prev.filter((p) => p.id !== newId)]);
+    } catch (err) {
+      console.error("Failed to create lost & found post:", err);
+      // rollback optimistic insertion: remove the optimistic post
+      setPosts((prev) => prev.filter((p) => p.id !== newId));
+      // optionally notify user
+    }
   }
 
-  // Helper: convert LFComment[] -> CTComment[] for CommentThread initialComments
-  function mapLFToCTComments(lf: LFComment[] | undefined): CTComment[] {
+  // convert LFComment[] -> CTComment[] for CommentThread initialComments
+  function mapLFToCTComments(lf: { id: string; author: string; avatar?: string; content: string; timestamp: string }[] | undefined): CTComment[] {
     if (!lf) return [];
     return lf.map((c) => ({
       id: c.id,
@@ -525,11 +431,10 @@ export function LostFound() {
     }));
   }
 
-  // Handler when CommentThread changes comments for the active post:
-  function handleCommentsChangeForActivePost(newComments: CTComment[]) {
+  // When CommentThread changes comments for the active post:
+  async function handleCommentsChangeForActivePost(newComments: CTComment[]) {
     if (!activePost) return;
-    // map back to simple LFComment[]
-    const lfList: LFComment[] = newComments.map((nc) => ({
+    const lfList = newComments.map((nc) => ({
       id: nc.id,
       author: nc.author,
       avatar: nc.avatar,
@@ -537,53 +442,112 @@ export function LostFound() {
       timestamp: nc.timestamp,
     }));
 
-    // update commentsByPost and post.comment count
+    // compute delta and update post.comment_count on backend
+    const prevCount = posts.find((p) => p.id === activePost.id)?.comments ?? 0;
+    const newCount = lfList.length;
+    const delta = newCount - prevCount;
+
     setCommentsByPost((prev) => ({ ...prev, [activePost.id]: lfList }));
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === activePost.id ? { ...p, comments: lfList.length } : p
+        p.id === activePost.id ? { ...p, comments: newCount } : p
       )
     );
+
+    if (delta !== 0) {
+      try {
+        await changePostCommentCount(activePost.id, delta);
+      } catch (err) {
+        console.error("Failed to update comment count on backend:", err);
+        // optionally re-sync from backend
+      }
+    }
   }
 
-  // Open announce modal (explicit opener) - ensures no accidental close allowed
   function openAnnounceModal() {
     allowCloseRef.current = false;
-    // clear any stale state immediately so the dialog shows fresh content
     resetForm();
     setIsAnnounceOpen(true);
   }
 
-  // Local explicit close: invoked by the visible close button (DialogClose)
-  // Reset the form and allow close then close the dialog.
   function handleClose() {
     allowCloseRef.current = true;
-    // reset before closing so parent sees cleared state if needed
     resetForm();
     setIsAnnounceOpen(false);
   }
 
-  // Dialog's onOpenChange handler that blocks unsolicited closes
   function handleAnnounceDialogChange(nextOpen: boolean) {
     if (nextOpen) {
-      // dialog opened -> ensure fresh form and block accidental close
       allowCloseRef.current = false;
       resetForm();
       setIsAnnounceOpen(true);
       return;
     }
-    // nextOpen === false: a close was requested (overlay click, ESC, etc.)
     if (allowCloseRef.current) {
-      // allowed close -> reset and close
       resetForm();
       setIsAnnounceOpen(false);
       allowCloseRef.current = false;
       setTitleError(false);
     } else {
-      // not allowed -> re-open (ignore the user's accidental close)
       setIsAnnounceOpen(true);
     }
   }
+
+  // toggle like with backend call (optimistic)
+  async function toggleLikeBackend(postId: string) {
+    setLikedByMe((prevLiked) => {
+      const wasLiked = !!prevLiked[postId];
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                reactions: Math.max(0, p.reactions + (wasLiked ? -1 : 1)),
+              }
+            : p
+        )
+      );
+      return { ...prevLiked, [postId]: !wasLiked };
+    });
+
+    try {
+      // determine whether we should add or remove like
+      const isNowLiked = !likedByMe[postId];
+      const delta = isNowLiked ? +1 : -1;
+      const newCount = await changePostLikeCount(postId, delta);
+      // sync the count to server value
+      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, reactions: newCount } : p)));
+    } catch (err) {
+      console.error("Failed to toggle like:", err);
+      // revert optimistic toggle on error
+      setLikedByMe((prev) => ({ ...prev, [postId]: !!prev[postId] }));
+      // reload count from backend as fallback
+      try {
+        const backendPosts = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
+        const mapped = backendPosts.map((bp) => ({
+          id: bp.id,
+          title: bp.title,
+          author: bp.authorName ?? "Unknown",
+          authorCourse: bp.authorCourse ?? "",
+          authorAvatar: bp.authorAvatar ?? undefined,
+          authorAuthUid: bp.authorAuthUid ?? undefined,
+          description: bp.description,
+          imageUrl: bp.imgUrl ?? undefined,
+          reactions: typeof bp.likeCount === "number" ? bp.likeCount : 0,
+          comments: typeof bp.commentCount === "number" ? bp.commentCount : 0,
+          shares: 0,
+          timestamp: formatRelativeTime(bp.createdAt ?? null),
+        }));
+        setPosts(mapped);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* RENDER                                                                   */
+  /* ------------------------------------------------------------------------ */
 
   return (
     <>
@@ -615,7 +579,7 @@ export function LostFound() {
                   onEdit={() => openEdit(post)}
                   onRemove={() => requestRemove(post.id)}
                   isLiked={!!likedByMe[post.id]}
-                  onToggleLike={() => toggleLike(post.id)}
+                  onToggleLike={() => toggleLikeBackend(post.id)}
                 />
               ))
             )}
@@ -631,11 +595,8 @@ export function LostFound() {
             <DialogHeader>
               <DialogTitle>Announce Lost or Found Item</DialogTitle>
 
-              {/* Use the library's default close control (DialogClose).
-                  Clicking this will call our handleClose to reset and allow close. */}
               <DialogClose
                 onClick={(e) => {
-                  // prevent nested DialogClose's default behavior from racing with our state change:
                   e.stopPropagation();
                   handleClose();
                 }}
@@ -655,8 +616,7 @@ export function LostFound() {
                   value={form.title}
                   onChange={(e) => {
                     setForm({ ...form, title: e.target.value });
-                    if (titleError && e.target.value.trim())
-                      setTitleError(false);
+                    if (titleError && e.target.value.trim()) setTitleError(false);
                   }}
                   className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
@@ -675,9 +635,7 @@ export function LostFound() {
                   placeholder="Describe the item and context"
                   rows={5}
                   value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="lg:mt-1 bg-primary-lm border-stroke-grey text-text-lm placeholder:text-text-lighter-lm focus-visible:ring-accent-lm focus-visible:border-accent-lm"
                 />
               </div>
@@ -703,7 +661,6 @@ export function LostFound() {
                 </div>
               </div>
 
-              {/* File upload + preview */}
               <div className="lg:grid lg:grid-cols-1 sm:grid-cols-[auto_1fr] lg:items-center lg:gap-3">
                 <Button
                   className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
@@ -768,7 +725,7 @@ export function LostFound() {
           </DialogContent>
         </Dialog>
 
-        {/* Expanded image preview lightbox (global, appears when clicking thumbnail inside dialog) */}
+        {/* Expanded image preview lightbox */}
         {previewOpen && imageDataUrl && (
           <>
             <div
@@ -827,9 +784,7 @@ export function LostFound() {
                 </div>
 
                 <CommentThread
-                  initialComments={mapLFToCTComments(
-                    commentsByPost[activePost.id]
-                  )}
+                  initialComments={mapLFToCTComments(commentsByPost[activePost.id])}
                   currentUser={{
                     name: currentUser.name,
                     avatar: currentUser.avatarUrl ?? "/placeholder.svg",
@@ -904,12 +859,7 @@ export function LostFound() {
             <DialogHeader>
               <DialogTitle>Hide Post?</DialogTitle>
             </DialogHeader>
-            {/* <div className="lg:mt-1 lg:flex lg:items-center lg:gap-2 lg:rounded-md bg-secondary-lm lg:border border-stroke-peach lg:p-2">
-              <AlertTriangle className="lg:h-4 lg:w-4 text-accent-lm" />
-              <span className="text-sm text-accent-lm">
-                This action cannot be undone.
-              </span>
-            </div> */}
+
             <div className="lg:grid lg:grid-cols-2 lg:gap-3 lg:mt-4">
               <Button
                 variant="outline"
