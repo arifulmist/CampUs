@@ -1,9 +1,10 @@
-import { Link, useOutletContext } from "react-router";
+import { useOutletContext } from "react-router-dom";
 import { type ResourceItem, createResource } from "../backend/studyService";
 import { useState } from "react";
 import { UserInfo } from "@/components/UserInfo";
 import { ResourceAddModal } from "./ResourcesAddModal";
 import { toast } from "react-hot-toast";
+import notesEmptyState from "@/assets/images/noNotes.svg";
 
 export function Resources() {
   const outlet = useOutletContext<{
@@ -48,9 +49,10 @@ export function Resources() {
       outlet?.addResource?.(newResource);
       toast.success("Resource added successfully!");
       setOpenModal(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error adding resource:", err);
-      toast.error(err.message || "Failed to add resource");
+      const message = err instanceof Error ? err.message : "Failed to add resource";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,15 +76,17 @@ export function Resources() {
             outlet.baseResources.length > 0 ? (
               <h5 className="text-text-lighter-lm">Nothing found</h5>
             ) : (
-              <h5 className="text-text-lighter-lm">
-                No resources for this term yet
-              </h5>
+             <div className="flex flex-col items-center lg:gap-2">
+                <img src={notesEmptyState} className="lg:size-50"></img>
+                <h5 className="text-text-lighter-lm">No resources for this term yet</h5>
+            </div>
             )
           ) : (
             <div className="lg:space-y-4">
               {resources.map((r: ResourceItem) => (
                 <Resource
                   key={r.id}
+                  authorId={r.authorId}
                   user={r.user}
                   title={r.title}
                   course={r.course}
@@ -106,30 +110,37 @@ export function Resources() {
 }
 
 interface ResourceProps {
+  authorId?: string | null;
   user: {
     name: string;
     batch: string;
-    imgURL: string;
+    imgURL: string | null;
   };
   title: string;
   course: string;
   resourceLink: string;
 }
 
-function Resource({ user, title, course, resourceLink }: ResourceProps) {
+function Resource({ authorId, user, title, course, resourceLink }: ResourceProps) {
   return (
     <div className="lg:w-full lg:h-fit lg:p-10 bg-secondary-lm lg:border border-stroke-grey hover:bg-hover-lm lg:rounded-lg">
       <UserInfo
-        userImg={user.imgURL}
+        userImg={user.imgURL || undefined}
         userName={user.name}
         userBatch={user.batch}
+        userId={authorId ?? undefined}
       ></UserInfo>
       <p className="text-text-lm lg:mt-5">
         {course}_{title}
       </p>
-      <Link to={resourceLink} className="text-accent-lm hover:underline">
+      <a
+        href={resourceLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-accent-lm hover:underline break-all"
+      >
         {resourceLink}
-      </Link>
+      </a>
     </div>
   );
 }

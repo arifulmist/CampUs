@@ -12,13 +12,6 @@ import {
 import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
 
-import {
-  addInterested,
-  removeInterested,
-  getInterested,
-  subscribe as interestedSubscribe,
-} from "../backend/interestedStore";
-
 function postPath(type: string, postId: string) {
   const t = type.trim().toLowerCase();
   const base = t === "lostfound" ? "lost-and-found" : t;
@@ -72,14 +65,6 @@ export function UserPostsSection() {
   const [collabById, setCollabById] = useState<Map<string, CollabPost>>(new Map());
   const [qnaById, setQnaById] = useState<Map<string, QnaFeedPost>>(new Map());
   const [lostFoundById, setLostFoundById] = useState<Map<string, LFPost>>(new Map());
-
-  const [interestedIds, setInterestedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    setInterestedIds(new Set(getInterested().map((i) => i.id)));
-    const unsub = interestedSubscribe((items) => setInterestedIds(new Set(items.map((i) => i.id))));
-    return unsub;
-  }, []);
 
   const idsByType = useMemo(() => {
     const byType = {
@@ -228,38 +213,52 @@ export function UserPostsSection() {
           if (postsError) throw postsError;
           if (metaError) throw metaError;
 
-          const [categoriesRes, tagsRes] = await Promise.all([
+          const [categoriesRes, postTagsRes, skillsRes] = await Promise.all([
             supabase.from("collab_category").select("category_id,category"),
-            supabase.from("collab_tags").select("post_id,tag").in("post_id", idsByType.collab),
+            supabase.from("post_tags").select("post_id,skill_id").in("post_id", idsByType.collab),
+            supabase.from("skills_lookup").select("id,skill"),
           ]);
 
           if (categoriesRes.error) throw categoriesRes.error;
-          if (tagsRes.error) throw tagsRes.error;
+          if (postTagsRes.error) throw postTagsRes.error;
+          if (skillsRes.error) throw skillsRes.error;
 
-          const categoryById = new Map<number, any>();
-          for (const row of (categoriesRes.data ?? []) as any[]) {
-            if (typeof row?.category_id === "number" && typeof row?.category === "string") {
-              categoryById.set(row.category_id, row.category);
+          const categoryById = new Map<string, string>();
+          for (const row of (categoriesRes.data ?? []) as Array<Record<string, unknown>>) {
+            const id = row.category_id;
+            const cat = row.category;
+            if ((typeof id === "number" || typeof id === "string") && typeof cat === "string") {
+              categoryById.set(String(id), cat);
+            }
+          }
+
+          const skillNameById = new Map<number, string>();
+          for (const row of (skillsRes.data ?? []) as Array<Record<string, unknown>>) {
+            const id = row.id;
+            const skill = row.skill;
+            if (typeof id === "number" && typeof skill === "string" && skill.trim()) {
+              skillNameById.set(id, skill);
             }
           }
 
           const tagsByPostId = new Map<string, string[]>();
-          for (const row of (tagsRes.data ?? []) as any[]) {
-            const postId = row?.post_id;
-            const tag = row?.tag;
-            if (typeof postId === "string" && typeof tag === "string") {
-              const arr = tagsByPostId.get(postId) ?? [];
-              arr.push(tag);
-              tagsByPostId.set(postId, arr);
-            }
+          for (const row of (postTagsRes.data ?? []) as Array<Record<string, unknown>>) {
+            const postId = row.post_id;
+            const skillId = row.skill_id;
+            if (typeof postId !== "string" || typeof skillId !== "number") continue;
+            const skill = skillNameById.get(skillId);
+            if (!skill) continue;
+            const arr = tagsByPostId.get(postId) ?? [];
+            arr.push(skill);
+            tagsByPostId.set(postId, arr);
           }
 
-          const metaByPostId = new Map<string, number>();
-          for (const row of (metaRows ?? []) as any[]) {
-            const postId = row?.post_id;
-            const categoryId = row?.category_id;
-            if (typeof postId === "string" && typeof categoryId === "number") {
-              metaByPostId.set(postId, categoryId);
+          const metaByPostId = new Map<string, string>();
+          for (const row of (metaRows ?? []) as Array<Record<string, unknown>>) {
+            const postId = row.post_id;
+            const categoryId = row.category_id;
+            if (typeof postId === "string" && (typeof categoryId === "string" || typeof categoryId === "number")) {
+              metaByPostId.set(postId, String(categoryId));
             }
           }
 
@@ -273,7 +272,7 @@ export function UserPostsSection() {
             }
 
             const categoryId = metaByPostId.get(postId);
-            const category = typeof categoryId === "number" ? categoryById.get(categoryId) : undefined;
+            const category = categoryId ? categoryById.get(categoryId) : undefined;
             if (!category) continue;
 
             map.set(postId, {
@@ -285,9 +284,10 @@ export function UserPostsSection() {
               authorName: displayName,
               authorBatch: batchLabel,
               authorAvatarUrl: profilePictureUrl,
-              tags: (tagsByPostId.get(postId) ?? []).map((t) => `#${t}`),
+              tags: tagsByPostId.get(postId) ?? [],
               likes: typeof row?.like_count === "number" ? row.like_count : 0,
               comments: typeof row?.comment_count === "number" ? row.comment_count : 0,
+              createdAt: typeof row?.created_at === "string" ? row.created_at : null,
             });
           }
 
@@ -393,22 +393,6 @@ export function UserPostsSection() {
     };
   }, [batchLabel, displayName, idsByType, profilePictureUrl, viewedAuthUid]);
 
-  const toggleInterested = (p: CollabPost) => {
-    if (interestedIds.has(p.id)) {
-      removeInterested(p.id);
-    } else {
-      addInterested({
-        id: p.id,
-        title: p.title,
-        routeType: "collab",
-        category: p.category,
-        tags: (p.tags ?? []).map((t) => (t.startsWith("#") ? t.slice(1) : t)),
-        userName: p.authorName,
-        createdAt: Date.now(),
-      });
-    }
-  };
-
   return (
     <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
       <h4 className="font-header">Posts</h4>
@@ -442,8 +426,7 @@ export function UserPostsSection() {
                 <CollabPostCard
                   key={p.postId}
                   post={post}
-                  isInterested={interestedIds.has(p.postId)}
-                  onToggleInterested={toggleInterested}
+                  onClick={() => navigate(`/collab/${p.postId}`)}
                 />
               );
             }

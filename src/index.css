@@ -129,3 +129,21 @@ h1,h2,h3,h4,h5,h6
   }
 }
 
+@layer utilities
+{
+  .text-danger-lm
+  {
+    color: var(--color-danger-lm);
+  }
+
+  .bg-danger-lm
+  {
+    background-color: var(--color-danger-lm);
+  }
+
+  .border-danger-lm
+  {
+    border-color: var(--color-danger-lm);
+  }
+}
+

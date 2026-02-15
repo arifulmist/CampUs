@@ -129,7 +129,9 @@ export function UserProfile() {
             eventIds.length
               ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", eventIds)
               : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
-            eventIds.length ? supabase.from("skills_lookup").select("id,skill") : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
+            eventIds.length || collabIds.length
+              ? supabase.from("skills_lookup").select("id,skill")
+              : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
             collabIds.length
               ? supabase.from("collab_posts").select("post_id,category_id").in("post_id", collabIds)
               : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
@@ -137,7 +139,7 @@ export function UserProfile() {
               ? supabase.from("collab_category").select("category_id,category")
               : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
             collabIds.length
-              ? supabase.from("collab_tags").select("post_id,tag").in("post_id", collabIds)
+              ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", collabIds)
               : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
           ]);
 
@@ -189,12 +191,12 @@ export function UserProfile() {
           eventTagsByPostId.set(postId, arr);
         }
 
-        const collabCategoryById = new Map<number, string>();
+        const collabCategoryById = new Map<string, string>();
         for (const row of ((collabCatsRes as any).data ?? []) as Array<Record<string, unknown>>) {
           const id = row.category_id;
           const name = row.category;
-          if (typeof id === "number" && typeof name === "string" && name.trim()) {
-            collabCategoryById.set(id, name);
+          if ((typeof id === "number" || typeof id === "string") && typeof name === "string" && name.trim()) {
+            collabCategoryById.set(String(id), name);
           }
         }
 
@@ -202,18 +204,20 @@ export function UserProfile() {
         for (const row of ((collabMetaRes as any).data ?? []) as Array<Record<string, unknown>>) {
           const postId = row.post_id;
           const categoryId = row.category_id;
-          if (typeof postId !== "string" || typeof categoryId !== "number") continue;
-          const name = collabCategoryById.get(categoryId);
+          if (typeof postId !== "string" || (typeof categoryId !== "number" && typeof categoryId !== "string")) continue;
+          const name = collabCategoryById.get(String(categoryId));
           if (name) collabCategoryByPostId.set(postId, name);
         }
 
         const collabTagsByPostId = new Map<string, string[]>();
         for (const row of ((collabTagsRes as any).data ?? []) as Array<Record<string, unknown>>) {
           const postId = row.post_id;
-          const tag = row.tag;
-          if (typeof postId !== "string" || typeof tag !== "string" || !tag.trim()) continue;
+          const skillId = row.skill_id;
+          if (typeof postId !== "string" || typeof skillId !== "number") continue;
+          const skill = skillById.get(skillId);
+          if (!skill) continue;
           const arr = collabTagsByPostId.get(postId) ?? [];
-          arr.push(tag);
+          arr.push(skill);
           collabTagsByPostId.set(postId, arr);
         }
 

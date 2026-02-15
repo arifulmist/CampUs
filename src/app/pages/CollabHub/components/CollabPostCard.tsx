@@ -1,9 +1,7 @@
-import { LikeButton, CommentButton, ShareButton } from "@/components/PostButtons";
-import { UserInfo } from "@/components/UserInfo";
-import { Button } from "@/components/ui/button";
-import { getCategoryClass } from "@/utils/categoryColors";
-
 import type { Category } from "./Category";
+import React, { useEffect, useState } from "react";
+import { PostBody } from "@/components/PostBody";
+import userImg from "@/assets/images/placeholderUser.png";
 
 export type CollabPost = {
   id: string;
@@ -14,79 +12,92 @@ export type CollabPost = {
   authorName: string;
   authorBatch: string;
   authorAvatarUrl: string | null;
-  tags: string[];
+  tags: string[]; // tag names (without '#')
   likes: number;
   comments: number;
+  createdAt?: string | null;
 };
 
 export function CollabPostCard({
   post,
-  isInterested,
-  onToggleInterested,
+  onClick,
 }: {
   post: CollabPost;
-  isInterested: boolean;
-  onToggleInterested: (post: CollabPost) => void;
+  onClick?: () => void;
 }) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!onClick) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
+  const [formattedDate, setFormattedDate] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!post.createdAt) {
+      setTimeout(() => setFormattedDate(undefined), 0);
+      return;
+    }
+
+    const date = new Date(post.createdAt);
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    let text: string;
+    if (diffMinutes < 1) text = "just now";
+    else if (diffMinutes < 60) text = `${diffMinutes} min ago`;
+    else {
+      const diffHours = Math.floor(diffMinutes / 60);
+      if (diffHours < 24) text = `${diffHours} hr ago`;
+      else {
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 3) text = `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+        else
+          text = date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+      }
+    }
+
+    setTimeout(() => setFormattedDate(text), 0);
+  }, [post.createdAt]);
+
   return (
-    <div
-      className={`relative bg-secondary-lm hover:bg-hover-lm transition border-2 p-8 rounded-2xl ${
-        isInterested
-          ? "border-stroke-peach"
-          : "border-stroke-grey hover:border-stroke-peach"
-      }`}
+    <article
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      aria-pressed={onClick ? false : undefined}
     >
-      <span
-        className={`lg:absolute lg:top-4 lg:right-4 lg:font-bold text-primary-lm lg:px-3 lg:py-1 lg:rounded-full text-m lg:uppercase lg:tracking-wide ${getCategoryClass(
-          post.category,
-          "collab"
-        )}`}
-      >
-        {post.category}
-      </span>
-
-      <UserInfo
-        userImg={post.authorAvatarUrl}
-        userName={post.authorName}
-        userBatch={post.authorBatch || "Student"}
-        userId={post.authorAuthUid}
+      <PostBody
+        postId={post.id}
+        initialLikeCount={post.likes}
+        initialCommentCount={post.comments}
+        categorySet={"collab"}
+        title={post.title}
+        user={{
+          name: post.authorName,
+          batch: post.authorBatch ?? "",
+          imgURL: post.authorAvatarUrl ?? userImg,
+          userId: post.authorAuthUid,
+        }}
+        content={{
+          text: post.content,
+        }}
+        tags={post.tags}
+        category={post.category}
+        deptBatch={post.authorBatch}
+        formattedDate={formattedDate}
       />
-
-      <h3 className="lg:mt-2 lg:font-[Poppins] lg:font-semibold text-xl text-text-lm">
-        {post.title}
-      </h3>
-      <p className="text-text-lighter-lm text-md lg:leading-relaxed">{post.content}</p>
-
-      <div className="lg:my-4 lg:mb-10 lg:flex lg:gap-2 lg:flex-wrap">
-        {post.tags.map((tag) => (
-          <span
-            key={tag}
-            className="lg:font-bold text-accent-lm lg:border border-accent-lm lg:px-3 lg:py-1.5 lg:rounded-full text-sm"
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
-
-      <div className="lg:flex lg:items-center lg:justify-between lg:mt-2">
-        <div className="lg:flex lg:gap-4 lg:items-center">
-          <LikeButton postId={post.id} initialLikeCount={post.likes} />
-          <CommentButton postId={post.id} initialCommentCount={post.comments} />
-          <ShareButton />
-        </div>
-        <Button
-          onClick={() => onToggleInterested(post)}
-          className={`${
-            isInterested
-              ? "bg-accent-lm text-primary-lm"
-              : "border border-stroke-peach bg-primary-lm text-accent-lm"
-          } rounded-full px-4 py-2 hover:bg-hover-btn-lm`}
-          aria-pressed={isInterested}
-          title={isInterested ? "Marked as Interested" : "Mark Interested"}
-        >
-          Interested
-        </Button>
-      </div>
-    </div>
+    </article>
   );
 }
