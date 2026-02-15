@@ -783,21 +783,32 @@ export function LostFound() {
                   </p>
                 </div>
 
+                {/* NEW CommentThread usage (backend-backed) */}
                 <CommentThread
-                  initialComments={mapLFToCTComments(commentsByPost[activePost.id])}
+                  postId={activePost.id}
                   currentUser={{
                     name: currentUser.name,
                     avatar: currentUser.avatarUrl ?? "/placeholder.svg",
                     course: currentUser.course,
                   }}
-                  onChange={(newComments) =>
-                    handleCommentsChangeForActivePost(newComments)
-                  }
+                  onCommentsCountChange={async (delta) => {
+                    // update UI count immediately
+                    setPosts((prev) => prev.map((p) => p.id === activePost.id ? { ...p, comments: Math.max(0, (p.comments ?? 0) + delta) } : p));
+                    // persist on backend (best-effort)
+                    try {
+                      // changePostCommentCount is in your lostAndFoundService.ts
+                      // import it at top of LostFound.tsx: import { changePostCommentCount } from './backend/lostAndFoundService';
+                      await changePostCommentCount(activePost.id, delta);
+                    } catch (err) {
+                      console.error("Failed to update post comment_count:", err);
+                    }
+                  }}
                 />
               </div>
             )}
           </DialogContent>
         </Dialog>
+
 
         {/* Edit Post Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
