@@ -108,6 +108,7 @@ export default function QAPageContent() {
           timestamp: formatPostTimestamp(p.created_at),
           imageUrl: p.qna_posts?.img_url ?? null,
           authorUid: p.author?.auth_uid ?? null, 
+          likedByUser: p.liked_by_user || false,
         }));
 
         setPosts(formatted);
@@ -119,7 +120,7 @@ export default function QAPageContent() {
 
     fetchPosts();
   }, [isNewPostOpen]);
-
+  
   /* -------------------- FILTER -------------------- */
   const filteredPosts = posts.filter(
     (p) =>
@@ -128,14 +129,28 @@ export default function QAPageContent() {
   );
 
   /* -------------------- ACTIONS -------------------- */
-  const toggleLike = async (postId: string) => {
+ const toggleLike = async (postId: string, liked: boolean) => {
+  if (liked) {
+    const { error } = await supabase.rpc("decrement_post_likes", { p_id: postId });
+    if (!error) {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, reactions: p.reactions - 1, likedByUser: false } : p
+        )
+      );
+    }
+  } else {
     const { error } = await supabase.rpc("increment_post_likes", { p_id: postId });
     if (!error) {
       setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, reactions: p.reactions + 1 } : p))
+        prev.map((p) =>
+          p.id === postId ? { ...p, reactions: p.reactions + 1, likedByUser: true } : p
+        )
       );
     }
-  };
+  }
+};
+
 
   const addInlineComment = async (postId: string, text: string) => {
     if (!text.trim()) return;
@@ -192,7 +207,7 @@ export default function QAPageContent() {
                   post={post}
                   isOwner={post.authorUid === currentUserUid}
                   onOpenDetail={() => setSelectedPost(post)}
-                  onLike={() => toggleLike(post.id)}
+                  onLike={() => toggleLike(post.id, post.likedByUser ?? false)}
                   onAddInlineComment={(t) => addInlineComment(post.id, t)}
                 />
               ))}

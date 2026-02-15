@@ -123,31 +123,31 @@ export default function PostCard({
       </div>
 
       {/* Actions */}
-      <div>
-        <div className="lg:flex lg:gap-4 lg:items-center lg:mt-4">
-          <button onClick={(e) => { e.stopPropagation(); onLike(); }}><LikeButton /></button>
-          <button onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}><CommentButton /></button>
-          <button onClick={(e) => { e.stopPropagation(); alert("Share clicked"); }}><ShareButton /></button>
-        </div>
+     <div className="lg:flex lg:gap-4 lg:items-center lg:mt-4">
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      onLike();
+    }}
+    className={`flex items-center gap-1 ${post.likedByUser ? "text-accent-lm" : ""}`}
+  >
+    <LikeButton />
+    <span className="text-sm text-text-lm">{post.reactions}</span>
+  </button>
 
-       
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      onOpenDetail();
+    }}
+    className="flex items-center gap-1"
+  >
+    <CommentButton />
+    <span className="text-sm text-text-lm">{post.comments}</span>
+  </button>
+</div>
 
-        {!collapsed && (
-          <div className="lg:mt-4 bg-secondary-lm lg:rounded-2xl lg:p-6 border-2 border-stroke-grey">
-            {!replying ? (
-              <button onClick={(e) => { e.stopPropagation(); setReplying(true); }} className="lg:w-full text-left lg:px-4 lg:py-3 text-text-lighter-lm text-sm hover:bg-hover-lm lg:rounded-lg lg:transition">Add a reply</button>
-            ) : (
-              <div className="lg:space-y-4">
-                <Textarea placeholder="Add a reply..." value={replyText} onChange={(e) => setReplyText(e.target.value)} className="border-none bg-secondary-lm text-text-lm focus-visible:ring-0" />
-                <div className="lg:flex lg:justify-end lg:gap-2">
-                  <Button variant="ghost" onClick={() => { setReplying(false); setReplyText(""); }}>Cancel</Button>
-                  <Button className="bg-accent-lm text-primary-lm" onClick={() => { onAddInlineComment(replyText); setReplyText(""); setReplying(false); }}>Comment</Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
-    </div>
+    
   );
 }
