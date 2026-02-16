@@ -69,6 +69,8 @@ export function PostComments({ postId }: { postId: string }) {
   const [tree, setTree] = useState<CommentNode[]>([]);
   const [likedById, setLikedById] = useState<Record<string, boolean>>({});
 
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -125,6 +127,53 @@ export function PostComments({ postId }: { postId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
+  useEffect(() => {
+    if (!postId) return;
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ postId?: string }>;
+      const targetId = ce?.detail?.postId;
+      if (!targetId) return;
+      if (targetId !== postId) return;
+      // focus the top comment input
+      if (inputRef.current) {
+        inputRef.current.focus();
+        try {
+          inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch {}
+        return;
+      }
+      setTimeout(() => {
+        inputRef.current?.focus();
+        try {
+          inputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch {}
+      }, 0);
+    };
+
+    window.addEventListener("campus:focus_comment_input", handler as EventListener);
+    // Also check a persistent marker set on window in case the event fired before mount
+    try {
+      const last = (window as any).__campus_last_focus_comment as { postId?: string; ts?: number } | undefined;
+      if (last?.postId === postId && Date.now() - (last.ts ?? 0) < 5000) {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          try {
+            inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch {}
+        } else {
+          setTimeout(() => {
+            inputRef.current?.focus();
+            try {
+              inputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+            } catch {}
+          }, 0);
+        }
+      }
+    } catch {}
+
+    return () => window.removeEventListener("campus:focus_comment_input", handler as EventListener);
+  }, [postId]);
+
   const sortedParents = useMemo(() => {
     const parents = [...tree];
 
@@ -172,6 +221,7 @@ export function PostComments({ postId }: { postId: string }) {
     <div className="lg:mt-6 lg:flex lg:flex-col lg:gap-4 bg-primary-lm lg:p-6 border border-stroke-grey rounded-xl">
       <div className="lg:flex lg:gap-3 lg:items-center">
         <input
+          ref={inputRef}
           value={topCommentText}
           onChange={(e) => setTopCommentText(e.target.value)}
           onKeyDown={(e) => {

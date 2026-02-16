@@ -16,6 +16,7 @@ import { Notes } from "./pages/Study/components/Notes";
 import { StudyLayout } from "./pages/Study/StudyLayout";
 import { Resources } from "./pages/Study/components/Resources";
 import { LostFound } from "./pages/LostAndFound/LostFound";
+import { LostFoundDetailRoute } from "./pages/LostAndFound/LostFoundDetailRoute";
 import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Error_NotFound";
 // import { Messaging } from "./pages/Messaging/Messaging";
@@ -59,7 +60,7 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "/lost-and-found", element: <LostFound /> },
-      { path: "/lost-and-found/:postId", element: <PostView type="lost-and-found" /> },
+      { path: "/lost-and-found/:post_id", element: <LostFoundDetailRoute /> },
       { path: "/profile", element: <UserProfile /> },
       { path: "/profile/:studentId", element: <UserProfile /> },
       // { path: "/messages", element: <Messaging /> },

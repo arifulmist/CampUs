@@ -181,7 +181,16 @@ export function CommentButton({
     <ButtonBase
       icon={commentIcon}
       label={commentCount === 0 ? "Comment" : commentCount}
-    ></ButtonBase>
+      clickEvent={() => {
+        if (postId) {
+          // persistent marker in case PostComments mounts after this event
+          try {
+            (window as any).__campus_last_focus_comment = { postId, ts: Date.now() };
+          } catch {}
+          window.dispatchEvent(new CustomEvent("campus:focus_comment_input", { detail: { postId } }));
+        }
+      }}
+    />
   );
 }
 

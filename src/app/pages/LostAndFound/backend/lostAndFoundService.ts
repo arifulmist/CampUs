@@ -21,6 +21,7 @@ export type LostAndFoundRow = {
   date_lost_or_found: string | null; // ISO date string (YYYY-MM-DD) or null
   time_lost_or_found: string | null; // time string "HH:MM" or null
   img_url: string | null;
+  category?: string | null;
 };
 
 export type UserInfoRow = {
@@ -39,6 +40,7 @@ export type UserProfileRow = {
 
 export type LFPost = {
   id: string; // post_id
+  category: string; // 'lost' | 'found'
   title: string;
   description: string;
   authorAuthUid?: string | null;
@@ -91,13 +93,26 @@ export async function fetchLostAndFoundPosts({
     const authorIds = Array.from(new Set(posts.map((p) => p.author_id).filter(Boolean) as string[]));
 
     // Fetch lost_and_found_posts rows for these postIds
-    const { data: lfRows, error: lfError } = await supabase
+    // NOTE: tolerate older DBs where the new `category` column doesn't exist yet.
+    let lfRows: unknown[] | null = null;
+    const lfTry1 = await supabase
       .from("lost_and_found_posts")
-      .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .in("post_id", postIds);
 
-    if (lfError) {
-      console.warn("fetchLostAndFoundPosts: lost_and_found_posts lookup error", lfError);
+    if (lfTry1.error) {
+      console.warn("fetchLostAndFoundPosts: lost_and_found_posts lookup error", lfTry1.error);
+      const lfTry2 = await supabase
+        .from("lost_and_found_posts")
+        .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+        .in("post_id", postIds);
+      if (lfTry2.error) {
+        console.warn("fetchLostAndFoundPosts: lost_and_found_posts fallback also failed", lfTry2.error);
+      } else {
+        lfRows = (lfTry2.data as unknown as unknown[]) ?? [];
+      }
+    } else {
+      lfRows = (lfTry1.data as unknown as unknown[]) ?? [];
     }
 
     const lfByPost = new Map<string, LostAndFoundRow>();
@@ -172,6 +187,7 @@ export async function fetchLostAndFoundPosts({
 
       return {
         id: ap.post_id,
+        category: (lf?.category ? String(lf.category) : "lost").toLowerCase(),
         title: ap.title,
         description: ap.description,
         authorAuthUid: ap.author_id ?? undefined,
@@ -212,6 +228,7 @@ export async function fetchLostAndFoundPosts({
  */
 export async function createLostAndFoundPost({
   authorAuthUid,
+  category,
   title,
   description,
   dateLostOrFound,
@@ -219,6 +236,7 @@ export async function createLostAndFoundPost({
   imgUrl,
 }: {
   authorAuthUid: string | null;
+  category: "lost" | "found";
   title: string;
   description: string;
   dateLostOrFound?: string | null;
@@ -249,14 +267,30 @@ export async function createLostAndFoundPost({
 
     const postId = (insertData as AllPostsRow).post_id;
     // Insert into lost_and_found_posts
-    const { error: lfError } = await supabase.from("lost_and_found_posts").insert([
+    // NOTE: tolerate older DBs where the new `category` column doesn't exist yet.
+    let lfError = (await supabase.from("lost_and_found_posts").insert([
       {
         post_id: postId,
         date_lost_or_found: dateLostOrFound ?? null,
         time_lost_or_found: timeLostOrFound ?? null,
         img_url: imgUrl ?? null,
+        category: String(category).toLowerCase(),
       },
-    ]);
+    ])).error;
+
+    if (lfError) {
+      const fallback = await supabase.from("lost_and_found_posts").insert([
+        {
+          post_id: postId,
+          date_lost_or_found: dateLostOrFound ?? null,
+          time_lost_or_found: timeLostOrFound ?? null,
+          img_url: imgUrl ?? null,
+        },
+      ]);
+      if (!fallback.error) {
+        lfError = null;
+      }
+    }
 
     if (lfError) {
       // attempt to rollback all_posts insert (best-effort)
@@ -281,11 +315,19 @@ export async function createLostAndFoundPost({
 
     if (fetchErr || !fetchById) {
       // Fallback to building from insertData + lf row
-      const lfRowRes = await supabase
+      // tolerate missing category column
+      let lfRowRes = await supabase
         .from("lost_and_found_posts")
-        .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+        .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
         .eq("post_id", postId)
         .maybeSingle();
+      if (lfRowRes.error) {
+        lfRowRes = await supabase
+          .from("lost_and_found_posts")
+          .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+          .eq("post_id", postId)
+          .maybeSingle();
+      }
       const lfRow = (lfRowRes.data ?? null) as LostAndFoundRow | null;
 
       const authorRow = authorAuthUid
@@ -303,6 +345,7 @@ export async function createLostAndFoundPost({
 
       return {
         id: postId,
+        category: (lfRow?.category ? String(lfRow.category) : String(category)).toLowerCase(),
         title,
         description,
         authorAuthUid: authorAuthUid ?? undefined,
@@ -321,11 +364,19 @@ export async function createLostAndFoundPost({
 
     // fetch user info / profile
     const allPostRow = fetchById as AllPostsRow;
-    const lfRowRes2 = await supabase
+    // tolerate missing category column
+    let lfRowRes2 = await supabase
       .from("lost_and_found_posts")
-      .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .eq("post_id", postId)
       .maybeSingle();
+    if (lfRowRes2.error) {
+      lfRowRes2 = await supabase
+        .from("lost_and_found_posts")
+        .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+        .eq("post_id", postId)
+        .maybeSingle();
+    }
     const lfRow2 = (lfRowRes2.data ?? null) as LostAndFoundRow | null;
 
     const { data: userInfoData } = await supabase
@@ -349,6 +400,7 @@ export async function createLostAndFoundPost({
 
     return {
       id: allPostRow.post_id,
+      category: (lfRow2?.category ? String(lfRow2.category) : String(category)).toLowerCase(),
       title: allPostRow.title,
       description: allPostRow.description,
       authorAuthUid: allPostRow.author_id ?? undefined,
@@ -379,6 +431,7 @@ export async function updateLostAndFoundPost({
 }: {
   postId: string;
   updates: {
+    category?: "lost" | "found";
     title?: string;
     description?: string;
     dateLostOrFound?: string | null;
@@ -397,6 +450,7 @@ export async function updateLostAndFoundPost({
     }
 
     const lfUpdates: Partial<LostAndFoundRow> = {};
+    if (typeof updates.category === "string") lfUpdates.category = updates.category.toLowerCase();
     if ("dateLostOrFound" in updates) lfUpdates.date_lost_or_found = updates.dateLostOrFound ?? null;
     if ("timeLostOrFound" in updates) lfUpdates.time_lost_or_found = updates.timeLostOrFound ?? null;
     if ("imgUrl" in updates) lfUpdates.img_url = updates.imgUrl ?? null;
@@ -406,7 +460,18 @@ export async function updateLostAndFoundPost({
       const { error: lfErr } = await supabase
         .from("lost_and_found_posts")
         .upsert([{ post_id: postId, ...lfUpdates }], { onConflict: "post_id" });
-      if (lfErr) throw lfErr;
+      if (lfErr) {
+        // tolerate missing category column
+        if ("category" in lfUpdates) {
+          const { category: _ignored, ...rest } = lfUpdates as any;
+          const fallback = await supabase
+            .from("lost_and_found_posts")
+            .upsert([{ post_id: postId, ...rest }], { onConflict: "post_id" });
+          if (fallback.error) throw fallback.error;
+        } else {
+          throw lfErr;
+        }
+      }
     }
 
     // return fresh post
@@ -442,14 +507,27 @@ export async function fetchLostAndFoundPostById(postId: string): Promise<LFPost 
     }
     if (!allRow) return null;
 
-    const { data: lfRow, error: lfErr } = await supabase
+    // tolerate missing category column
+    let lfRow: any = null;
+    const lfTry1 = await supabase
       .from("lost_and_found_posts")
-      .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .eq("post_id", postId)
       .maybeSingle();
-
-    if (lfErr) {
-      console.warn("fetchLostAndFoundPostById lost_and_found_posts error", lfErr);
+    if (lfTry1.error) {
+      console.warn("fetchLostAndFoundPostById lost_and_found_posts error", lfTry1.error);
+      const lfTry2 = await supabase
+        .from("lost_and_found_posts")
+        .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
+        .eq("post_id", postId)
+        .maybeSingle();
+      if (lfTry2.error) {
+        console.warn("fetchLostAndFoundPostById lost_and_found_posts fallback error", lfTry2.error);
+      } else {
+        lfRow = lfTry2.data ?? null;
+      }
+    } else {
+      lfRow = lfTry1.data ?? null;
     }
 
     const { data: userInfoData } = await supabase
@@ -473,6 +551,7 @@ export async function fetchLostAndFoundPostById(postId: string): Promise<LFPost 
 
     return {
       id: allRow.post_id,
+      category: (lfRow?.category ? String(lfRow.category) : "lost").toLowerCase(),
       title: allRow.title,
       description: allRow.description,
       authorAuthUid: allRow.author_id ?? undefined,
