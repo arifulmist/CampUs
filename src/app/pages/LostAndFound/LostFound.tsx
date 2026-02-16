@@ -1,19 +1,9 @@
 // src/app/pages/LostAndFound/LostFound.tsx
 import { useState, useEffect, useRef } from "react";
-import {
-  Heart,
-  MessageCircle,
-  Share2,
-  MoreVertical,
-} from "lucide-react";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../../components/ui/avatar";
 import { Textarea } from "../../../components/ui/textarea";
+import { Spinner } from "../../../components/ui/spinner";
 import {
   Dialog,
   DialogContent,
@@ -21,12 +11,6 @@ import {
   DialogTitle,
   DialogClose,
 } from "../../../components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu";
 
 import CommentThread, {
   type Comment as CTComment,
@@ -80,6 +64,7 @@ function formatRelativeTime(dateString?: string | null) {
 export function LostFound() {
   const [query] = useState("");
   const [isAnnounceOpen, setIsAnnounceOpen] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -173,6 +158,7 @@ export function LostFound() {
   useEffect(() => {
     let alive = true;
     (async function load() {
+      setPostsLoading(true);
       try {
         const backendPosts: BackendLFPost[] = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
 
@@ -196,6 +182,8 @@ export function LostFound() {
         setPosts(mapped);
       } catch (err) {
         console.error("Failed loading Lost & Found posts:", err);
+      } finally {
+        if (alive) setPostsLoading(false);
       }
     })();
 
@@ -541,6 +529,14 @@ export function LostFound() {
   return (
     <>
       <div className="lg:min-h-screen bg-background-lm lg:animate-fade-in">
+        {postsLoading ? (
+          <div className="lg:px-10 lg:w-full flex items-center justify-center min-h-[calc(100vh-6rem)]">
+            <div className="flex flex-col items-center gap-3">
+              <Spinner className="size-12 text-accent-lm" />
+              <p className="text-md text-text-lighter-lm">Loading...</p>
+            </div>
+          </div>
+        ) : (
         <main className="lg:mx-auto lg:max-w-4xl lg:px-4 lg:py-6">
           {/* Posts */}
           <div className="lg:space-y-4 bg-primary-lm lg:p-10 lg:rounded-xl border-2 border-stroke-grey">
@@ -574,6 +570,7 @@ export function LostFound() {
             )}
           </div>
         </main>
+        )}
 
         {/* Announce Dialog */}
         <Dialog open={isAnnounceOpen} onOpenChange={handleAnnounceDialogChange}>
@@ -879,9 +876,4 @@ export function LostFound() {
   );
 }
 
-<<<<<<< HEAD
-// Use the shared `LFPostCard` component from components/LFPostCard.tsx
-
-=======
->>>>>>> 0a22283fc6ebfeb0990af6b7a9f55c3864438512
 export default LostFound;
