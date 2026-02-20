@@ -3,11 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { SignupLoginBox } from "./components/SignupLoginBox";
 import { Password } from "./components/Password";
 import { InputField } from "../../../components/InputField";
-import { 
-  validateCredentials, 
-  generateOTP, 
-  storeOTP, 
-  sendOTPEmail 
+import {
+  validateCredentials,
+  generateOTP,
+  storeOTP,
+  sendOTPEmail,
 } from "./backend/otpService";
 import { LucideXCircle } from "lucide-react";
 
@@ -29,7 +29,7 @@ export function Login() {
     try {
       // 1. Validate credentials
       const credentialCheck = await validateCredentials(userId, password);
-      
+
       if (!credentialCheck.success) {
         setError(credentialCheck.message);
         setIsLoading(false);
@@ -44,7 +44,7 @@ export function Login() {
 
       // 3. Store OTP in database
       const otpStored = await storeOTP(userId, credentialCheck.email!, otp);
-      
+
       if (!otpStored) {
         setError("Failed to generate verification code");
         setIsLoading(false);
@@ -52,8 +52,12 @@ export function Login() {
       }
 
       // 4. Send OTP via email
-      const emailResult = await sendOTPEmail(credentialCheck.email!, otp, userId);
-      
+      const emailResult = await sendOTPEmail(
+        credentialCheck.email!,
+        otp,
+        userId,
+      );
+
       if (!emailResult.success && !emailResult.devOTP) {
         setError(emailResult.message);
         setIsLoading(false);
@@ -68,12 +72,11 @@ export function Login() {
 
       // 5. Navigate to 2FA page with state
       navigate(`/login/2fa/${encodeURIComponent(userId)}`, {
-        state: { 
+        state: {
           email: credentialCheck.email,
-          devOTP: emailResult.devOTP // Pass dev OTP for testing
-        }
+          devOTP: emailResult.devOTP, // Pass dev OTP for testing
+        },
       });
-      
     } catch (error) {
       console.error("Login error:", error);
       setError("An unexpected error occurred. Please try again.");
@@ -104,7 +107,7 @@ export function Login() {
             </p>
           </div>
         )} */}
-        
+
         {/* Student ID Field */}
         <InputField
           type="text"
@@ -115,17 +118,13 @@ export function Login() {
           required
           placeholder="Enter your student ID"
         />
-        
+
         {/* Password Field */}
-        <Password 
-          label="Password" 
-          value={password} 
-          onChange={setPassword} 
-        />
-                {/* Forgot Password Link */}
+        <Password label="Password" value={password} onChange={setPassword} />
+        {/* Forgot Password Link */}
         <div className="lg:-mt-3">
-          <Link 
-            to="/forgot-password" 
+          <Link
+            to="/forgot-password"
             className="text-sm text-accent-lm hover:underline cursor-pointer"
           >
             Forgot Password?
@@ -134,8 +133,8 @@ export function Login() {
 
         {/* Action Buttons */}
         <div className="lg:flex lg:items-center lg:gap-4 lg:mt-10">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isLoading}
             className={`px-6 py-2 rounded-lg font-medium bg-accent-lm text-primary-lm cursor-pointer hover:bg-hover-btn-lm transition flex items-center gap-2
               ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
@@ -146,18 +145,20 @@ export function Login() {
                 Verifying...
               </>
             ) : (
-              'Login'
+              "Login"
             )}
           </button>
 
           <p className="text-sm text-text-lighter-lm">
             Don't have an account?{" "}
-            <Link to="/signup" className="lg:underline text-accent-lm cursor-pointer">
+            <Link
+              to="/signup"
+              className="lg:underline text-accent-lm cursor-pointer"
+            >
               Sign Up
             </Link>
           </p>
         </div>
-
 
         {/* Development Note
         {import.meta.env.DEV && (
