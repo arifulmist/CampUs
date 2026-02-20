@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEventHandler } from "react"
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 import heartIcon from "@/assets/icons/heart_icon.svg";
@@ -135,10 +136,14 @@ export function LikeButton({
 export function CommentButton({
   postId,
   initialCommentCount,
+  navigateTo,
 }: {
   postId?: string;
   initialCommentCount?: number;
+  navigateTo?: string;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [commentCount, setCommentCount] = useState(
     typeof initialCommentCount === "number" ? initialCommentCount : 0
   );
@@ -188,6 +193,10 @@ export function CommentButton({
             (window as any).__campus_last_focus_comment = { postId, ts: Date.now() };
           } catch {}
           window.dispatchEvent(new CustomEvent("campus:focus_comment_input", { detail: { postId } }));
+
+          if (navigateTo && location.pathname !== navigateTo) {
+            navigate(navigateTo);
+          }
         }
       }}
     />

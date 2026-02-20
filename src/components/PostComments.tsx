@@ -277,6 +277,13 @@ export function PostComments({
             }
           }, 0);
         }
+
+        // consume marker so it doesn't re-trigger on remount
+        try {
+          win.__campus_last_focus_comment = undefined;
+        } catch {
+          // ignore marker cleanup failures
+        }
       }
     } catch {
       // ignore marker access failures

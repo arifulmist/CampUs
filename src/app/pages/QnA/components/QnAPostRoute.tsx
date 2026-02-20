@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import {
+  EllipsisVertical as LucideEllipsisVertical,
+  Pencil as LucidePencil,
+  Trash2 as LucideTrash2,
+} from "lucide-react";
 
 import { supabase } from "@/supabase/supabaseClient";
 import { UserInfo } from "@/components/UserInfo";
 import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import { DeleteQnAPostModal } from "./DeleteQnAPostModal";
+import { EditQnAPostModal } from "./EditQnAPostModal";
 
 type QnAPostDetail = {
   id: string;
@@ -56,11 +65,20 @@ export function QnAPostRoute({
   postId: string;
   onInitialLoadDone?: () => void;
 }) {
+  const navigate = useNavigate();
   const initialLoadNotifiedRef = useRef(false);
   const onInitialLoadDoneRef = useRef<typeof onInitialLoadDone>(onInitialLoadDone);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [detail, setDetail] = useState<QnAPostDetail | null>(null);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     onInitialLoadDoneRef.current = onInitialLoadDone;
@@ -70,6 +88,25 @@ export function QnAPostRoute({
     initialLoadNotifiedRef.current = false;
   }, [postId]);
 
+  const isOwner = useMemo(() => {
+    if (!detail?.authorId || !currentUserId) return false;
+    return detail.authorId === currentUserId;
+  }, [detail?.authorId, currentUserId]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && menuRef.current.contains(target)) return;
+      setMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [menuOpen]);
+
   useEffect(() => {
     let alive = true;
 
@@ -77,6 +114,11 @@ export function QnAPostRoute({
       setLoading(true);
       setError("");
       try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) throw authError;
+        const uid = authData?.user?.id ?? null;
+        if (alive) setCurrentUserId(uid);
+
         const { data, error: fetchError } = await supabase
           .from("all_posts")
           .select(
@@ -180,7 +222,7 @@ export function QnAPostRoute({
     return () => {
       alive = false;
     };
-  }, [postId]);
+  }, [postId, reloadToken]);
 
   const postDate = useMemo(() => {
     if (!detail) return "";
@@ -213,9 +255,51 @@ export function QnAPostRoute({
 
   return (
     <div className="flex flex-col lg:gap-4 bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8">
-      <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-stroke-peach text-sm border border-stroke-peach rounded-xl">
-        {detail.category}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl">
+          {detail.category}
+        </p>
+
+        {isOwner ? (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="p-2 rounded-md hover:bg-hover-lm transition duration-150"
+              aria-label="Post options"
+            >
+              <LucideEllipsisVertical className="h-7 w-7 text-accent-lm" />
+            </button>
+
+            {menuOpen ? (
+              <div className="absolute right-0 mt-2 bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setEditOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-text-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  <LucidePencil className="h-4 w-4" />
+                  Edit Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDeleteOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-danger-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  <LucideTrash2 className="h-4 w-4 text-danger-lm" />
+                  Delete Post
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <p className="font-header font-medium text-xl text-text-lm wrap-break-word">{detail.title}</p>
 
@@ -241,6 +325,27 @@ export function QnAPostRoute({
         <CommentButton postId={detail.id} initialCommentCount={detail.commentCount} />
         <ShareButton />
       </div>
+
+      <EditQnAPostModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        initial={{
+          postId: detail.id,
+          title: detail.title,
+          description: detail.description,
+          tag: detail.category,
+        }}
+        onSaved={() => setReloadToken((v) => v + 1)}
+      />
+      <DeleteQnAPostModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        postId={detail.id}
+        onDeleted={() => {
+          setDeleteOpen(false);
+          navigate("/qna");
+        }}
+      />
     </div>
   );
 }

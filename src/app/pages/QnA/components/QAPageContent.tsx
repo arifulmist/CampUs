@@ -234,6 +234,8 @@ import { QnAPostCard } from "./QnAPostCard";
 import { QnAPostCategory } from "./QnAPostCategory";
 import { SearchAddPostBar } from "./SearchAddPostBar";
 import { Loading } from "../../Fallback/Loading";
+import noPostSvg from "@/assets/images/noPost.svg";
+import { CreateQnAPostModal } from "./CreateQnAPostModal";
 
 type QnACategory = "All" | "Question" | "Advice" | "Resource";
 
@@ -294,6 +296,8 @@ export function QAPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [newPostOpen, setNewPostOpen] = useState(false);
+  const [refreshSeq, setRefreshSeq] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -399,7 +403,7 @@ export function QAPageContent() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshSeq]);
 
   const filteredPosts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -418,7 +422,17 @@ export function QAPageContent() {
 
   return (
     <div className="min-h-screen w-screen lg:p-10 flex flex-col lg:gap-8">
-      <SearchAddPostBar value={searchQuery} onChange={setSearchQuery} />
+      <SearchAddPostBar
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onNewPostClick={() => setNewPostOpen(true)}
+      />
+
+      <CreateQnAPostModal
+        open={newPostOpen}
+        onClose={() => setNewPostOpen(false)}
+        onCreated={() => setRefreshSeq((n) => n + 1)}
+      />
 
       <div className="flex lg:gap-4">
         <QnAPostCategory
@@ -444,34 +458,41 @@ export function QAPageContent() {
       </div>
 
       <ul className="flex flex-col lg:gap-5">
-        {filteredPosts.map((post) => (
-          <li
-            key={post.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(`/qna/${post.id}`)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                navigate(`/qna/${post.id}`);
-              }
-            }}
-          >
-            <QnAPostCard
-              postId={post.id}
-              postTag={post.category}
-              postTitle={post.title}
-              postPreview={truncateText(post.description, 200)}
-              attachmentUrl={post.attachmentUrl}
-              authorName={post.authorName}
-              authorBatch={post.authorBatch}
-              authorId={post.authorId}
-              postDate={formatPostTimestamp(post.createdAt)}
-              initialLikeCount={post.likeCount}
-              initialCommentCount={post.commentCount}
-            />
-          </li>
-        ))}
+        {filteredPosts.length === 0 ? (
+          <div className="flex flex-col items-center lg:gap-4">
+            <img src={noPostSvg} alt="No posts" className="lg:size-50" />
+            <p className="text-text-lm lg:text-lg">No posts in this category</p>
+          </div>
+        ) : (
+          filteredPosts.map((post) => (
+            <li
+              key={post.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/qna/${post.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/qna/${post.id}`);
+                }
+              }}
+            >
+              <QnAPostCard
+                postId={post.id}
+                postTag={post.category}
+                postTitle={post.title}
+                postPreview={truncateText(post.description, 200)}
+                attachmentUrl={post.attachmentUrl}
+                authorName={post.authorName}
+                authorBatch={post.authorBatch}
+                authorId={post.authorId}
+                postDate={formatPostTimestamp(post.createdAt)}
+                initialLikeCount={post.likeCount}
+                initialCommentCount={post.commentCount}
+              />
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );

@@ -50,7 +50,7 @@ export function QnAPostCard({
     <div className="flex flex-col lg:gap-4 bg-secondary-lm border border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach transition lg:rounded-xl lg:p-8 group">
       {/* <div className="flex lg:gap-6 justify-between items-start"> */}
         <div className="flex flex-col lg:gap-4 min-w-0 flex-1">
-          <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-stroke-peach text-sm border border-stroke-peach rounded-xl group-hover:bg-primary-lm group-hover:transition">{postTag}</p>
+          <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl group-hover:bg-primary-lm group-hover:transition">{postTag}</p>
           <p className="font-header font-medium text-xl text-text-lm wrap-break-word">{postTitle}</p>
           <div className="flex justify-between lg:gap-2">
             <div className="lg:space-y-4">
@@ -73,7 +73,7 @@ export function QnAPostCard({
 
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-2">
         <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-        <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
+        <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={`/qna/${postId}`} />
         <ShareButton></ShareButton>
       </div>
     </div>

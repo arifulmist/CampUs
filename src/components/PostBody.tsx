@@ -66,6 +66,15 @@ export function PostBody({
   const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : "";
   const categoryClasses = category ? getCategoryClass(category, categorySet) : "";
 
+  const commentNavigateTo =
+    postId && categorySet === "events"
+      ? `/events/${postId}`
+      : postId && categorySet === "collab"
+        ? `/collab/${postId}`
+        : postId && categorySet === "lostfound"
+          ? `/lost-and-found/${postId}`
+          : undefined;
+
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
       {/* Category chip */}
@@ -147,7 +156,7 @@ export function PostBody({
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
           <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-          <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
+          <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={commentNavigateTo} />
           <ShareButton />
         </div>
         <div>{postId ? <InterestedButton postId={postId} /> : null}</div>
