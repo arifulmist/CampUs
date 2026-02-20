@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import ImagePreview from "@/app/pages/Events/components/CreateEventModal/ImagePreview";
 import ImageUploader from "@/app/pages/Events/components/CreateEventModal/ImageUploader";
+import CategorySelector from "@/components/CategorySelector";
 import { ButtonCTA } from "@/components/ButtonCTA";
 import { supabase } from "@/supabase/supabaseClient";
 import { updateLostAndFoundPost } from "../backend/lostAndFoundService";
@@ -143,13 +144,13 @@ export function EditLostFoundModal({
             overflowY: "auto",
           }}
         >
-          <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
+            <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
             <h2 className="text-xl lg:font-semibold text-text-lm">Edit Post</h2>
             <button
               onClick={() => {
                 if (!isSaving) onClose();
               }}
-              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              className="cursor-pointer"
               aria-label="Close modal"
             >
               <img src={crossBtn} />
@@ -166,15 +167,15 @@ export function EditLostFoundModal({
           >
             <div className="flex flex-col gap-2">
               <label className="text-text-lm font-semibold">Category</label>
-              <select
-                required
-                value={category}
-                onChange={(e) => setCategory(e.target.value as "lost" | "found")}
-                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm"
-              >
-                <option value="lost">Lost</option>
-                <option value="found">Found</option>
-              </select>
+              <div>
+                <CategorySelector
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  value={category as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onChange={(v: any) => setCategory(v as "lost" | "found")}
+                  options={[{ value: "lost", label: "Lost" }, { value: "found", label: "Found" }]}
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">

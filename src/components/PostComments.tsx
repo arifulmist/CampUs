@@ -157,6 +157,8 @@ export function PostComments({
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const focusAttemptTokenRef = useRef(0);
+
   const aliveRef = useRef(true);
   const initialLoadNotifiedRef = useRef(false);
 
@@ -228,29 +230,73 @@ export function PostComments({
 
   useEffect(() => {
     if (!postId) return;
+
+    function isVisibleForScrollAndFocus(el: HTMLElement): boolean {
+      if (!el.isConnected) return false;
+      // If a parent uses `display: none` (e.g., Tailwind `hidden`), client rects will be empty.
+      if (el.getClientRects().length === 0) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === "none") return false;
+      if (style.visibility === "hidden") return false;
+      return true;
+    }
+
+    function focusInputWithRetry({
+      consumeMarker,
+    }: {
+      consumeMarker?: () => void;
+    } = {}) {
+      const token = ++focusAttemptTokenRef.current;
+      const startedAt = Date.now();
+      const maxMs = 4000;
+
+      const tick = () => {
+        if (!aliveRef.current) return;
+        if (focusAttemptTokenRef.current !== token) return;
+
+        const el = inputRef.current;
+        if (el && isVisibleForScrollAndFocus(el)) {
+          try {
+            el.focus();
+          } catch {
+            // ignore focus failures
+          }
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch {
+            // ignore scroll failures
+          }
+          consumeMarker?.();
+          return;
+        }
+
+        if (Date.now() - startedAt > maxMs) return;
+        requestAnimationFrame(tick);
+      };
+
+      requestAnimationFrame(tick);
+    }
+
     const handler = (e: Event) => {
       const ce = e as CustomEvent<{ postId?: string }>;
       const targetId = ce?.detail?.postId;
       if (!targetId) return;
       if (targetId !== postId) return;
-      // focus the top comment input
-      if (inputRef.current) {
-        inputRef.current.focus();
-        try {
-          inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-        } catch {
-          // ignore scroll failures (e.g., element not in layout yet)
-        }
-        return;
-      }
-      setTimeout(() => {
-        inputRef.current?.focus();
-        try {
-          inputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-        } catch {
-          // ignore scroll failures (e.g., element not in layout yet)
-        }
-      }, 0);
+
+      // Focus may be requested while the route is still showing a Loading state
+      // and this component is inside a `hidden` wrapper (display:none). Retry until visible.
+      focusInputWithRetry({
+        consumeMarker: () => {
+          try {
+            type LastFocusCommentMarker = { postId?: string; ts?: number };
+            const win = window as unknown as { __campus_last_focus_comment?: LastFocusCommentMarker };
+            const last = win.__campus_last_focus_comment;
+            if (last?.postId === postId) win.__campus_last_focus_comment = undefined;
+          } catch {
+            // ignore marker cleanup failures
+          }
+        },
+      });
     };
 
     window.addEventListener("campus:focus_comment_input", handler as EventListener);
@@ -260,30 +306,15 @@ export function PostComments({
       const win = window as unknown as { __campus_last_focus_comment?: LastFocusCommentMarker };
       const last = win.__campus_last_focus_comment;
       if (last?.postId === postId && Date.now() - (last.ts ?? 0) < 5000) {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          try {
-            inputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-          } catch {
-            // ignore scroll failures
-          }
-        } else {
-          setTimeout(() => {
-            inputRef.current?.focus();
+        focusInputWithRetry({
+          consumeMarker: () => {
             try {
-              inputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              win.__campus_last_focus_comment = undefined;
             } catch {
-              // ignore scroll failures
+              // ignore marker cleanup failures
             }
-          }, 0);
-        }
-
-        // consume marker so it doesn't re-trigger on remount
-        try {
-          win.__campus_last_focus_comment = undefined;
-        } catch {
-          // ignore marker cleanup failures
-        }
+          },
+        });
       }
     } catch {
       // ignore marker access failures

@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import ImagePreview from "@/app/pages/Events/components/CreateEventModal/ImagePreview";
 import ImageUploader from "@/app/pages/Events/components/CreateEventModal/ImageUploader";
+import CategorySelector from "@/components/CategorySelector";
 import { supabase } from "@/supabase/supabaseClient";
 import { createLostAndFoundPost } from "../backend/lostAndFoundService";
 
@@ -135,7 +136,7 @@ export default function CreateLostFoundModal({
               onClick={() => {
                 if (!isPosting) onClose();
               }}
-              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              className="cursor-pointer"
               aria-label="Close modal"
             >
               <img src={crossBtn} />
@@ -152,15 +153,15 @@ export default function CreateLostFoundModal({
           >
             <div className="flex flex-col gap-2">
               <label className="text-text-lm font-semibold">Category</label>
-              <select
-                required
-                value={category}
-                onChange={(e) => setCategory(e.target.value as "lost" | "found")}
-                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm"
-              >
-                <option value="lost">Lost</option>
-                <option value="found">Found</option>
-              </select>
+              <div>
+                <CategorySelector
+                  // The shared selector returns string | number values
+                  value={category}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onChange={(v: any) => setCategory(v as "lost" | "found")}
+                  options={[{ value: "lost", label: "Lost" }, { value: "found", label: "Found" }]}
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">

@@ -4,6 +4,7 @@ import crossBtn from "@/assets/icons/cross_btn.svg";
 import { toast } from "react-hot-toast";
 
 import { ButtonCTA } from "@/components/ButtonCTA";
+import CategorySelector from "@/components/CategorySelector";
 import { searchSkills, type CollabCategory, type CollabTag, updateCollabPost } from "../backend/collab";
 
 type SkillSuggestion = { id: number; skill: string };
@@ -169,12 +170,12 @@ export function EditCollabModal({
           }}
         >
           <div className="lg:flex lg:justify-between lg:items-center lg:mb-6">
-            <h2 className="text-xl lg:font-semibold text-text-lm">Edit Collaboration</h2>
+            <h2 className="text-xl lg:font-semibold text-text-lm">Edit Post</h2>
             <button
               onClick={() => {
                 if (!isSaving) onClose();
               }}
-              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              className="cursor-pointer"
               aria-label="Close modal"
               type="button"
             >
@@ -192,28 +193,22 @@ export function EditCollabModal({
           >
             <div className="bg-secondary-lm lg:p-5 border border-stroke-grey rounded-lg lg:space-y-5">
               <div className="lg:space-y-2">
-                <label className="font-medium">Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {(["research", "competition", "project"] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setCategory(cat)}
-                      aria-pressed={category === cat}
-                      className={`px-3 py-1 rounded-2xl text-sm border transition duration-150 ${
-                        category === cat
-                          ? "bg-accent-lm text-primary-lm border-stroke-peach"
-                          : "bg-primary-lm text-text-lm border-stroke-grey hover:bg-hover-lm"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                <label className="font-medium text-md">Category</label>
+                <CategorySelector
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  value={category as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onChange={(v: any) => setCategory(v as CollabCategory)}
+                  options={[
+                    { value: "Research", label: "Research" },
+                    { value: "Competition", label: "Competition" },
+                    { value: "Project", label: "Project" },
+                  ]}
+                />
               </div>
 
               <div className="lg:space-y-2">
-                <label className="font-medium">Title</label>
+                <label className="font-medium text-md">Title</label>
                 <input
                   required
                   value={title}
@@ -224,7 +219,7 @@ export function EditCollabModal({
               </div>
 
               <div className="lg:space-y-2">
-                <label className="font-medium">Description</label>
+                <label className="font-medium text-md">Description</label>
                 <textarea
                   required
                   value={description}
@@ -244,7 +239,7 @@ export function EditCollabModal({
                     ref={tagInputRef}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Type to add tags"
+                    placeholder="Begin typing to add tags"
                     className="border px-3 py-2 rounded-lg flex-1 bg-primary-lm border-stroke-grey focus:outline-0 focus:border-accent-lm"
                   />
                 </div>

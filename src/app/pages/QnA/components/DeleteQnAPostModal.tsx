@@ -77,7 +77,7 @@ export function DeleteQnAPostModal({
               onClick={() => {
                 if (!isDeleting) onClose();
               }}
-              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              className="cursor-pointer"
               aria-label="Close modal"
             >
               <img src={crossBtn} />
