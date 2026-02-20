@@ -170,7 +170,7 @@ export default function CreateLostFoundModal({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm"
+                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm focus:outline-0 focus:border-stroke-peach"
               />
             </div>
 
@@ -180,7 +180,7 @@ export default function CreateLostFoundModal({
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm min-h-28"
+                className="bg-secondary-lm border border-stroke-grey rounded-lg px-3 py-2 text-text-lm min-h-28 focus:outline-0 focus:border-stroke-peach"
               />
             </div>
 
@@ -225,14 +225,14 @@ export default function CreateLostFoundModal({
                 type="button"
                 disabled={isPosting}
                 onClick={onClose}
-                className="bg-secondary-lm text-text-lm border border-stroke-grey px-4 py-2 rounded-lg hover:bg-hover-lm transition duration-150 disabled:opacity-60"
+                className="bg-accent-lm text-primary-lm lg:px-4 lg:py-2 lg:rounded-lg hover:bg-hover-btn-lm transition duration-150 disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isPosting}
-                className="bg-primary-lm text-accent-lm border border-stroke-grey px-4 py-2 rounded-lg hover:bg-hover-lm transition duration-150 disabled:opacity-60"
+                className="bg-accent-lm text-primary-lm lg:px-4 lg:py-2 lg:rounded-lg hover:bg-hover-btn-lm transition duration-150 disabled:opacity-60"
               >
                 {isPosting ? "Posting..." : "Post"}
               </button>
@@ -240,7 +240,7 @@ export default function CreateLostFoundModal({
           </form>
         </div>
       </div>
-
+      
       <ImagePreview
         open={previewOpen}
         image={imageDataUrl}

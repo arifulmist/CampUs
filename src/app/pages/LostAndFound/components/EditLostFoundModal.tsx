@@ -234,7 +234,17 @@ export function EditLostFoundModal({
               }
             />
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={() => {
+                  if (!isSaving) onClose();
+                }}
+                className="bg-secondary-lm text-text-lm border border-stroke-grey px-4 py-2 rounded-lg hover:bg-hover-lm transition duration-150 disabled:opacity-60"
+              >
+                Cancel
+              </button>
               <ButtonCTA
                 type="submit"
                 disabled={isSaving}

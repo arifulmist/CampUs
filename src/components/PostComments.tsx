@@ -11,6 +11,7 @@ import filledHeartIcon from "@/assets/icons/FILLEDheart_icon.svg";
 import messageIcon from "@/assets/icons/message_icon.svg";
 import messageEmptyState from "@/assets/images/noMessage.svg";
 import crossBtn from "@/assets/icons/cross_btn.svg";
+import { LucideX } from "lucide-react";
 
 import {
   addComment,
@@ -106,7 +107,7 @@ function formatRelativeTime(iso?: string | null) {
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours} hr ago`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
 
   return date.toLocaleString("en-US", {
     month: "short",
@@ -156,7 +157,6 @@ export function PostComments({
   const [likedById, setLikedById] = useState<Record<string, boolean>>({});
 
   const inputRef = useRef<HTMLInputElement | null>(null);
-
   const focusAttemptTokenRef = useRef(0);
 
   const aliveRef = useRef(true);
@@ -454,7 +454,7 @@ export function PostComments({
         <p className="text-text-lighter-lm">Loading comments…</p>
       ) : sortedParents.length === 0 ? (
         <div className="flex flex-col lg:gap-2 items-center lg:mt-4">
-          <img src={messageEmptyState}/>
+          <img src={messageEmptyState} />
           <p className="text-text-lighter-lm">No comments yet</p>
         </div>
       ) : (
@@ -587,6 +587,9 @@ function CommentItem({
   const [replyText, setReplyText] = useState("");
   const [posting, setPosting] = useState(false);
 
+  const replyInputRef = useRef<HTMLInputElement | null>(null);
+  const editInputRef = useRef<HTMLInputElement | null>(null);
+
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -635,11 +638,65 @@ function CommentItem({
         if (typeof e === "string") return e;
         return "Failed to update comment";
       })();
-              toast.error(msg);
+      toast.error(msg);
     } finally {
       setSavingEdit(false);
     }
   }
+
+  useEffect(() => {
+    if (!editing) return;
+
+    // autofocus the edit input when editing opens
+    requestAnimationFrame(() => {
+      try {
+        const el = editInputRef.current;
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setEditing(false);
+        setEditText("");
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [editing]);
+
+  useEffect(() => {
+    if (!replying) return;
+
+    // autofocus the reply input when replying opens
+    requestAnimationFrame(() => {
+      try {
+        const el = replyInputRef.current;
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setReplying(false);
+        setReplyText("");
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [replying]);
 
   return (
     <div
@@ -699,12 +756,24 @@ function CommentItem({
       </div>
 
       {replying && (
-        <div className="mt-3 flex gap-3 items-center">
+        <div className="mt-3 flex gap-3 items-center relative">
+          <button
+            type="button"
+            onClick={() => {
+              setReplying(false);
+              setReplyText("");
+            }}
+            aria-label="Cancel reply"
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
+          >
+            <LucideX className="size-5 text-accent-lm" />
+          </button>
           <input
+            ref={replyInputRef}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             placeholder="Write a reply…"
-            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 text-text-lm"
+            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -722,12 +791,24 @@ function CommentItem({
       )}
 
       {editing && (
-        <div className="mt-3 flex gap-3 items-center">
+        <div className="mt-3 flex gap-3 items-center relative">
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setEditText("");
+            }}
+            aria-label="Cancel edit"
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
+          >
+            <LucideX className="size-5 text-accent-lm"/>
+          </button>
           <input
+            ref={editInputRef}
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             placeholder="Edit your comment…"
-            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 text-text-lm"
+            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
