@@ -216,7 +216,7 @@ const mergedPosts = (events ?? []).map((ev: any) => {
   }
 
   return (
-    <div className="lg:min-h-screen bg-background-lm">
+    <div className="lg:min-h-screen">
       <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
         {/* LEFT: Posts */}
         <div className="lg:flex lg:flex-col lg:gap-10 lg:h-full bg-primary-lm lg:p-10 lg:rounded-2xl border border-stroke-grey">

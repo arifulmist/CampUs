@@ -9,7 +9,7 @@ import {
   CollabPostCard,
   type CollabPost,
 } from "../../CollabHub/components/CollabPostCard";
-import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard";
+import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnAPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
 
 function postPath(type: string, postId: string) {
