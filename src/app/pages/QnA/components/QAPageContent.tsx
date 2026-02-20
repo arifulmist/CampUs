@@ -233,6 +233,7 @@ import { supabase } from "@/supabase/supabaseClient";
 import { QnAPostCard } from "./QnAPostCard";
 import { QnAPostCategory } from "./QnAPostCategory";
 import { SearchAddPostBar } from "./SearchAddPostBar";
+import { Loading } from "../../Fallback/Loading";
 
 type QnACategory = "All" | "Question" | "Advice" | "Resource";
 
@@ -291,11 +292,14 @@ export function QAPageContent() {
   const [posts, setPosts] = useState<QnAFeedPost[]>([]);
   const [activeCategory, setActiveCategory] = useState<QnACategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     let alive = true;
 
     async function fetchPosts() {
+      setLoading(true);
       try {
         const { data, error } = await supabase
           .from("all_posts")
@@ -383,6 +387,11 @@ export function QAPageContent() {
         console.error(err);
         toast.error("Failed to load posts");
         setPosts([]);
+      } finally {
+        if (alive) {
+          setLoading(false);
+          setInitialLoad(false);
+        }
       }
     }
 
@@ -402,6 +411,10 @@ export function QAPageContent() {
       return categoryOk && searchOk;
     });
   }, [posts, activeCategory, searchQuery]);
+
+  if (initialLoad && loading) {
+    return <Loading />;
+  }
 
   return (
     <div className="min-h-screen w-screen lg:p-10 flex flex-col lg:gap-8">

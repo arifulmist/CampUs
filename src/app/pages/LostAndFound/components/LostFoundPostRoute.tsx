@@ -131,7 +131,13 @@ function formatDateDisplay(dateString?: string | null) {
   }
 }
 
-export function LostFoundPostRoute({ postId }: { postId: string }) {
+export function LostFoundPostRoute({
+  postId,
+  onInitialLoadDone,
+}: {
+  postId: string;
+  onInitialLoadDone?: () => void;
+}) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -142,6 +148,11 @@ export function LostFoundPostRoute({ postId }: { postId: string }) {
   const [reloadToken, setReloadToken] = useState(0);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const initialLoadNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    initialLoadNotifiedRef.current = false;
+  }, [postId]);
 
   const isOwner = useMemo(() => {
     if (!detail?.authorId || !currentUserId) return false;
@@ -282,7 +293,13 @@ export function LostFoundPostRoute({ postId }: { postId: string }) {
         toast.error("Failed to load lost & found post");
         setDetail(null);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          if (!initialLoadNotifiedRef.current) {
+            initialLoadNotifiedRef.current = true;
+            onInitialLoadDone?.();
+          }
+        }
       }
     }
 

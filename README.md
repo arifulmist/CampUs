@@ -7,7 +7,15 @@ If `/profile/<student_id>` loads a profile but shows no skills/interests/posts, 
 
 This repo includes a migration that enables **read-only** `SELECT` access for authenticated users on the profile-related tables:
 
-- [supabase/migrations/20260125123000_allow_profile_view_select.sql](supabase/migrations/20260125123000_allow_profile_view_select.sql)
+- [src/supabase/migrations/allow_profile_view_select.sql](src/supabase/migrations/allow_profile_view_select.sql)
+
+## Comment Edit/Delete (Supabase RLS)
+
+If comment edits/deletes appear to work in the UI but don’t persist, Supabase RLS may be blocking `UPDATE`/`DELETE` on `public.comments`.
+
+This repo includes a migration that allows authenticated users to update/delete **only their own** comments:
+
+- [src/supabase/migrations/allow_comment_owner_update_delete.sql](src/supabase/migrations/allow_comment_owner_update_delete.sql)
 
 Apply it to your Supabase project using your usual workflow (for example, via the Supabase SQL Editor or Supabase CLI).
 

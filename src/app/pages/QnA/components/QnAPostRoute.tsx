@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/supabase/supabaseClient";
 import { UserInfo } from "@/components/UserInfo";
@@ -49,10 +49,26 @@ function formatPostTimestamp(createdAt: string): string {
   })}`;
 }
 
-export function QnAPostRoute({ postId }: { postId: string }) {
+export function QnAPostRoute({
+  postId,
+  onInitialLoadDone,
+}: {
+  postId: string;
+  onInitialLoadDone?: () => void;
+}) {
+  const initialLoadNotifiedRef = useRef(false);
+  const onInitialLoadDoneRef = useRef<typeof onInitialLoadDone>(onInitialLoadDone);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [detail, setDetail] = useState<QnAPostDetail | null>(null);
+
+  useEffect(() => {
+    onInitialLoadDoneRef.current = onInitialLoadDone;
+  }, [onInitialLoadDone]);
+
+  useEffect(() => {
+    initialLoadNotifiedRef.current = false;
+  }, [postId]);
 
   useEffect(() => {
     let alive = true;
@@ -153,6 +169,10 @@ export function QnAPostRoute({ postId }: { postId: string }) {
         setDetail(null);
       } finally {
         if (alive) setLoading(false);
+        if (alive && !initialLoadNotifiedRef.current) {
+          initialLoadNotifiedRef.current = true;
+          onInitialLoadDoneRef.current?.();
+        }
       }
     }
 
@@ -192,7 +212,7 @@ export function QnAPostRoute({ postId }: { postId: string }) {
   }
 
   return (
-    <div className="flex flex-col lg:gap-4 bg-secondary-lm border border-stroke-grey lg:rounded-xl lg:p-8">
+    <div className="flex flex-col lg:gap-4 bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8">
       <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-stroke-peach text-sm border border-stroke-peach rounded-xl">
         {detail.category}
       </p>

@@ -9,6 +9,7 @@ import LostFoundPost, { type LostFoundPostType } from "./components/LostFoundPos
 import CreateLostFoundModal from "./components/CreateLostFoundModal";
 
 import { fetchLostAndFoundPosts } from "./backend/lostAndFoundService";
+import { Loading } from "../Fallback/Loading";
 
 type LFCategory = "all" | "lost" | "found";
 
@@ -19,6 +20,7 @@ export function LostFound() {
   const [filter, setFilter] = useState<LFCategory>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   async function loadPosts() {
     setLoading(true);
@@ -45,6 +47,7 @@ export function LostFound() {
       setPosts([]);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }
 
@@ -59,6 +62,10 @@ export function LostFound() {
 
   async function handleCreate() {
     await loadPosts();
+  }
+
+  if (initialLoad && loading) {
+    return <Loading />;
   }
 
   return (

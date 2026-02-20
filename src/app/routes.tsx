@@ -12,7 +12,7 @@ import { CollabPostDetailRoute } from "./pages/CollabHub/CollabPostDetailRoute";
 import { Events } from "./pages/Events/Events";
 import { EventPostDetailRoute } from "./pages/Events/EventPostDetailRoute";
 import { QnA } from "./pages/QnA/QnA";
-import { QnAPostDetailRoute } from "./pages/QnA/QnAPostDetailRoute";
+import { QnAPostDetailRoute } from "./pages/QnA/components/QnAPostDetailRoute";
 import { Notes } from "./pages/Study/components/Notes";
 import { StudyLayout } from "./pages/Study/StudyLayout";
 import { Resources } from "./pages/Study/components/Resources";

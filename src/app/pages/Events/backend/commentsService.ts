@@ -380,3 +380,58 @@ export async function getCurrentUserProfile(): Promise<{
     return null;
   }
 }
+
+export async function updateCommentContent({
+  commentId,
+  authorId,
+  content,
+}: {
+  commentId: string;
+  authorId: string;
+  content: string;
+}): Promise<void> {
+  const next = content.trim();
+  if (!next) {
+    throw new Error("Comment cannot be empty");
+  }
+
+  const { data, error } = await supabase
+    .from("comments")
+    .update({ content: next })
+    .eq("comment_id", commentId)
+    .eq("author_id", authorId)
+    .select("comment_id");
+
+  if (error) {
+    console.error("updateCommentContent error", error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Update failed (not owner or not permitted)");
+  }
+}
+
+export async function deleteComment({
+  commentId,
+  authorId,
+}: {
+  commentId: string;
+  authorId: string;
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from("comments")
+    .delete()
+    .eq("comment_id", commentId)
+    .eq("author_id", authorId)
+    .select("comment_id");
+
+  if (error) {
+    console.error("deleteComment error", error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Delete failed (not owner or not permitted)");
+  }
+}

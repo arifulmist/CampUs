@@ -179,7 +179,13 @@ function isSameDay(a?: string | null, b?: string | null) {
 
 
 
-export function EventPostRoute({ postId }: { postId: string }) {
+export function EventPostRoute({
+  postId,
+  onInitialLoadDone,
+}: {
+  postId: string;
+  onInitialLoadDone?: () => void;
+}) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<EventDetail | null>(null);
@@ -192,6 +198,11 @@ export function EventPostRoute({ postId }: { postId: string }) {
   
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const initialLoadNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    initialLoadNotifiedRef.current = false;
+  }, [postId]);
 
   const isOwner = useMemo(() => {
     if (!detail?.authorId || !currentUserId) return false;
@@ -404,7 +415,13 @@ export function EventPostRoute({ postId }: { postId: string }) {
         toast.error("Failed to load event post");
         setDetail(null);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          if (!initialLoadNotifiedRef.current) {
+            initialLoadNotifiedRef.current = true;
+            onInitialLoadDone?.();
+          }
+        }
       }
     }
 

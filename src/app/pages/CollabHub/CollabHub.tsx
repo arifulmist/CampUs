@@ -9,6 +9,7 @@ import { createCollabPost } from "./backend/collab";
 import { CollabPostCard, type CollabPost } from "./components/CollabPostCard";
 
 import postEmptyState from "@/assets/images/noPost.svg";
+import { Loading } from "../Fallback/Loading";
 
 export function CollabHub() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function CollabHub() {
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const categories: Category[] = ["all", "research", "competition", "project"];
 
@@ -211,12 +213,17 @@ export function CollabHub() {
       setPosts([]);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }
 
   useEffect(() => {
     loadPosts();
   }, []);
+
+  if (initialLoad && loading) {
+    return <Loading />;
+  }
 
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">

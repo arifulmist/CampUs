@@ -97,7 +97,13 @@ function formatRelativeTime(dateString?: string | null) {
   });
 }
 
-export function CollabPostRoute({ postId }: { postId: string }) {
+export function CollabPostRoute({
+  postId,
+  onInitialLoadDone,
+}: {
+  postId: string;
+  onInitialLoadDone?: () => void;
+}) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<CollabDetail | null>(null);
@@ -108,6 +114,11 @@ export function CollabPostRoute({ postId }: { postId: string }) {
   const [reloadToken, setReloadToken] = useState(0);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const initialLoadNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    initialLoadNotifiedRef.current = false;
+  }, [postId]);
 
   const isOwner = useMemo(() => {
     if (!detail?.authorId || !currentUserId) return false;
@@ -248,7 +259,13 @@ export function CollabPostRoute({ postId }: { postId: string }) {
         toast.error("Failed to load collaboration post");
         setDetail(null);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          if (!initialLoadNotifiedRef.current) {
+            initialLoadNotifiedRef.current = true;
+            onInitialLoadDone?.();
+          }
+        }
       }
     }
 

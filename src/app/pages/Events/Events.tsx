@@ -8,6 +8,7 @@ import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter"
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";
 import postEmptyState from "@/assets/images/noPost.svg";
+import { Loading } from "../Fallback/Loading";
 
 export function Events() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function Events() {
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   // Fetch all events and merge related data
   async function loadEvents() {
@@ -183,6 +185,7 @@ const mergedPosts = (events ?? []).map((ev: any) => {
       setPosts([]);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }
 
@@ -209,6 +212,10 @@ const mergedPosts = (events ?? []).map((ev: any) => {
     if (filter === "all") return posts;
     return posts.filter((p) => p.category === filter);
   }, [posts, filter]);
+
+  if (initialLoad && loading) {
+    return <Loading />;
+  }
 
   // Handle modal create
   async function handleCreate() {
