@@ -6,8 +6,7 @@ import { OnlineUsersProvider } from "./OnlineUsersProvider";
 export function Layout() {
   const location = useLocation();
 
-  // adjust the list of routes where navs should be hidden
-  const hideNavPaths = ["/signup", "/login"]; // hide TopNav on profile; page uses its own Navbar
+  const hideNavPaths = ["/signup", "/login"];
   const hideNav = hideNavPaths.includes(location.pathname);
 
   return (

@@ -19,7 +19,6 @@ import { LostFound } from "./pages/LostAndFound/LostFound";
 import { LostFoundDetailRoute } from "./pages/LostAndFound/LostFoundDetailRoute";
 import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Error_NotFound";
-// import { Messaging } from "./pages/Messaging/Messaging";
 import PostView from "./pages/PostView/PostView";
 
 export const router = createBrowserRouter([
@@ -63,7 +62,6 @@ export const router = createBrowserRouter([
       { path: "/lost-and-found/:post_id", element: <LostFoundDetailRoute /> },
       { path: "/profile", element: <UserProfile /> },
       { path: "/profile/:studentId", element: <UserProfile /> },
-      // { path: "/messages", element: <Messaging /> },
       { path: "*", element: <NotFound /> }
     ],
   },
