@@ -1,17 +1,35 @@
 import { NavLink, Outlet, useParams, useLocation } from "react-router";
 import { Sidebar } from "./components/Sidebar";
 import { useMemo, useState, useEffect } from "react";
-import { placeholderUser } from "@/mockData/placeholderUser";
 import {
   fetchNotes,
   fetchResources,
+  getCurrentUserBatch,
+  getCurrentUserId,
   type Note,
   type ResourceItem,
 } from "./backend/studyService";
 
 export function StudyLayout() {
   const { level, term } = useParams();
-  const batch = placeholderUser.batch;
+  const [batch, setBatch] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [batchLoading, setBatchLoading] = useState(true);
+
+  // Fetch the current user's batch (department) and user ID on mount
+  useEffect(() => {
+    setBatchLoading(true);
+    Promise.all([getCurrentUserBatch(), getCurrentUserId()])
+      .then(([userBatch, userId]) => {
+        setBatch(userBatch);
+        setCurrentUserId(userId);
+      })
+      .catch((err) => {
+        console.error("Error fetching user batch:", err);
+        setBatch("");
+      })
+      .finally(() => setBatchLoading(false));
+  }, []);
 
   const notesPath = `/study/${level}/${term}/notes`;
   const resourcesPath = `/study/${level}/${term}/resources`;
@@ -27,6 +45,8 @@ export function StudyLayout() {
 
   // Fetch data from backend when level/term changes
   useEffect(() => {
+    if (!batch) return; // wait until batch is loaded
+
     setSelectedCourse(null);
     setSelectedUploader(null);
     setLoading(true);
@@ -90,6 +110,32 @@ export function StudyLayout() {
 
   function addResource(r: ResourceItem) {
     setResources((prev) => [r, ...prev]);
+  }
+
+  function removeNote(noteId: string) {
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+  }
+
+  function removeResource(resourceId: string) {
+    setResources((prev) => prev.filter((r) => r.id !== resourceId));
+  }
+
+  if (batchLoading) {
+    return (
+      <main className="lg:w-full lg:h-screen lg:flex lg:items-center lg:justify-center">
+        <p className="text-text-lighter-lm">Loading your department...</p>
+      </main>
+    );
+  }
+
+  if (!batch) {
+    return (
+      <main className="lg:w-full lg:h-screen lg:flex lg:items-center lg:justify-center">
+        <p className="text-text-lighter-lm">
+          Unable to determine your department. Please update your profile.
+        </p>
+      </main>
+    );
   }
 
   return (
@@ -169,8 +215,11 @@ export function StudyLayout() {
               viewingResources,
               addNote,
               addResource,
+              removeNote,
+              removeResource,
               loading,
               batch,
+              currentUserId,
               level: parseInt(level || "1", 10),
               term: parseInt(term || "1", 10),
             }}

@@ -5,7 +5,12 @@ import pdfIcon from "@/assets/images/pdfImage.svg";
 import { useOutletContext } from "react-router";
 import { supabase } from "@/supabase/supabaseClient";
 
-import { type Note, createNote, uploadNoteFile } from "../backend/studyService";
+import {
+  type Note,
+  createNote,
+  uploadNoteFile,
+  deleteNote,
+} from "../backend/studyService";
 import { ButtonCTA } from "@/components/ButtonCTA";
 import { useState } from "react";
 import { NotesAddModal } from "./NotesAddModal";
@@ -15,19 +20,23 @@ import notesEmptyState from "@/assets/images/noNotes.svg";
 export function Notes() {
   const [openAddModal, setOpenAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   const outlet = useOutletContext<{
     filteredNotes: Note[];
     baseNotes: Note[];
     addNote: (n: Note) => void;
+    removeNote: (noteId: string) => void;
     loading: boolean;
     batch: string;
     level: number;
     term: number;
+    currentUserId: string | null;
   }>();
 
   const notes: Note[] = outlet?.filteredNotes ?? [];
   const loading = outlet?.loading ?? false;
+  const currentUserId = outlet?.currentUserId ?? null;
 
   async function handleAddNote(data: {
     title: string;
@@ -69,6 +78,20 @@ export function Notes() {
     }
   }
 
+  async function handleDeleteNote(noteId: string) {
+    setDeletingNoteId(noteId);
+    try {
+      await deleteNote(noteId);
+      outlet?.removeNote?.(noteId);
+      toast.success("Note deleted successfully!");
+    } catch (err: any) {
+      console.error("Error deleting note:", err);
+      toast.error(err.message || "Failed to delete note");
+    } finally {
+      setDeletingNoteId(null);
+    }
+  }
+
   function renderContent() {
     if (loading) {
       return <h5 className="text-text-lighter-lm">Loading notes...</h5>;
@@ -87,7 +110,13 @@ export function Notes() {
     return (
       <div className="lg:grid lg:grid-cols-3 lg:gap-20 lg:mt-8">
         {notes.map((n) => (
-          <NoteItem key={n.id} {...n} />
+          <NoteItem
+            key={n.id}
+            {...n}
+            currentUserId={currentUserId}
+            onDelete={handleDeleteNote}
+            isDeleting={deletingNoteId === n.id}
+          />
         ))}
       </div>
     );
@@ -96,10 +125,10 @@ export function Notes() {
   return (
     <div className="w-full">
       <div className="w-full lg:mt-4">
-      <ButtonCTA
+        <ButtonCTA
           label={"Add File"}
           clickEvent={() => setOpenAddModal(true)}
-      ></ButtonCTA>
+        ></ButtonCTA>
       </div>
       <div className="lg:flex lg:flex-col items-center gap-y-1 mt-10">
         {renderContent()}
@@ -117,6 +146,7 @@ export function Notes() {
 }
 
 function NoteItem({
+  id,
   title,
   uploadedBy,
   courseCode,
@@ -124,7 +154,15 @@ function NoteItem({
   uploadTime,
   fileLink,
   fileName,
-}: Note) {
+  authorId,
+  currentUserId,
+  onDelete,
+  isDeleting,
+}: Note & {
+  currentUserId: string | null;
+  onDelete: (noteId: string) => void;
+  isDeleting: boolean;
+}) {
   const getExt = (s?: string) =>
     s ? s.split(/[?#]/)[0].split(".").pop()?.toLowerCase() : undefined;
   const extension = getExt(fileName) ?? getExt(fileLink);
@@ -150,12 +188,12 @@ function NoteItem({
       if (parts.length === 2) {
         // parts[1] = maybe "public/notes/...." or "notes/..."
         let after = parts[1];
-          // remove possible "public/"
-          after = after.replace(/^public\//, "");
-          // if the path includes the bucket name (e.g. "notes/..."), remove it so
-          // createSignedUrl receives the object path relative to the bucket root
-          if (after.startsWith("notes/")) return after.slice("notes/".length);
-          return after;
+        // remove possible "public/"
+        after = after.replace(/^public\//, "");
+        // if the path includes the bucket name (e.g. "notes/..."), remove it so
+        // createSignedUrl receives the object path relative to the bucket root
+        if (after.startsWith("notes/")) return after.slice("notes/".length);
+        return after;
       }
     } catch (e) {
       // fallback: try to locate /notes/ in the URL
@@ -204,24 +242,81 @@ function NoteItem({
     }
   }
 
+  const isOwner = currentUserId != null && authorId === currentUserId;
+
   return (
-    <button onClick={openFile} className="w-full text-left" aria-label={`Open ${title}`}>
-      <div className="lg:flex lg:flex-col lg:w-70 lg:h-90 lg:rounded-xl bg-primary-lm hover:scale-102 lg:transition lg:duration-300 hover:drop-shadow-lg">
-        <img
-          src={previewImage}
-          className="lg:object-center lg:object-contain lg:w-full lg:h-2/3 lg:rounded-t-xl lg:rounded-tl-xl"
-          alt={title}
-        />
-        <div className="lg:h-full lg:w-full lg:px-5 lg:py-4 bg-linear-to-t from-[#DFE1E5] from-30% lg:via-[#C3A99761] lg:via-100% lg:rounded-b-xl lg:rounded-bl-xl">
-          <p className="text-text-lm lg:font-semibold text-md">
-            {title}_{courseCode}
-          </p>
-          <p className="text-text-lm lg:font-medium text-base">{uploadedBy}</p>
-          <p className="text-text-lighter-lm text-base">
-            Uploaded : {uploadDate} {uploadTime}
-          </p>
+    <div className="relative lg:w-70">
+      <button
+        onClick={openFile}
+        className="w-full text-left"
+        aria-label={`Open ${title}`}
+      >
+        <div className="lg:flex lg:flex-col lg:w-70 lg:h-90 lg:rounded-xl bg-primary-lm hover:scale-102 lg:transition lg:duration-300 hover:drop-shadow-lg">
+          <img
+            src={previewImage}
+            className="lg:object-center lg:object-contain lg:w-full lg:h-2/3 lg:rounded-t-xl lg:rounded-tl-xl"
+            alt={title}
+          />
+          <div className="lg:h-full lg:w-full lg:px-5 lg:py-4 bg-linear-to-t from-[#DFE1E5] from-30% lg:via-[#C3A99761] lg:via-100% lg:rounded-b-xl lg:rounded-bl-xl">
+            <p className="text-text-lm lg:font-semibold text-md">
+              {title}_{courseCode}
+            </p>
+            <p className="text-text-lm lg:font-medium text-base">
+              {uploadedBy}
+            </p>
+            <p className="text-text-lighter-lm text-base">
+              Uploaded : {uploadDate} {uploadTime}
+            </p>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {isOwner && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(id);
+          }}
+          disabled={isDeleting}
+          className="absolute top-2 right-2 z-10 size-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm border border-stroke-grey shadow-md text-red-500 hover:bg-red-600 hover:text-white hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+          aria-label="Delete note"
+          title="Delete this note"
+        >
+          {isDeleting ? (
+            <svg
+              className="animate-spin size-4"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="size-4"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+        </button>
+      )}
+    </div>
   );
 }
