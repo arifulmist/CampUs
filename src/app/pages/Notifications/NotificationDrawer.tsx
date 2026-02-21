@@ -12,6 +12,7 @@ import {
 	type NotificationRow,
 } from "./utils/notificationUtils";
 import { supabase } from "@/supabase/supabaseClient";
+import { formatRelativeTime } from "@/utils/datetime";
 
 export type NotificationDrawerProps = {
 	open: boolean;
@@ -661,7 +662,7 @@ export function NotificationDrawer({
 			<div className="lg:px-4 lg:py-5 flex flex-col h-full min-h-0">
 				<div>
 					<div className="flex items-center justify-between">
-						<h5 className="text-accent-lm font-header font-semibold m-0">
+						<h5 className="text-accent-lm font-header font-semibold">
 							Notifications
 						</h5>
 						{unreadCount > 0 ? (
@@ -670,7 +671,7 @@ export function NotificationDrawer({
 							</p>
 						) : null}
 					</div>
-					<hr className="border-accent-lm lg:mt-3 lg:mb-1" />
+					<hr className="border-accent-lm lg:mt-3 lg:mb-4" />
 				</div>
 
 				<div className="flex-1 min-h-0 overflow-y-auto">
@@ -691,10 +692,11 @@ export function NotificationDrawer({
 						hydrated.map((n, index) => (
 							<div key={n.key}>
 								<NotificationRowItem
-									label={n.label}
-									isUnread={!n.isRead}
-									onClick={() => void handleNotificationClick(n)}
-								/>
+												label={n.label}
+												isUnread={!n.isRead}
+												timestamp={n.createdAt}
+												onClick={() => void handleNotificationClick(n)}
+											/>
 								{index < hydrated.length - 1 && (
 									<hr className="border-stroke-grey lg:my-1" />
 								)}
@@ -710,22 +712,27 @@ export function NotificationDrawer({
 function NotificationRowItem({
 	label,
 	isUnread,
+	timestamp,
 	onClick,
 }: {
 	label: ReactNode;
 	isUnread: boolean;
+	timestamp?: string;
 	onClick: () => void;
 }) {
 	return (
 		<button
 			onClick={onClick}
-			className={`flex items-center w-full justify-between lg:px-2 lg:py-4 lg:rounded-lg hover:bg-hover-lm transition duration-150 text-left ${
+			className={`flex items-center w-full justify-between lg:px-2 lg:py-2 lg:rounded-lg hover:bg-hover-lm transition duration-150 text-left ${
 				isUnread && "bg-hover-lm"
 			}`}
 		>
 			<div className="flex flex-col pr-4">
-				<p className={`m-0 p-0 text-sm ${isUnread ? "text-text-lm font-medium" : "text-text-lighter-lm/70"}`}>
+				<p className={`m-0 p-0 ${isUnread ? "text-accent-lm font-medium" : "text-text-lighter-lm/70"}`}>
 					{label}
+				</p>
+				<p className={`m-0 p-0 text-sm ${isUnread ? "text-accent-lm" : "text-text-lighter-lm/70"} lg:mt-1`}>
+					{formatRelativeTime(timestamp ?? "")}
 				</p>
 			</div>
 			{isUnread && <span className="size-2 shrink-0 bg-accent-lm rounded-full animate-pulse" />}

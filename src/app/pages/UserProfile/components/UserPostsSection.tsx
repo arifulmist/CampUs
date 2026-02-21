@@ -12,6 +12,7 @@ import {
 } from "../../CollabHub/components/CollabPostCard";
 import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
+import { Loading } from "../../Fallback/Loading";
 
 function asCollabCategory(value: unknown): CollabPost["category"] | null {
   if (typeof value !== "string") return null;
@@ -52,6 +53,7 @@ export function UserPostsSection() {
   const [collabById, setCollabById] = useState<Map<string, CollabPost>>(new Map());
   const [qnaById, setQnaById] = useState<Map<string, QnaFeedPost>>(new Map());
   const [lostFoundById, setLostFoundById] = useState<Map<string, LFPost>>(new Map());
+  const [localLoading, setLocalLoading] = useState(true);
 
   const idsByType = useMemo(() => {
     const byType = {
@@ -75,6 +77,8 @@ export function UserPostsSection() {
     let alive = true;
 
     async function loadAll() {
+      setLocalLoading(true);
+      try {
       const authorAuthUid = viewedAuthUid;
       if (!authorAuthUid) {
         if (!alive) return;
@@ -373,6 +377,9 @@ export function UserPostsSection() {
       } else {
         setLostFoundById(new Map());
       }
+      } finally {
+        if (alive) setLocalLoading(false);
+      }
     }
 
     void loadAll();
@@ -385,8 +392,8 @@ export function UserPostsSection() {
     <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-8 flex flex-col h-fit">
       <h4 className="font-header">Posts</h4>
       <div className="flex flex-col lg:gap-5 lg:mt-4">
-        {userPostsLoading ? (
-          <p className="text-sm text-text-lighter-lm">Loading…</p>
+        {userPostsLoading || localLoading ? (
+          <Loading />
         ) : userPostsError ? (
           <p className="text-sm text-accent-lm">{userPostsError}</p>
         ) : userPosts.length === 0 ? (
