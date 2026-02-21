@@ -86,6 +86,7 @@ type QnaMetaRow = {
 type LostFoundMetaRow = {
   post_id: string;
   img_url: string | null;
+  category: string | null;
 };
 
 function normalizePostType(type: string): "event" | "collab" | "qna" | "lostfound" | string {
@@ -432,7 +433,7 @@ export default function SearchResults() {
           byType.lostfound.length
             ? supabase
                 .from("lost_and_found_posts")
-                .select("post_id,img_url")
+              .select("post_id,img_url,category")
                 .in("post_id", byType.lostfound)
             : Promise.resolve({ data: [], error: null } as unknown as { data: LostFoundMetaRow[]; error: null }),
         ]);
@@ -462,10 +463,12 @@ export default function SearchResults() {
         }
 
         const lfImgByPostId = new Map<string, string | null>();
+        const lfCategoryByPostId = new Map<string, string | null>();
         for (const row of (lfRes.data ?? []) as LostFoundMetaRow[]) {
           const postId = row.post_id;
           if (typeof postId !== "string") continue;
           lfImgByPostId.set(postId, typeof row.img_url === "string" && row.img_url.trim() ? row.img_url : null);
+          lfCategoryByPostId.set(postId, typeof row.category === "string" && row.category.trim() ? row.category : null);
         }
 
         const qnaByPostId = new Map<string, { category: QnaFeedPost["category"]; imgUrl: string | null }>();
@@ -583,6 +586,7 @@ export default function SearchResults() {
 
           lostFoundMap.set(postId, {
             id: postId,
+            category: lfCategoryByPostId.get(postId) ?? undefined,
             title: base.title,
             author,
             authorCourse,

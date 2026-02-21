@@ -12,6 +12,7 @@ import {
 
 export type LFPost = {
   id: string;
+  category?: string;
   title: string;
   author: string;
   authorCourse: string;
@@ -44,6 +45,13 @@ export function LFPostCard({
   isLiked: boolean;
   onToggleLike: () => void;
 }) {
+  const categoryLabel = (() => {
+    const c = typeof post.category === "string" ? post.category.trim().toLowerCase() : "";
+    if (c === "found") return "Found";
+    if (c === "lost") return "Lost";
+    return c ? c[0].toUpperCase() + c.slice(1) : null;
+  })();
+
   const descRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [showReadMore, setShowReadMore] = useState(false);
@@ -72,6 +80,11 @@ export function LFPostCard({
     <div className="bg-secondary-lm lg:p-6 lg:rounded-xl lg:border border-stroke-grey hover:border-stroke-peach hover:bg-hover-lm lg:transition lg:animate-slide-in">
       <div className="lg:flex lg:items-start lg:justify-between lg:mb-3">
         <div>
+          {categoryLabel ? (
+            <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl">
+              {categoryLabel}
+            </p>
+          ) : null}
           <h3 className="text-xl lg:font-bold text-text-lm">{post.title}</h3>
           <div className="lg:mt-2 lg:flex lg:items-center lg:gap-2">
             <UserInfo

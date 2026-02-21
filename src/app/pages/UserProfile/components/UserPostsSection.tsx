@@ -346,6 +346,21 @@ export function UserPostsSection() {
             .in("post_id", idsByType.lostfound);
           if (error) throw error;
 
+          const { data: metaRows, error: metaErr } = await supabase
+            .from("lost_and_found_posts")
+            .select("post_id,img_url,category")
+            .in("post_id", idsByType.lostfound);
+          if (metaErr) throw metaErr;
+
+          const imgById = new Map<string, string | null>();
+          const catById = new Map<string, string | null>();
+          for (const m of (metaRows ?? []) as any[]) {
+            const postId = m?.post_id;
+            if (typeof postId !== "string") continue;
+            imgById.set(postId, typeof m?.img_url === "string" && m.img_url.trim() ? m.img_url : null);
+            catById.set(postId, typeof m?.category === "string" && m.category.trim() ? m.category : null);
+          }
+
           const map = new Map<string, LFPost>();
           for (const r of (rows ?? []) as any[]) {
             const postId = r?.post_id;
@@ -354,13 +369,14 @@ export function UserPostsSection() {
             if (typeof postId !== "string" || typeof title !== "string" || typeof description !== "string") continue;
             map.set(postId, {
               id: postId,
+              category: catById.get(postId) ?? undefined,
               title,
               author: displayName,
               authorCourse: batchLabel || "—",
               authorAvatar: undefined,
               authorAuthUid,
               description,
-              imageUrl: undefined,
+              imageUrl: imgById.get(postId) ?? undefined,
               reactions: typeof r?.like_count === "number" ? r.like_count : 0,
               comments: typeof r?.comment_count === "number" ? r.comment_count : 0,
               shares: 0,

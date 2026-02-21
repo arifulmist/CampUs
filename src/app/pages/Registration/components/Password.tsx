@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { InputField } from "@/components/InputField";
 
 interface PasswordProps {
@@ -78,6 +78,7 @@ export function Password({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
   };
+  
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -149,11 +150,7 @@ export function Password({
           </div>
           
           
-          {passwordStrength.messages.length > 0 && (
-            <p className="text-xs text-gray-600 lg:mt-1">
-              Requirements: {passwordStrength.messages.join(", ")}
-            </p>
-          )}
+          {/* requirements removed — use toast for short passwords */}
         </div>
       )}
 

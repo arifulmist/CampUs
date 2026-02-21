@@ -1,13 +1,14 @@
 import { UpcomingEvents } from "@/components/UpcomingEvents.tsx";
-import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
 import { supabase } from "@/supabase/supabaseClient";
+import { formatRelativeTime } from "@/utils/datetime";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import EventPost, { type EventPostType } from "@/app/pages/Events/components/EventPost";
 import { CollabPostCard, type CollabPost } from "@/app/pages/CollabHub/components/CollabPostCard";
 import { QnaPostCard, type QnaFeedPost } from "@/app/pages/QnA/components/QnaPostCard";
 import { LFPostCard, type LFPost } from "@/app/pages/LostAndFound/components/LFPostCard";
-import { formatRelativeTime } from "@/utils/datetime";
 
 type BasePostResult = {
   post_id: string;
@@ -70,6 +71,7 @@ type QnaMetaRow = {
 type LostFoundMetaRow = {
   post_id: string;
   img_url: string | null;
+  category: string | null;
 };
 
 function normalizePostType(type: string): "event" | "collab" | "qna" | "lostfound" | string {
@@ -107,117 +109,19 @@ function asQnaCategory(value: unknown): QnaFeedPost["category"] {
 
 export function Home() {
   const navigate = useNavigate();
+
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BasePostResult[]>([]);
   const [popularPosts, setPopularPosts] = useState<BasePostResult[]>([]);
   const [hasSkillsOrInterests, setHasSkillsOrInterests] = useState<boolean>(false);
 
+  const [relatedLoading, setRelatedLoading] = useState<boolean>(true);
+  const [popularLoading, setPopularLoading] = useState<boolean>(true);
+
   const [eventById, setEventById] = useState<Map<string, EventPostType>>(new Map());
   const [collabById, setCollabById] = useState<Map<string, CollabPost>>(new Map());
   const [qnaById, setQnaById] = useState<Map<string, QnaFeedPost>>(new Map());
   const [lostFoundById, setLostFoundById] = useState<Map<string, LFPost>>(new Map());
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (!mounted) return;
-      if (userError) console.error("Error fetching user:", userError);
-      const uid = userData?.user?.id ?? null;
-      setAuthUid(uid);
-
-      // --- Always show Lost & Found posts in Home ---
-      const { data: lfRows, error: lfErr } = await supabase
-        .from("all_posts")
-        .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
-        .in("type", ["lostfound", "lost_and_found", "lost-and-found"])
-        .order("created_at", { ascending: false })
-        // Try to fetch "all" without being too clever about paging.
-        // If this ever gets too large, we can add pagination.
-        .range(0, 9999);
-
-      if (lfErr) console.error("Lost & Found all_posts fetch error:", lfErr);
-      const lostFoundPosts = (lfRows ?? []) as BasePostResult[];
-
-      // --- Relevant: posts tagged with user's skills/interests ---
-      let relevantPosts: BasePostResult[] = [];
-      if (uid) {
-        const [{ data: skills }, { data: interests }] = await Promise.all([
-          supabase.from("user_skills").select("skill_id").eq("auth_uid", uid),
-          supabase.from("user_interests").select("interest_id").eq("auth_uid", uid),
-        ]);
-
-        const skillIds = (skills ?? []).map((s: any) => s.skill_id).filter((x: any) => typeof x === "number");
-        const interestIds = (interests ?? []).map((i: any) => i.interest_id).filter((x: any) => typeof x === "number");
-        const combinedIds = Array.from(new Set([...skillIds, ...interestIds]));
-
-        setHasSkillsOrInterests(combinedIds.length > 0);
-
-        if (combinedIds.length > 0) {
-          const { data: tagRows, error: tagErr } = await supabase
-            .from("post_tags")
-            .select("post_id")
-            .in("skill_id", combinedIds)
-            .limit(200);
-          if (tagErr) console.error("post_tags fetch error:", tagErr);
-
-          const postIds = Array.from(
-            new Set((tagRows ?? []).map((r: any) => r.post_id).filter((x: any) => typeof x === "string" && x.trim()))
-          );
-
-          if (postIds.length > 0) {
-            const { data: baseRows, error: baseErr } = await supabase
-              .from("all_posts")
-              .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
-              .in("post_id", postIds)
-              .order("created_at", { ascending: false })
-              .limit(20);
-            if (baseErr) console.error("Relevant all_posts fetch error:", baseErr);
-            relevantPosts = (baseRows ?? []) as BasePostResult[];
-          }
-        }
-      } else {
-        setHasSkillsOrInterests(false);
-      }
-
-      // Merge relevant + Lost&Found, de-dupe, sort by created_at desc (latest first)
-      const mergedRelated = new Map<string, BasePostResult>();
-      for (const p of [...lostFoundPosts, ...relevantPosts]) {
-        if (!p?.post_id) continue;
-        mergedRelated.set(p.post_id, p);
-      }
-
-      const finalRelated = Array.from(mergedRelated.values()).sort((a, b) => {
-        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return tb - ta;
-      });
-
-      // --- Most Popular: highest likes ---
-      const { data: popularRows, error: popError } = await supabase
-        .from("all_posts")
-        .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
-        .order("like_count", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (popError) console.error("Popular posts error:", popError);
-
-      if (!mounted) return;
-      setRelatedPosts(finalRelated);
-      setPopularPosts((popularRows ?? []) as BasePostResult[]);
-
-      const unionById = new Map<string, BasePostResult>();
-      for (const p of [...finalRelated, ...((popularRows ?? []) as BasePostResult[])]) {
-        if (!p?.post_id) continue;
-        unionById.set(p.post_id, p);
-      }
-
-      await hydratePostCards(Array.from(unionById.values()));
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const hydratePostCards = async (basePosts: BasePostResult[]) => {
     const byType = {
@@ -307,27 +211,30 @@ export function Home() {
     // Shared tag lookup (events + collab)
     const needsSkills = byType.event.length > 0 || byType.collab.length > 0;
     const [skillsRes, eventTagsRes, collabTagsRes] = await Promise.all([
-      needsSkills ? supabase.from("skills_lookup").select("id,skill") : Promise.resolve({ data: [], error: null }),
+      needsSkills
+        ? supabase.from("skills_lookup").select("id,skill")
+        : Promise.resolve({ data: [], error: null } as unknown as { data: SkillRow[]; error: null }),
       byType.event.length
         ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", byType.event)
-        : Promise.resolve({ data: [], error: null }),
+        : Promise.resolve({ data: [], error: null } as unknown as { data: PostTagRow[]; error: null }),
       byType.collab.length
         ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", byType.collab)
-        : Promise.resolve({ data: [], error: null }),
+        : Promise.resolve({ data: [], error: null } as unknown as { data: PostTagRow[]; error: null }),
     ]);
-    if ((skillsRes as any).error) throw (skillsRes as any).error;
-    if ((eventTagsRes as any).error) throw (eventTagsRes as any).error;
-    if ((collabTagsRes as any).error) throw (collabTagsRes as any).error;
+
+    if (skillsRes.error) throw skillsRes.error;
+    if (eventTagsRes.error) throw eventTagsRes.error;
+    if (collabTagsRes.error) throw collabTagsRes.error;
 
     const skillById = new Map<number, string>();
-    for (const row of (((skillsRes as any).data ?? []) as SkillRow[])) {
+    for (const row of (skillsRes.data ?? []) as SkillRow[]) {
       if (typeof row.id === "number" && typeof row.skill === "string" && row.skill.trim()) {
         skillById.set(row.id, row.skill);
       }
     }
 
     const eventTagsByPostId = new Map<string, { skill_id: number; name: string }[]>();
-    for (const row of (((eventTagsRes as any).data ?? []) as PostTagRow[])) {
+    for (const row of (eventTagsRes.data ?? []) as PostTagRow[]) {
       const postId = row.post_id;
       const skillId = row.skill_id;
       if (typeof postId !== "string" || typeof skillId !== "number") continue;
@@ -338,7 +245,7 @@ export function Home() {
     }
 
     const collabTagsByPostId = new Map<string, string[]>();
-    for (const row of (((collabTagsRes as any).data ?? []) as PostTagRow[])) {
+    for (const row of (collabTagsRes.data ?? []) as PostTagRow[]) {
       const postId = row.post_id;
       const skillId = row.skill_id;
       if (typeof postId !== "string" || typeof skillId !== "number") continue;
@@ -366,9 +273,10 @@ export function Home() {
         ? supabase.from("qna_posts").select("post_id,img_url,qna_category(category_name)").in("post_id", byType.qna)
         : Promise.resolve({ data: [], error: null } as unknown as { data: QnaMetaRow[]; error: null }),
       byType.lostfound.length
-        ? supabase.from("lost_and_found_posts").select("post_id,img_url").in("post_id", byType.lostfound)
+        ? supabase.from("lost_and_found_posts").select("post_id,img_url,category").in("post_id", byType.lostfound)
         : Promise.resolve({ data: [], error: null } as unknown as { data: LostFoundMetaRow[]; error: null }),
     ]);
+
     if (eventsRes.error) throw eventsRes.error;
     if (collabMetaRes.error) throw collabMetaRes.error;
     if (collabCatsRes.error) throw collabCatsRes.error;
@@ -394,10 +302,12 @@ export function Home() {
     }
 
     const lfImgByPostId = new Map<string, string | null>();
+    const lfCategoryByPostId = new Map<string, string | null>();
     for (const row of (lfRes.data ?? []) as LostFoundMetaRow[]) {
       const postId = row.post_id;
       if (typeof postId !== "string") continue;
       lfImgByPostId.set(postId, typeof row.img_url === "string" && row.img_url.trim() ? row.img_url : null);
+      lfCategoryByPostId.set(postId, typeof row.category === "string" && row.category.trim() ? row.category : null);
     }
 
     const qnaByPostId = new Map<string, { category: QnaFeedPost["category"]; imgUrl: string | null }>();
@@ -421,8 +331,7 @@ export function Home() {
       const author = authorNameById.get(authorId) ?? "Unknown";
       const dept = authorDeptById.get(authorId) ?? "";
       const batch = authorBatchById.get(authorId) ?? "";
-      const catName =
-        typeof row.events_category?.category_name === "string" ? row.events_category.category_name : "Events";
+      const catName = typeof row.events_category?.category_name === "string" ? row.events_category.category_name : "Events";
 
       eventsMap.set(postId, {
         id: postId,
@@ -453,6 +362,7 @@ export function Home() {
     for (const postId of byType.collab) {
       const base = baseById.get(postId);
       if (!base) continue;
+
       const authorId = base.author_id;
       const authorName = authorNameById.get(authorId) ?? "Unknown";
       const authorBatch = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId));
@@ -482,6 +392,7 @@ export function Home() {
     for (const postId of byType.qna) {
       const base = baseById.get(postId);
       if (!base) continue;
+
       const authorId = base.author_id;
       const author = authorNameById.get(authorId) ?? "Unknown";
       const authorCourse = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId)) || "—";
@@ -509,12 +420,14 @@ export function Home() {
     for (const postId of byType.lostfound) {
       const base = baseById.get(postId);
       if (!base) continue;
+
       const authorId = base.author_id;
       const author = authorNameById.get(authorId) ?? "Unknown";
       const authorCourse = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId)) || "—";
 
       lostFoundMap.set(postId, {
         id: postId,
+        category: lfCategoryByPostId.get(postId) ?? undefined,
         title: base.title,
         author,
         authorCourse,
@@ -535,7 +448,121 @@ export function Home() {
     setLostFoundById(lostFoundMap);
   };
 
-  // Helper to build correct URL
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      setRelatedLoading(true);
+      setPopularLoading(true);
+
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (!mounted) return;
+        if (userError) console.error("Error fetching user:", userError);
+        const uid = userData?.user?.id ?? null;
+        setAuthUid(uid);
+
+        // Always show Lost & Found posts
+        const { data: lfRows, error: lfErr } = await supabase
+          .from("all_posts")
+          .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+          .in("type", ["lostfound", "lost_and_found", "lost-and-found"])
+          .order("created_at", { ascending: false })
+          .range(0, 9999);
+
+        if (lfErr) console.error("Lost & Found all_posts fetch error:", lfErr);
+        const lostFoundPosts = (lfRows ?? []) as BasePostResult[];
+
+        // Relevant: posts tagged with user's skills/interests
+        let tagMatchedPosts: BasePostResult[] = [];
+        if (uid) {
+          const [{ data: skills }, { data: interests }] = await Promise.all([
+            supabase.from("user_skills").select("skill_id").eq("auth_uid", uid),
+            supabase.from("user_interests").select("interest_id").eq("auth_uid", uid),
+          ]);
+
+          const skillIds = (skills ?? []).map((s: any) => s.skill_id).filter((x: any) => typeof x === "number");
+          const interestIds = (interests ?? [])
+            .map((i: any) => i.interest_id)
+            .filter((x: any) => typeof x === "number");
+          const combinedIds = Array.from(new Set([...skillIds, ...interestIds]));
+
+          setHasSkillsOrInterests(combinedIds.length > 0);
+
+          if (combinedIds.length > 0) {
+            const { data: tagRows, error: tagErr } = await supabase
+              .from("post_tags")
+              .select("post_id")
+              .in("skill_id", combinedIds)
+              .limit(200);
+            if (tagErr) console.error("post_tags fetch error:", tagErr);
+
+            const postIds = Array.from(
+              new Set((tagRows ?? []).map((r: any) => r.post_id).filter((x: any) => typeof x === "string" && x.trim()))
+            );
+
+            if (postIds.length > 0) {
+              const { data: baseRows, error: baseErr } = await supabase
+                .from("all_posts")
+                .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+                .in("post_id", postIds)
+                .order("created_at", { ascending: false })
+                .limit(20);
+              if (baseErr) console.error("Relevant all_posts fetch error:", baseErr);
+              tagMatchedPosts = (baseRows ?? []) as BasePostResult[];
+            }
+          }
+        } else {
+          setHasSkillsOrInterests(false);
+        }
+
+        // Merge Lost&Found + tag matched; de-dupe; sort by created_at desc
+        const mergedRelated = new Map<string, BasePostResult>();
+        for (const p of [...lostFoundPosts, ...tagMatchedPosts]) {
+          if (!p?.post_id) continue;
+          mergedRelated.set(p.post_id, p);
+        }
+        const finalRelated = Array.from(mergedRelated.values()).sort((a, b) => {
+          const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return tb - ta;
+        });
+
+        // Most Popular: highest likes
+        const { data: popularRows, error: popError } = await supabase
+          .from("all_posts")
+          .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+          .order("like_count", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(3);
+        if (popError) console.error("Popular posts error:", popError);
+
+        if (!mounted) return;
+        setRelatedPosts(finalRelated);
+        setPopularPosts((popularRows ?? []) as BasePostResult[]);
+
+        const unionById = new Map<string, BasePostResult>();
+        for (const p of [...finalRelated, ...((popularRows ?? []) as BasePostResult[])]) {
+          if (!p?.post_id) continue;
+          unionById.set(p.post_id, p);
+        }
+
+        await hydratePostCards(Array.from(unionById.values()));
+      } catch (e) {
+        console.error("Home feed load error:", e);
+      } finally {
+        if (!mounted) return;
+        setRelatedLoading(false);
+        setPopularLoading(false);
+      }
+    };
+
+    void load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const buildUrl = (p: { type: string; post_id: string }) => {
     const type = normalizePostType(p.type);
     if (type === "lostfound") return `/lost-and-found/${p.post_id}`;
@@ -548,127 +575,144 @@ export function Home() {
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in justify-center items-start">
       <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-10 lg:w-[70vw]">
+        {relatedLoading ? (
+          <div className="flex items-center gap-3 text-text-lighter-lm">
+            <Spinner className="size-5 text-accent-lm" />
+            <span>Loading relevant posts...</span>
+          </div>
+        ) : null}
 
-        {!hasSkillsOrInterests && authUid && (
+        {!relatedLoading && !hasSkillsOrInterests && authUid ? (
           <div className="text-text-lighter-lm">Add skills/interests in your profile to see relevant posts here.</div>
-        )}
+        ) : null}
 
-        {relatedPosts.map((p) => {
-          const t = normalizePostType(p.type);
+        {!relatedLoading
+          ? relatedPosts.map((p) => {
+              const t = normalizePostType(p.type);
 
-          if (t === "event") {
-            const post = eventById.get(p.post_id);
-            if (!post) return null;
-            return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
-          }
+              if (t === "event") {
+                const post = eventById.get(p.post_id);
+                if (!post) return null;
+                return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+              }
 
-          if (t === "collab") {
-            const post = collabById.get(p.post_id);
-            if (!post) return null;
-            return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
-          }
+              if (t === "collab") {
+                const post = collabById.get(p.post_id);
+                if (!post) return null;
+                return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+              }
 
-          if (t === "qna") {
-            const post = qnaById.get(p.post_id);
-            if (!post) return null;
-            return (
-              <QnaPostCard
-                key={p.post_id}
-                post={post}
-                onOpenDetail={() => navigate(buildUrl(p))}
-                onLike={() => {
-                  /* Home feed is read-only */
-                }}
-                onAddInlineComment={() => {
-                  /* Home feed is read-only */
-                }}
-              />
-            );
-          }
+              if (t === "qna") {
+                const post = qnaById.get(p.post_id);
+                if (!post) return null;
+                return (
+                  <QnaPostCard
+                    key={p.post_id}
+                    post={post}
+                    onOpenDetail={() => navigate(buildUrl(p))}
+                    onLike={() => {
+                      /* Home feed is read-only */
+                    }}
+                    onAddInlineComment={() => {
+                      /* Home feed is read-only */
+                    }}
+                  />
+                );
+              }
 
-          if (t === "lostfound") {
-            const post = lostFoundById.get(p.post_id);
-            if (!post) return null;
-            return (
-              <LFPostCard
-                key={p.post_id}
-                post={post}
-                isLiked={false}
-                onToggleLike={() => {
-                  /* Home feed is read-only */
-                }}
-                onOpenComments={() => navigate(buildUrl(p))}
-                onEdit={() => navigate(buildUrl(p))}
-                onRemove={() => {
-                  /* Home feed is read-only */
-                }}
-              />
-            );
-          }
+              if (t === "lostfound") {
+                const post = lostFoundById.get(p.post_id);
+                if (!post) return null;
+                return (
+                  <LFPostCard
+                    key={p.post_id}
+                    post={post}
+                    isLiked={false}
+                    onToggleLike={() => {
+                      /* Home feed is read-only */
+                    }}
+                    onOpenComments={() => navigate(buildUrl(p))}
+                    onEdit={() => navigate(buildUrl(p))}
+                    onRemove={() => {
+                      /* Home feed is read-only */
+                    }}
+                  />
+                );
+              }
 
-          return null;
-        })}
+              return null;
+            })
+          : null}
 
-        {/* Most Popular */}
         <h2 className="text-lg font-bold mt-8">Most Popular</h2>
-        {popularPosts.length === 0 && (
+        {popularLoading ? (
+          <div className="flex items-center gap-3 text-text-lighter-lm">
+            <Spinner className="size-5 text-accent-lm" />
+            <span>Loading popular posts...</span>
+          </div>
+        ) : null}
+
+        {!popularLoading && popularPosts.length === 0 ? (
           <div className="text-gray-500">No popular posts yet</div>
-        )}
-        {popularPosts.map((p) => {
-          const t = normalizePostType(p.type);
+        ) : null}
 
-          if (t === "event") {
-            const post = eventById.get(p.post_id);
-            if (!post) return null;
-            return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
-          }
+        {!popularLoading
+          ? popularPosts.map((p) => {
+              const t = normalizePostType(p.type);
 
-          if (t === "collab") {
-            const post = collabById.get(p.post_id);
-            if (!post) return null;
-            return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
-          }
+              if (t === "event") {
+                const post = eventById.get(p.post_id);
+                if (!post) return null;
+                return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+              }
 
-          if (t === "qna") {
-            const post = qnaById.get(p.post_id);
-            if (!post) return null;
-            return (
-              <QnaPostCard
-                key={p.post_id}
-                post={post}
-                onOpenDetail={() => navigate(buildUrl(p))}
-                onLike={() => {
-                  /* Home feed is read-only */
-                }}
-                onAddInlineComment={() => {
-                  /* Home feed is read-only */
-                }}
-              />
-            );
-          }
+              if (t === "collab") {
+                const post = collabById.get(p.post_id);
+                if (!post) return null;
+                return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+              }
 
-          if (t === "lostfound") {
-            const post = lostFoundById.get(p.post_id);
-            if (!post) return null;
-            return (
-              <LFPostCard
-                key={p.post_id}
-                post={post}
-                isLiked={false}
-                onToggleLike={() => {
-                  /* Home feed is read-only */
-                }}
-                onOpenComments={() => navigate(buildUrl(p))}
-                onEdit={() => navigate(buildUrl(p))}
-                onRemove={() => {
-                  /* Home feed is read-only */
-                }}
-              />
-            );
-          }
+              if (t === "qna") {
+                const post = qnaById.get(p.post_id);
+                if (!post) return null;
+                return (
+                  <QnaPostCard
+                    key={p.post_id}
+                    post={post}
+                    onOpenDetail={() => navigate(buildUrl(p))}
+                    onLike={() => {
+                      /* Home feed is read-only */
+                    }}
+                    onAddInlineComment={() => {
+                      /* Home feed is read-only */
+                    }}
+                  />
+                );
+              }
 
-          return null;
-        })}
+              if (t === "lostfound") {
+                const post = lostFoundById.get(p.post_id);
+                if (!post) return null;
+                return (
+                  <LFPostCard
+                    key={p.post_id}
+                    post={post}
+                    isLiked={false}
+                    onToggleLike={() => {
+                      /* Home feed is read-only */
+                    }}
+                    onOpenComments={() => navigate(buildUrl(p))}
+                    onEdit={() => navigate(buildUrl(p))}
+                    onRemove={() => {
+                      /* Home feed is read-only */
+                    }}
+                  />
+                );
+              }
+
+              return null;
+            })
+          : null}
       </div>
 
       <div className="lg:w-[20vw]">

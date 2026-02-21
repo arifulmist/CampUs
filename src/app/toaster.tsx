@@ -3,7 +3,6 @@ import { Toaster } from "react-hot-toast";
 export function RootLayout({ children }: { children?: React.ReactNode }) {
   return (
     <>
-      {children}
       <Toaster
         position="top-center"
         reverseOrder={false}
@@ -32,6 +31,7 @@ export function RootLayout({ children }: { children?: React.ReactNode }) {
           },
         }}
       />
+      {children}
     </>
   );
 }

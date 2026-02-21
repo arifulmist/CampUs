@@ -8,6 +8,7 @@ import { ButtonCTA } from "../../../components/ButtonCTA";
 import { supabase } from "@/supabase/supabaseClient";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { useEnterToNextField } from "@/hooks/useEnterToNextField";
+import { toast } from "react-hot-toast";
 
 const LEVELS = ["1", "2", "3", "4"];
 
@@ -41,6 +42,8 @@ export function Signup() {
   const [emailValid, setEmailValid] = useState(true);
   const [studentIdValid, setStudentIdValid] = useState(true);
   const [studentIdCharsInvalid, setStudentIdCharsInvalid] = useState(false);
+  const [mobileValid, setMobileValid] = useState(true);
+  const [mobileCharsInvalid, setMobileCharsInvalid] = useState(false);
 
   const [deptOptions, setDeptOptions] = useState<DepartmentOption[]>([]);
   const [deptOptionsLoading, setDeptOptionsLoading] = useState(false);
@@ -169,7 +172,7 @@ export function Signup() {
     };
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
-      alert("Error reading file. Please try again.");
+      toast.error("Error reading file. Please try again.");
     };
     reader.readAsDataURL(f);
   }
@@ -210,6 +213,29 @@ export function Signup() {
       }
 
       // Clear error when user starts typing
+      if (signupError) {
+        setSignupError(null);
+      }
+
+      return;
+    }
+
+    // Special handling for Mobile: strip non-digits, limit to 11 digits, warn on non-digit input
+    if (name === "mobile") {
+      const raw = value;
+      const digitsOnly = raw.replace(/\D/g, "");
+      const limited = digitsOnly.slice(0, 11);
+
+      // Warn only when non-digit characters were attempted
+      setMobileCharsInvalid(raw !== digitsOnly);
+
+      setFormData((prev) => ({
+        ...prev,
+        [name]: limited,
+      }));
+
+      setMobileValid(/^[0-9]{11}$/.test(limited));
+
       if (signupError) {
         setSignupError(null);
       }
@@ -261,17 +287,28 @@ export function Signup() {
 
     // Validation checks
     if (!passwordsMatch) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    // Password length requirement: enforce on submit only
+    if (!formData.password || formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
     if (!emailValid) {
-      alert("Please enter a valid email address");
+      toast.error("Please enter a valid email address");
       return;
     }
 
     if (!studentIdValid) {
-      alert("Student ID must be exactly 9 digits");
+      toast.error("Student ID must be exactly 9 digits");
+      return;
+    }
+
+    if (!mobileValid) {
+      toast.error("Mobile number must be exactly 11 digits");
       return;
     }
 
@@ -286,7 +323,7 @@ export function Signup() {
       !formData.mobile ||
       !formData.password
     ) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -393,7 +430,7 @@ export function Signup() {
       });
 
       // Show success message and redirect
-      alert(
+      toast.success(
         "Signup successful! Please check your email for verification (if enabled), then login.",
       );
       navigate("/login");
@@ -607,6 +644,16 @@ export function Signup() {
               changeHandler={handleInputChange}
               required
             />
+              {!mobileValid && (
+                <p className="text-sm text-accent-lm lg:mt-1">
+                  Mobile number must be exactly 11 digits.
+                </p>
+              )}
+              {mobileCharsInvalid && (
+                <p className="text-sm text-accent-lm lg:mt-1">
+                  Characters are not allowed in Mobile Number. Only digits are accepted.
+                </p>
+              )}
 
             <Password
               label="Password"
