@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { UserInfo } from "@/components/UserInfo";
 import { Heart, MessageCircle, MoreVertical, Share2 } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,11 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-import { supabase } from "@/supabase/supabaseClient";
-
-const lfAvatarCacheByAuthUid = new Map<string, string | null>();
-const lfAvatarFetchInFlight = new Map<string, Promise<string | null>>();
 
 export type LFPost = {
   id: string;
@@ -52,70 +47,6 @@ export function LFPostCard({
   const descRef = useRef<HTMLDivElement | null>(null);
   const [collapsed, setCollapsed] = useState(true);
   const [showReadMore, setShowReadMore] = useState(false);
-  const [resolvedAvatar, setResolvedAvatar] = useState<
-    { authUid: string; url: string | null } | null
-  >(null);
-
-  const avatarSrc = (() => {
-    const authUid = post.authorAuthUid;
-    if (authUid) {
-      const cached = lfAvatarCacheByAuthUid.get(authUid);
-      if (cached !== undefined) return cached || "/placeholder.svg";
-      if (resolvedAvatar?.authUid === authUid && resolvedAvatar.url) return resolvedAvatar.url;
-    }
-    return post.authorAvatar || "/placeholder.svg";
-  })();
-
-  useEffect(() => {
-    let mounted = true;
-    const authUid = post.authorAuthUid;
-    if (!authUid) {
-      return () => {
-        mounted = false;
-      };
-    }
-
-    const cached = lfAvatarCacheByAuthUid.get(authUid);
-    if (cached !== undefined) {
-      return () => {
-        mounted = false;
-      };
-    }
-
-    const existing = lfAvatarFetchInFlight.get(authUid);
-    const promise =
-      existing ??
-      (async () => {
-        const { data, error } = await supabase
-          .from("user_profile")
-          .select("profile_picture_url")
-          .eq("auth_uid", authUid)
-          .maybeSingle();
-        if (error) throw error;
-        const url = (data as unknown as { profile_picture_url?: unknown } | null)
-          ?.profile_picture_url;
-        return typeof url === "string" && url.trim() ? url : null;
-      })();
-
-    if (!existing) lfAvatarFetchInFlight.set(authUid, promise);
-
-    promise
-      .then((url) => {
-        lfAvatarCacheByAuthUid.set(authUid, url);
-        lfAvatarFetchInFlight.delete(authUid);
-        if (mounted) setResolvedAvatar({ authUid, url });
-      })
-      .catch((e) => {
-        lfAvatarCacheByAuthUid.set(authUid, null);
-        lfAvatarFetchInFlight.delete(authUid);
-        if (mounted) setResolvedAvatar({ authUid, url: null });
-        console.error("Failed to load Lost&Found avatar:", e);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [post.authorAuthUid]);
 
   useEffect(() => {
     const el = descRef.current;
@@ -143,21 +74,13 @@ export function LFPostCard({
         <div>
           <h3 className="text-xl lg:font-bold text-text-lm">{post.title}</h3>
           <div className="lg:mt-2 lg:flex lg:items-center lg:gap-2">
-            <Avatar className="lg:h-6 lg:w-6">
-              <AvatarImage
-                src={avatarSrc}
-              />
-              <AvatarFallback>{post.author[0]}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm lg:font-medium text-text-lm">
-              {post.author}
-            </span>
-            <span className="text-[12px] text-text-lighter-lm">
-              {post.authorCourse}
-            </span>
-            <span className="text-[12px] text-text-lighter-lm">
-              • {post.timestamp}
-            </span>
+            <UserInfo
+              userImg={post.authorAvatar ?? undefined}
+              userName={post.author}
+              userBatch={post.authorCourse}
+              userId={post.authorAuthUid}
+              postDate={post.timestamp}
+            />
           </div>
         </div>
         <DropdownMenu>
