@@ -36,14 +36,16 @@ export function DeleteConfirmModal({
     <>
       <div
         className="fixed inset-0 z-1000"
+        data-slot="dialog-overlay"
         onClick={() => {
           if (!isDeleting) onClose();
         }}
         style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       />
 
-      <div className="fixed inset-0 z-1001 flex items-center justify-center p-6">
+      <div className="fixed inset-0 z-1001 flex items-center justify-center p-6" data-slot="dialog-portal">
         <div
+          data-slot="dialog-content"
           className="lg:w-full lg:max-w-2xl lg:p-10 lg:border border-stroke-grey"
           onClick={(e) => e.stopPropagation()}
           style={{

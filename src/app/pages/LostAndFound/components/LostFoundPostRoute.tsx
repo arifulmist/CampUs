@@ -11,6 +11,11 @@ import {
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
+import {
+  formatDateToLocale,
+  formatRelativeTime,
+  formatTime12hFromTimeString,
+} from "@/utils/datetime";
 import { supabase } from "@/supabase/supabaseClient";
 
 import { EditLostFoundModal } from "./EditLostFoundModal";
@@ -99,52 +104,20 @@ type Detail = {
   timeLostOrFound: string | null;
 };
 
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
+function formatDateDisplay(dateString?: string | null) {
+  return formatDateToLocale(dateString, "en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateString);
-  }
-}
-
 function formatTimeDisplay(timeString?: string | null) {
-  if (!timeString) return "";
-  try {
-    const parts = String(timeString).split(":");
-    const h = parseInt(parts[0] ?? "0", 10) || 0;
-    const m = (parts[1] ?? "00").padStart(2, "0");
-    const suffix = h >= 12 ? "PM" : "AM";
-    let hour12 = h % 12;
-    if (hour12 === 0) hour12 = 12;
-    return `${hour12}:${m} ${suffix}`;
-  } catch {
-    return String(timeString);
-  }
+  return formatTime12hFromTimeString(timeString, {
+    spaceBeforePeriod: true,
+    periodCase: "upper",
+    convertOffsetToLocal: false,
+  });
 }
 
 export function LostFoundPostRoute({

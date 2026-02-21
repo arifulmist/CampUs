@@ -36,6 +36,7 @@ import {
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
+import { formatDateToLocale, formatRelativeTime, isSameDay } from "@/utils/datetime";
 import { EventSegment } from "./EventSegment";
 import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
@@ -134,48 +135,12 @@ function toTimeInputValue(value: unknown): string {
   return value.length >= 5 ? value.slice(0, 5) : value;
 }
 
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
+function formatDateDisplay(dateString?: string | null) {
+  return formatDateToLocale(dateString, "en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
-}
-
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateString);
-  }
-}
-
-function isSameDay(a?: string | null, b?: string | null) {
-  if (!a || !b) return false;
-  try {
-    const da = new Date(a);
-    const db = new Date(b);
-    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
-  } catch {
-    return a === b;
-  }
 }
 
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { PostBody } from "@/components/PostBody";
 import userImg from "@/assets/images/placeholderUser.png";
+import { formatRelativeTime } from "@/utils/datetime";
 
 export type LostFoundPostType = {
   id: string;
@@ -18,29 +19,6 @@ export type LostFoundPostType = {
   dateLostOrFound?: string | null;
   timeLostOrFound?: string | null;
 };
-
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 export default function LostFoundPost({ post, onClick }: { post: LostFoundPostType; onClick?: () => void }) {
   const handleKeyDown = (e: React.KeyboardEvent) => {

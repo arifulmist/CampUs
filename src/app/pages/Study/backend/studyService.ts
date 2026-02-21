@@ -1,4 +1,5 @@
 import { supabase } from "@/supabase/supabaseClient";
+import { formatDateDMY, formatTime12hFromTimeString } from "@/utils/datetime";
 
 // Types matching the database schema
 export interface DBNote {
@@ -185,8 +186,12 @@ export async function fetchNotes(
       title: n.title,
       uploadedBy: joinedName ?? mappedName ?? "Unknown",
       courseCode: `${n.course}-${n.course_code}`,
-      uploadDate: formatDate(n.upload_date),
-      uploadTime: formatTime(n.upload_time),
+      uploadDate: formatDateDMY(n.upload_date),
+      uploadTime: formatTime12hFromTimeString(n.upload_time, {
+        spaceBeforePeriod: false,
+        periodCase: "lower",
+        convertOffsetToLocal: true,
+      }),
       fileLink: n.file_url,
       fileName: extractFileName(n.file_url),
       authorId: n.author_id,
@@ -384,8 +389,12 @@ export async function createNote(data: {
     title: note.title,
     uploadedBy: authorInfo?.name ?? "Unknown",
     courseCode: `${note.course}-${note.course_code}`,
-    uploadDate: formatDate(note.upload_date),
-    uploadTime: formatTime(note.upload_time),
+    uploadDate: formatDateDMY(note.upload_date),
+    uploadTime: formatTime12hFromTimeString(note.upload_time, {
+      spaceBeforePeriod: false,
+      periodCase: "lower",
+      convertOffsetToLocal: true,
+    }),
     fileLink: note.file_url,
     fileName: extractFileName(note.file_url),
     authorId: note.author_id,
@@ -737,63 +746,6 @@ export async function getCurrentUserId(): Promise<string | null> {
     data: { user },
   } = await supabase.auth.getUser();
   return user?.id ?? null;
-}
-
-// Helper functions
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatTime(timeStr: string): string {
-  if (!timeStr) return "";
-
-  // If the string contains an explicit timezone offset or Z, prefer parsing
-  // it as an ISO-like time so the resulting Date will be converted to the
-  // client's local timezone. Examples: "10:30:00+00", "10:30:00+06:00", "10:30:00Z".
-  const tzSuffixMatch = timeStr.match(/([Zz]|[+-]\d{2}(?::?\d{2})?)$/);
-  const timeOnlyMatch = timeStr.match(/(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)/);
-
-  if (tzSuffixMatch && timeOnlyMatch) {
-    let tz = tzSuffixMatch[1];
-    // Normalize offsets like +06 to +06:00 for Date parsing
-    if (/^[+-]\d{2}$/.test(tz)) tz = tz + ":00";
-    const iso = `1970-01-01T${timeOnlyMatch[1]}${tz}`;
-    const d = new Date(iso);
-    if (!isNaN(d.getTime())) {
-      const hh = d.getHours();
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      const ampm = hh >= 12 ? "pm" : "am";
-      const hour12 = hh % 12 || 12;
-      return `${hour12}:${mm}${ampm}`;
-    }
-  }
-
-  const simpleMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
-  if (simpleMatch) {
-    const hour = parseInt(simpleMatch[1], 10);
-    const minute = String(simpleMatch[2]).padStart(2, "0");
-    const ampm = hour >= 12 ? "pm" : "am";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minute}${ampm}`;
-  }
-
-  // Final fallback: try Date parsing of the whole string and convert to local
-  const d = new Date(timeStr);
-  if (!isNaN(d.getTime())) {
-    const hh = d.getHours();
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const ampm = hh >= 12 ? "pm" : "am";
-    const hour12 = hh % 12 || 12;
-    return `${hour12}:${mm}${ampm}`;
-  }
-
-  return timeStr;
 }
 
 function extractFileName(url: string): string | undefined {

@@ -1,18 +1,28 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LucideArrowLeft, LucidePaperclip, LucideSendHorizontal, LucideX } from "lucide-react";
+import {
+  EllipsisVertical as LucideEllipsis,
+  LucideArrowLeft,
+  LucidePaperclip,
+  LucideSendHorizontal,
+  LucideTrash2,
+  LucideUserRound,
+  LucideX,
+} from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import ImagePreview from "@/components/ImagePreview";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import {
   getMessagesPage,
   getOrCreateConversation,
+  deleteConversation,
   markMessagesAsRead,
   sendMessage,
   subscribeToMessages,
   type Message,
 } from "../utils/messagingUtils";
 import { supabase } from "@/supabase/supabaseClient";
+import { formatTimeToLocale } from "@/utils/datetime";
 
 export interface chatUser {
   userName: string;
@@ -27,6 +37,7 @@ interface ChatHistoryProps extends chatUser {
   metaLoading?: boolean;
   otherUserId?: string | null;
   onConversationCreated?: (conversationId: string) => void;
+  onConversationDeleted?: (conversationId: string) => void;
 }
 
 export function ChatHistory({
@@ -39,9 +50,14 @@ export function ChatHistory({
   metaLoading = false,
   otherUserId = null,
   onConversationCreated,
+  onConversationDeleted,
 }: ChatHistoryProps) {
   const navigate = useNavigate();
   const IMAGE_PREFIX = "__image__:";
+
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -93,6 +109,21 @@ export function ChatHistory({
       console.error("Failed to navigate to user profile:", e);
     }
   };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   const clearAttachment = () => {
     setAttachedImage(null);
@@ -487,58 +518,68 @@ export function ChatHistory({
             <button onClick={onBack} className="cursor-pointer">
               <LucideArrowLeft className="text-accent-lm" />
             </button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleViewProfile}
-                  disabled={!otherUserId}
-                  className="flex items-center lg:gap-2 gap-2 text-left cursor-pointer disabled:cursor-default"
-                >
-                  <div className="lg:size-10">
-                    <img
-                      src={userAvatar}
-                      className="rounded-full object-cover ring ring-stroke-grey w-full h-full"
-                      alt={userName}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="m-0 p-0 text-accent-lm font-semibold">{userName}</p>
-                    {userBatch && (
-                      <p className="m-0 p-0 text-text-lm font-semibold text-sm">{userBatch}</p>
-                    )}
-                  </div>
-                </button>
-              </TooltipTrigger>
-              {otherUserId && (
-                <TooltipContent
-                  sideOffset={8}
-                  showArrow={false}
-                  className="lg:mb-2 rounded-sm bg-text-lighter-lm text-primary-lm text-sm font-medium animate-fade-in duration-150 data-[state=closed]:duration-150"
-                >
-                  View Profile
-                </TooltipContent>
-              )}
-            </Tooltip>
+            <div className="flex items-center lg:gap-2 gap-2 text-left">
+              <div className="relative lg:size-10 size-10 shrink-0 rounded-full ring ring-stroke-grey overflow-visible">
+                <div className="w-full h-full rounded-full overflow-hidden">
+                  <img
+                    src={userAvatar}
+                    className="rounded-full object-cover w-full h-full"
+                    alt={userName}
+                  />
+                </div>
+                {onlineStatus && (
+                  <span className="absolute bottom-0 right-0 size-3 rounded-full bg-online-indicator ring-2 ring-primary-lm" />
+                )}
+              </div>
+
+              <div className="flex flex-col">
+                <p className="m-0 p-0 text-accent-lm font-semibold">{userName}</p>
+                {userBatch && (
+                  <p className="m-0 p-0 text-text-lm font-semibold text-sm">{userBatch}</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Online status */}
-          {onlineStatus !== undefined && (
-            <div className="flex items-center lg:gap-1">
-              <span
-                className={`lg:size-2 rounded-full ${
-                  onlineStatus ? "bg-online-indicator" : "bg-text-lighter-lm/40"
-                }`}
-              ></span>
-              <p className="m-0 p-0 text-sm">
-                {onlineStatus ? (
-                  <span className="text-online-indicator">Online</span>
-                ) : (
-                  <span className="text-text-lighter-lm/50">Offline</span>
-                )}
-              </p>
-            </div>
-          )}
+          {/* Options menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="p-2 rounded-md hover:bg-hover-lm transition duration-150"
+              aria-label="Chat options"
+            >
+              <LucideEllipsis className="h-7 w-7 text-accent-lm" />
+            </button>
+
+            {menuOpen ? (
+              <div className="absolute right-0 mt-2 bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-44 z-50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void handleViewProfile();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-text-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  <LucideUserRound className="h-4 w-4" />
+                  Visit Profile
+                </button>
+                <button
+                  type="button"
+                  disabled={isTempConversation}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDeleteOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-danger-lm hover:bg-hover-lm transition duration-150 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LucideTrash2 className="h-4 w-4 text-danger-lm" />
+                  Delete Chat
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -652,6 +693,22 @@ export function ChatHistory({
         </div>
       </div>
     </div>
+    <DeleteConfirmModal
+      open={deleteOpen}
+      onClose={() => setDeleteOpen(false)}
+      title="Delete Chat"
+      onConfirm={async () => {
+        if (isTempConversation) {
+          setDeleteOpen(false);
+          return;
+        }
+
+        await deleteConversation(conversationId);
+        onConversationDeleted?.(conversationId);
+        setDeleteOpen(false);
+        onBack();
+      }}
+    />
     {previewOpen && previewSrc ? (
       <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
     ) : null}
@@ -788,14 +845,14 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
         ) : (
           <p className="m-0 wrap-break-word text-sm">{message}</p>
         )}
-        <p className={`m-0 text-xs opacity-70 lg:mt-1 ${
-          isCurrentUser
-          ? "text-right"
-          : "text-left"}`}>
-          {new Date(timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+            <p className={`m-0 text-xs opacity-70 lg:mt-1 ${
+              isCurrentUser
+              ? "text-right"
+              : "text-left"}`}>
+              {formatTimeToLocale(timestamp, [], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
         </p>
       </div>
     </div>

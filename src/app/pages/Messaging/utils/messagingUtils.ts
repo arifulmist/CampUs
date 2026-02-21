@@ -395,3 +395,30 @@ export function subscribeToConversations(
     supabase.removeChannel(messageChannel);
   };
 }
+
+/**
+ * Delete a conversation and its messages.
+ * Throws on failure so callers can show an error/toast.
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const id = conversationId?.trim();
+  if (!id) throw new Error("Missing conversation id");
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Delete messages first to avoid FK constraint issues if cascade isn't configured.
+  const { error: msgError } = await supabase
+    .from("all_messages")
+    .delete()
+    .eq("conversation_id", id);
+
+  if (msgError) throw msgError;
+
+  const { error: convError } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id);
+
+  if (convError) throw convError;
+}

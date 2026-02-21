@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useUserProfileContext } from "./UserProfileContext";
 import { supabase } from "@/supabase/supabaseClient";
+import { formatRelativeTime } from "@/utils/datetime";
 
 import EventPost, { type EventPostType } from "../../Events/components/EventPost";
 import {
@@ -25,29 +26,6 @@ function postPath(type: string, postId: string) {
   const t = type.trim().toLowerCase();
   const base = t === "lostfound" ? "lost-and-found" : t;
   return `/${base}/${postId}`;
-}
-
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
 }
 
 function splitDeptBatch(label: string): { dept: string; batch: string } {

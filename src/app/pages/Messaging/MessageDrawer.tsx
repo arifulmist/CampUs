@@ -414,6 +414,12 @@ export function MessageDrawer({
                   const convs = await getConversations();
                   setConversations(convs);
                 }}
+                onConversationDeleted={(deletedConversationId) => {
+                  setConversations((prev) => (prev ?? []).filter((c) => c.id !== deletedConversationId));
+                  if (selectedConversation === deletedConversationId) {
+                    setSelectedConversation(null);
+                  }
+                }}
                 onBack={handleBackToList}
               />
             );

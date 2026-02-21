@@ -2,21 +2,7 @@ import { ButtonCTA } from "./ButtonCTA";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/supabase/supabaseClient";
-
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return String(dateString);
-  }
-}
+import { formatDateToLocale } from "@/utils/datetime";
 
 type UpcomingRow = {
   post_id: string;
@@ -104,7 +90,14 @@ export function UpcomingEvents() {
                 className="lg:flex lg:flex-col lg:py-2 lg:px-3 hover:bg-secondary-lm hover:w-full hover:rounded-lg"
               >
                 <p className="lg:font-medium text-md text-text-lm">{ev.title}</p>
-                <p className="text-text-lighter-lm">{formatDateDisplay(ev.startDate)}</p>
+                <p className="text-text-lighter-lm">
+                  {formatDateToLocale(ev.startDate, "en-US", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
               </Link>
             ))}
           </div>

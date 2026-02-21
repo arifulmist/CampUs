@@ -12,6 +12,7 @@ import messageIcon from "@/assets/icons/message_icon.svg";
 import messageEmptyState from "@/assets/images/noMessage.svg";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { LucideX } from "lucide-react";
+import { formatRelativeTime as formatRelativeTimeBase } from "@/utils/datetime";
 
 import {
   addComment,
@@ -95,29 +96,8 @@ function DeleteCommentModal({
 }
 
 type SortMode = "best" | "latest";
-
-function formatRelativeTime(iso?: string | null) {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+const formatRelativeTime = (iso?: string | null) =>
+  formatRelativeTimeBase(iso, { longAfterDays: 7 });
 
 async function toggleCommentLike(commentId: string) {
   const { data, error } = await supabase

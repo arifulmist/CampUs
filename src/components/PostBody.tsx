@@ -1,41 +1,18 @@
 import { UserInfo } from "./UserInfo";
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "./PostButtons";
 import { getCategoryClass } from "@/utils/categoryColors";
+import {
+  formatDateToLocale,
+  formatTime12hFromTimeString,
+  isSameDay,
+} from "@/utils/datetime";
 
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateString);
-  }
-}
-
-function formatTimeDisplay(timeString?: string | null) {
-  if (!timeString) return "";
-  try {
-    const parts = String(timeString).split(":");
-    const h = parseInt(parts[0] ?? "0", 10) || 0;
-    const m = (parts[1] ?? "00").padStart(2, "0");
-    const suffix = h >= 12 ? "PM" : "AM";
-    let hour12 = h % 12;
-    if (hour12 === 0) hour12 = 12;
-    return `${hour12}:${m} ${suffix}`;
-  } catch {
-    return String(timeString);
-  }
-}
-
-function isSameDay(a?: string | null, b?: string | null) {
-  if (!a || !b) return false;
-  try {
-    const da = new Date(a);
-    const db = new Date(b);
-    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
-  } catch {
-    return a === b;
-  }
+function formatEventDateDisplay(dateString?: string | null) {
+  return formatDateToLocale(dateString, "en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 interface PostContent {
@@ -111,12 +88,20 @@ export function PostBody({
         <div>
           {lostFoundDate ? (
             <p className="text-accent-lm font-semibold text-md">
-              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateDisplay(lostFoundDate)}`}
+              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateToLocale(lostFoundDate, "en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`}
             </p>
           ) : null}
           {lostFoundTime ? (
             <p className="text-text-lm font-semibold text-md mt-1">
-              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTimeDisplay(lostFoundTime)}`}
+              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTime12hFromTimeString(lostFoundTime, {
+                spaceBeforePeriod: true,
+                periodCase: "upper",
+                convertOffsetToLocal: false,
+              })}`}
             </p>
           ) : null}
         </div>
@@ -130,12 +115,12 @@ export function PostBody({
           {(eventStartDate || eventEndDate) && (
             <p className="text-accent-lm font-semibold text-md">
               {eventStartDate && eventEndDate && isSameDay(eventStartDate, eventEndDate)
-                ? formatDateDisplay(eventStartDate)
+                ? formatEventDateDisplay(eventStartDate)
                 : (
                     <>
-                      {eventStartDate ? formatDateDisplay(eventStartDate) : ""}
+                      {eventStartDate ? formatEventDateDisplay(eventStartDate) : ""}
                       {eventStartDate && eventEndDate ? " \u2014 " : ""}
-                      {eventEndDate ? formatDateDisplay(eventEndDate) : ""}
+                      {eventEndDate ? formatEventDateDisplay(eventEndDate) : ""}
                     </>
                   )}
             </p>

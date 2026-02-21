@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/supabase/supabaseClient";
 import { getCategoryClass } from "@/utils/categoryColors";
+import { formatRelativeTime } from "@/utils/datetime";
 import { UserInfo } from "@/components/UserInfo";
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { toast } from "react-hot-toast";
@@ -73,29 +74,6 @@ type CategoryRow = {
   category_id: string;
   category: CollabCategory;
 };
-
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 export function CollabPostRoute({
   postId,

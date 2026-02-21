@@ -236,6 +236,7 @@ import { SearchAddPostBar } from "./SearchAddPostBar";
 import { Loading } from "../../Fallback/Loading";
 import noPostSvg from "@/assets/images/noPost.svg";
 import { CreateQnAPostModal } from "./CreateQnAPostModal";
+import { formatPostedTimestamp } from "@/utils/datetime";
 
 type QnACategory = "All" | "Question" | "Advice" | "Resource";
 
@@ -262,27 +263,7 @@ function getRecord(obj: Record<string, unknown>, key: string): Record<string, un
   return isRecord(v) ? v : null;
 }
 
-function formatPostTimestamp(createdAt: string): string {
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMinutes < 1) return "Posted just now";
-  if (diffMinutes < 60) return `Posted ${diffMinutes} min ago`;
-  if (diffHours < 24) return `Posted ${diffHours} hr ago`;
-  if (diffDays < 7) return `Posted ${diffDays} days ago`;
-
-  return `Posted on ${date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })}`;
-}
+const formatPostTimestamp = formatPostedTimestamp;
 
 function truncateText(value: string, maxChars: number) {
   if (value.length <= maxChars) return value;
