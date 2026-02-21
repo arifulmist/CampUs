@@ -39,7 +39,7 @@ export function Notes() {
   const notes: Note[] = outlet?.filteredNotes ?? [];
   const loading = outlet?.loading ?? false;
   const currentUserId = outlet?.currentUserId ?? null;
-
+  // handel duplicate notes -> kaka ourfe ariful
   async function handleAddNote(data: {
     title: string;
     course: string;
@@ -60,7 +60,8 @@ export function Notes() {
 
       if (duplicate) {
         toast.error(
-          `Duplicate file detected! "${duplicate.title}" (${duplicate.courseCode}) uploaded by ${duplicate.uploadedBy} has identical content.`,
+          ` Duplicate file detected! upload the unique one or try another file .`,
+          // `Duplicate file detected! "${duplicate.title}" (${duplicate.courseCode}) uploaded by ${duplicate.uploadedBy} has identical content.`,
           { duration: 6000 },
         );
         setIsSubmitting(false);
