@@ -423,6 +423,7 @@ export function CollabHub() {
   }, [hasMore, loadingMore, loading, page]);
 
   return (
+  <div className="lg:min-h-0">
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
       {/* LEFT: Posts */}
       <div className="lg:flex-1">
@@ -508,7 +509,7 @@ export function CollabHub() {
         }}
       />
     </div>
+  </div>
   );
 }
 
-export default CollabHub;
