@@ -81,7 +81,9 @@ export function QAPageContent() {
   const [refreshSeq, setRefreshSeq] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const inFlightRef = useRef(false);
+  const inFlightCountRef = useRef(0);
+  const requestSeqRef = useRef(0);
+  const activeRequestTokenRef = useRef(0);
   const mountedRef = useRef(true);
   const pageRef = useRef(0);
   const hasMoreRef = useRef(true);
@@ -128,10 +130,16 @@ export function QAPageContent() {
   }, [searchQuery]);
 
   const loadPage = useCallback(async ({ reset }: { reset: boolean }) => {
-      if (inFlightRef.current) return;
+      // Allow a reset (category/search change) to start even if an old request is in-flight.
+      // Old results are ignored via request token.
+      if (!reset && inFlightCountRef.current > 0) return;
       if (!reset && (loadingRef.current || loadingMoreRef.current || !hasMoreRef.current)) return;
 
-      inFlightRef.current = true;
+      const token = ++requestSeqRef.current;
+      activeRequestTokenRef.current = token;
+
+      inFlightCountRef.current += 1;
+
       if (reset) {
         loadingRef.current = true;
         setLoading(true);
@@ -280,10 +288,11 @@ export function QAPageContent() {
             } satisfies QnAFeedPost;
           });
 
-          // If the RPC exists but returns an empty first page, verify with the fallback query.
-          // This helps when the RPC definition (or RLS) is out-of-sync and filters everything out.
-          if (reset && offset === 0 && mapped.length === 0) {
-            if (DEBUG) console.log("[QnA] RPC returned 0 rows; verifying with fallback");
+          // If the RPC exists but returns an empty first page, optionally verify with the fallback query.
+          // IMPORTANT: Only do this when there are no filters. When a category/search filter is applied,
+          // an empty result is expected and should NOT be replaced by fallback rows.
+          if (reset && offset === 0 && mapped.length === 0 && !categoryArg && !searchArg) {
+            if (DEBUG) console.log("[QnA] RPC returned 0 rows (unfiltered); verifying with fallback");
             const fb = await fetchFallback();
             if (DEBUG) console.log("[QnA] fallback rows", { rows: fb.length });
             if (fb.length > 0) {
@@ -297,6 +306,7 @@ export function QAPageContent() {
         }
 
         if (!mountedRef.current) return;
+        if (activeRequestTokenRef.current !== token) return;
 
         // Multi-attachment support: fetch urls from post_attachments and merge.
         const attachmentsById = await fetchAttachmentUrlsByPostIds(mapped.map((p) => p.id));
@@ -317,19 +327,23 @@ export function QAPageContent() {
       } catch (err) {
         console.error(err);
         const msg = err instanceof Error ? err.message : "Failed to load posts";
-        if (reset) {
+        if (reset && activeRequestTokenRef.current === token) {
           setLoadError(msg);
           toast.error(msg);
         }
-        if (mountedRef.current && reset) setPosts([]);
+        if (mountedRef.current && reset && activeRequestTokenRef.current === token) setPosts([]);
       } finally {
-        inFlightRef.current = false;
-        loadingRef.current = false;
-        loadingMoreRef.current = false;
-        if (mountedRef.current) {
-          setLoading(false);
-          setLoadingMore(false);
-          setInitialLoad(false);
+        inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+
+        // Only the latest request should update loading flags.
+        if (activeRequestTokenRef.current === token) {
+          loadingRef.current = false;
+          loadingMoreRef.current = false;
+          if (mountedRef.current) {
+            setLoading(false);
+            setLoadingMore(false);
+            setInitialLoad(false);
+          }
         }
       }
     }, []);

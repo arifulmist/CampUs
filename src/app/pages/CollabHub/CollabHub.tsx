@@ -29,6 +29,16 @@ export function CollabHub() {
 
   const categories: Category[] = ["all", "research", "competition", "project"];
 
+  const handleFilterChange: React.Dispatch<React.SetStateAction<Category>> = (next) => {
+    const nextValue = typeof next === "function" ? next(filter) : next;
+    if (nextValue === filter) return;
+
+    // Prevent an intermediate render where the new filter is applied to old posts
+    // (which can briefly show the empty state before the fetch begins).
+    setLoading(true);
+    setFilter(nextValue);
+  };
+
   const filteredPosts = useMemo(() => {
     if (filter === "all") return posts;
     return posts.filter((p) => p.category === filter);
@@ -84,12 +94,46 @@ export function CollabHub() {
     const offset = (reset ? 0 : page) * PAGE_SIZE;
     try {
       // Prefer RPC (fewer round-trips). Fallback to existing multi-query merge if not deployed.
-      const rpcCategory = filter === "all" ? null : String(filter);
-      const rpcRes = await supabase.rpc("get_collab_feed_page", {
-        p_limit: PAGE_SIZE,
-        p_offset: offset,
-        p_category: rpcCategory,
-      });
+      const rpcCategoryCandidates: Array<string | null> =
+        filter === "all"
+          ? [null]
+          : Array.from(
+              new Set([
+                String(filter),
+                `${String(filter).charAt(0).toUpperCase()}${String(filter).slice(1)}`,
+                String(filter).toUpperCase(),
+              ])
+            );
+
+      let rpcRes: Awaited<ReturnType<typeof supabase.rpc>> | null = null;
+      for (let i = 0; i < rpcCategoryCandidates.length; i++) {
+        const p_category = rpcCategoryCandidates[i];
+        const res = await supabase.rpc("get_collab_feed_page", {
+          p_limit: PAGE_SIZE,
+          p_offset: offset,
+          p_category,
+        });
+
+        rpcRes = res;
+
+        // If RPC is missing/inaccessible, do not keep retrying; fall back to query loader.
+        if (res.error) break;
+
+        // If DB stores category in a different casing (e.g. 'Research' vs 'research'),
+        // retry with other candidates before accepting an empty page.
+        const dataArr = Array.isArray(res.data) ? res.data : null;
+        if (dataArr && dataArr.length === 0 && i < rpcCategoryCandidates.length - 1) continue;
+
+        break;
+      }
+
+      if (!rpcRes) {
+        rpcRes = await supabase.rpc("get_collab_feed_page", {
+          p_limit: PAGE_SIZE,
+          p_offset: offset,
+          p_category: null,
+        });
+      }
 
       if (!rpcRes.error && Array.isArray(rpcRes.data)) {
         const rows = rpcRes.data as unknown[];
@@ -469,7 +513,7 @@ export function CollabHub() {
       <CategoryFilter
         categories={categories}
         selected={filter}
-        onChange={setFilter}
+        onChange={handleFilterChange}
       />
 
       <CreateCollabPost
