@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import type { Segment, EventPostType } from "../../components/types";
 import { searchSkills } from "../../backend/eventService"; 
 import { supabase } from "@/supabase/supabaseClient";
+import { toast } from "react-hot-toast";
+import { MAX_POST_ATTACHMENTS } from "@/utils/postAttachments";
 export function useCreateEventForm(open: boolean) {
   const [category, setCategory] = useState<number>(0); // default to 0 or first category_id
   const [title, setTitle] = useState("");
@@ -57,9 +59,22 @@ const [segments, setSegments] = useState<Segment[]>([]);
 
 
 
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [imageName, setImageName] = useState<string | null>(null);
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
+  const [imageNames, setImageNames] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onload = () => {
+        if (typeof reader.result === "string") resolve(reader.result);
+        else reject(new Error("Unexpected file result"));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   function generateId() {
     return Date.now().toString() + Math.random().toString(36).slice(2);
@@ -80,9 +95,10 @@ const [segments, setSegments] = useState<Segment[]>([]);
   setSearchTerm("");
   setSuggestions([]);
 
-  setImageDataUrl(null);
-  setImageName(null);
+  setImageDataUrls([]);
+  setImageNames([]);
   setPreviewOpen(false);
+  setPreviewIndex(0);
 }
 
   useEffect(() => {
@@ -109,7 +125,8 @@ const [segments, setSegments] = useState<Segment[]>([]);
       author: "You",
       segments,
       tags: tags,
-      image: imageDataUrl,
+      image: imageDataUrls[0] ?? null,
+      images: imageDataUrls,
     };
   }
 
@@ -142,13 +159,35 @@ const [segments, setSegments] = useState<Segment[]>([]);
   
 
   // Image handler
-  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => setImageDataUrl(reader.result as string);
-    reader.readAsDataURL(file);
+  async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    const remaining = Math.max(0, MAX_POST_ATTACHMENTS - imageDataUrls.length);
+    if (remaining <= 0) {
+      toast.error("Cannot add more than 5 images");
+      return;
+    }
+
+    if (files.length > remaining) {
+      toast.error("Cannot add more than 5 images");
+    }
+
+    const selected = files.slice(0, remaining);
+    const urls = await Promise.all(selected.map((f) => fileToDataUrl(f)));
+
+    setImageDataUrls((prev) => [...prev, ...urls]);
+    setImageNames((prev) => [...prev, ...selected.map((f) => f.name)]);
+  }
+
+  function removeImageAt(index: number) {
+    setImageDataUrls((prev) => prev.filter((_, i) => i !== index));
+    setImageNames((prev) => prev.filter((_, i) => i !== index));
+    setPreviewIndex((prev) => {
+      if (index < prev) return prev - 1;
+      if (index === prev) return 0;
+      return prev;
+    });
   }
 
   return {
@@ -178,13 +217,16 @@ const [segments, setSegments] = useState<Segment[]>([]);
     searchTerm, 
     setSearchTerm, 
     suggestions,
-    imageDataUrl,
-    setImageDataUrl,
-    imageName,
-    setImageName,
+    imageDataUrls,
+    setImageDataUrls,
+    imageNames,
+    setImageNames,
     handleImage,
+    removeImageAt,
     previewOpen,
     setPreviewOpen,
+    previewIndex,
+    setPreviewIndex,
     validate,
     buildPost,
     resetForm,

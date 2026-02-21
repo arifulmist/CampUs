@@ -10,6 +10,7 @@ import CreateLostFoundModal from "./components/CreateLostFoundModal";
 
 import { fetchLostAndFoundPosts } from "./backend/lostAndFoundService";
 import { Loading } from "../Fallback/Loading";
+import { fetchAttachmentUrlsByPostIds, normalizeAttachmentUrls } from "@/utils/postAttachments";
 
 type LFCategory = "all" | "lost" | "found";
 
@@ -54,6 +55,7 @@ export function LostFound() {
         deptBatch: p.authorCourse ?? "",
         body: p.description ?? "",
         image: p.imgUrl ?? null,
+        images: undefined,
         likes: p.likeCount ?? 0,
         comments: p.commentCount ?? 0,
         createdAt: p.createdAt ?? null,
@@ -62,8 +64,20 @@ export function LostFound() {
         profilePictureUrl: p.authorAvatar ?? null,
       }));
 
-      setPosts((prev) => (reset ? mapped : [...prev, ...mapped]));
-      setHasMore(mapped.length === PAGE_SIZE);
+      const ids = mapped.map((p) => p.id);
+      const attachmentMap = await fetchAttachmentUrlsByPostIds(ids);
+      const withAttachments: LostFoundPostType[] = mapped.map((p) => {
+        const fromTable = attachmentMap.get(p.id) ?? [];
+        const merged = normalizeAttachmentUrls([...fromTable, p.image ?? undefined]);
+        return {
+          ...p,
+          images: merged.length ? merged : undefined,
+          image: merged[0] ?? p.image ?? null,
+        };
+      });
+
+      setPosts((prev) => (reset ? withAttachments : [...prev, ...withAttachments]));
+      setHasMore(withAttachments.length === PAGE_SIZE);
       setPage((p) => (reset ? 1 : p + 1));
     } catch (err) {
       console.error(err);

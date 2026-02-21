@@ -18,12 +18,14 @@ export async function updateQnaPost({
   title,
   description,
   tag,
+  imgUrl,
 }: {
   postId: string;
   authorId: string;
   title: string;
   description: string;
   tag: QnATag;
+  imgUrl?: string | null;
 }): Promise<void> {
   const nextTitle = title.trim();
   const nextDescription = description.trim();
@@ -59,7 +61,10 @@ export async function updateQnaPost({
 
   const { data: updatedQna, error: qnaError } = await supabase
     .from("qna_posts")
-    .update({ category_id: categoryId })
+    .update({
+      category_id: categoryId,
+      ...(imgUrl === undefined ? {} : { img_url: imgUrl }),
+    })
     .eq("post_id", postId)
     .select("post_id");
 

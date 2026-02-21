@@ -10,7 +10,7 @@ import {
   CollabPostCard,
   type CollabPost,
 } from "../../CollabHub/components/CollabPostCard";
-import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnAPostCard";
+import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
 
 function asCollabCategory(value: unknown): CollabPost["category"] | null {
