@@ -14,6 +14,7 @@ import { DeleteQnAPostModal } from "./DeleteQnAPostModal";
 import { EditQnAPostModal } from "./EditQnAPostModal";
 import ImagePreview from "@/components/ImagePreview";
 import { formatPostedTimestamp } from "@/utils/datetime";
+import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
 
 type QnAPostDetail = {
   id: string;
@@ -24,6 +25,7 @@ type QnAPostDetail = {
   likeCount: number;
   commentCount: number;
   attachmentUrl: string | null;
+  attachmentUrls?: string[];
   authorName: string;
   authorBatch: string;
   authorId: string | null;
@@ -169,6 +171,11 @@ export function QnAPostRoute({
         const attachmentRaw = qnaPosts?.img_url;
         const attachmentUrl = typeof attachmentRaw === "string" && attachmentRaw.trim() ? attachmentRaw : null;
 
+        const attachmentUrls = normalizeAttachmentUrls([
+          ...(attachmentUrl ? [attachmentUrl] : []),
+          ...(await fetchAttachmentUrlsByPostId(postId)),
+        ]);
+
         const likeCountRaw = row.like_count;
         const commentCountRaw = row.comment_count;
         const likeCount = typeof likeCountRaw === "number" ? likeCountRaw : Number(likeCountRaw ?? 0);
@@ -199,6 +206,7 @@ export function QnAPostRoute({
           likeCount: Number.isFinite(likeCount) ? likeCount : 0,
           commentCount: Number.isFinite(commentCount) ? commentCount : 0,
           attachmentUrl,
+          attachmentUrls,
           authorName: typeof authorName === "string" && authorName.trim() ? authorName : "Unknown",
           authorBatch,
           authorId: typeof authorId === "string" ? authorId : null,
@@ -227,6 +235,12 @@ export function QnAPostRoute({
     if (!detail) return "";
     return formatPostTimestamp(detail.createdAt);
   }, [detail]);
+
+  const imageUrls = useMemo(() => {
+    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    if (fromDetail && fromDetail.length) return fromDetail;
+    return detail?.attachmentUrl ? [detail.attachmentUrl] : [];
+  }, [detail?.attachmentUrls, detail?.attachmentUrl]);
 
   if (loading) {
     return (
@@ -311,14 +325,28 @@ export function QnAPostRoute({
 
       <p className="text-text-lm whitespace-pre-wrap wrap-break-word">{detail.description}</p>
 
-      {detail.attachmentUrl ? (
-        <div className="lg:mt-5 w-full h-full flex justify-center">
-          <div className="rounded-xl overflow-hidden bg-primary-lm w-[80%] h-[30%]">
-            <button type="button" onClick={() => openPreview(detail.attachmentUrl, undefined)} className="w-full h-full block">
-              <img src={detail.attachmentUrl} alt="Post attachment" className="w-full h-full object-cover" />
-            </button>
+      {imageUrls.length > 0 ? (
+        imageUrls.length === 1 ? (
+          <div className="lg:mt-5 w-full h-full flex justify-center">
+            <div className="rounded-xl overflow-hidden bg-primary-lm w-[80%] h-[30%] border border-stroke-grey">
+              <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
+                <img src={imageUrls[0]} alt="Post attachment" className="w-full h-full object-cover" />
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="lg:mt-5 w-full">
+            <div className="grid grid-cols-2 gap-2">
+              {imageUrls.map((src, idx) => (
+                <div key={src + idx} className="w-full overflow-hidden rounded-xl border border-stroke-grey bg-primary-lm">
+                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
+                    <img src={src} alt="Post attachment" className="w-full lg:h-80 object-cover" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       ) : null}
 
       {previewOpen && previewSrc ? (
@@ -339,6 +367,7 @@ export function QnAPostRoute({
           title: detail.title,
           description: detail.description,
           tag: detail.category,
+          attachmentUrls: detail.attachmentUrls,
         }}
         onSaved={() => setReloadToken((v) => v + 1)}
       />

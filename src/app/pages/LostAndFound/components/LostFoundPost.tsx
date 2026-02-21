@@ -12,6 +12,7 @@ export type LostFoundPostType = {
   deptBatch?: string;
   body: string;
   image?: string | null;
+  images?: string[];
   likes?: number;
   comments?: number;
   createdAt?: string | null;
@@ -61,6 +62,7 @@ export default function LostFoundPost({ post, onClick }: { post: LostFoundPostTy
         content={{
           text: post.body ?? "",
           img: post.image ?? undefined,
+          imgs: Array.isArray(post.images) ? post.images : undefined,
         }}
         category={post.category}
         formattedDate={formattedDate}

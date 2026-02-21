@@ -12,6 +12,7 @@ import { useCreateEventForm } from "./CreateEventModal/useCreateEventForm";
 import { supabase } from "@/supabase/supabaseClient";
 import { updateEvent } from "../backend/eventService";
 import { ButtonCTA } from "@/components/ButtonCTA";
+import { tryReplacePostAttachments } from "@/utils/postAttachments";
 
 type EditInitial = {
   postId: string;
@@ -22,6 +23,7 @@ type EditInitial = {
   eventStartDate: string;
   eventEndDate: string;
   imageUrl: string | null;
+  imageUrls?: string[];
   segments: Array<{
     id: string;
     name: string;
@@ -73,8 +75,12 @@ export function EditEventModal({
       }))
     );
     form.setTags(initial.tags);
-    form.setImageDataUrl(initial.imageUrl);
-    form.setImageName(null);
+    form.setImageDataUrls(
+      Array.isArray(initial.imageUrls) && initial.imageUrls.length
+        ? initial.imageUrls
+        : (initial.imageUrl ? [initial.imageUrl] : [])
+    );
+    form.setImageNames([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial.postId]);
 
@@ -130,7 +136,7 @@ export function EditEventModal({
         event_start_date: form.eventStartDate ?? null,
         event_end_date: form.eventEndDate ?? null,
         registration_link: null,
-        img_url: form.imageDataUrl ?? null,
+        img_url: form.imageDataUrls[0] ?? null,
         category_id: form.category,
         segments: (form.segments ?? []).map((seg) => ({
           segment_title: seg.name ?? "Untitled Segment",
@@ -143,6 +149,8 @@ export function EditEventModal({
         })),
         tags: form.tags.map((t) => ({ skill_id: t.skill_id })),
       });
+
+      await tryReplacePostAttachments(initial.postId, form.imageDataUrls);
 
       toast.success("Event updated successfully!");
       setIsSaving(false);
@@ -282,13 +290,16 @@ export function EditEventModal({
               </div>
 
               <ImageUploader
-                image={form.imageDataUrl}
-                imageName={form.imageName}
+                images={form.imageDataUrls}
+                imageNames={form.imageNames}
                 onSelect={form.handleImage}
-                onPreview={() => form.setPreviewOpen(true)}
-                onRemove={() => {
-                  form.setImageDataUrl(null);
-                  form.setImageName(null);
+                onPreview={(idx) => {
+                  form.setPreviewIndex(typeof idx === "number" ? idx : 0);
+                  form.setPreviewOpen(true);
+                }}
+                onRemove={(idx) => {
+                  if (typeof idx !== "number") return;
+                  form.removeImageAt(idx);
                 }}
               />
             </div>
@@ -317,8 +328,8 @@ export function EditEventModal({
 
       <ImagePreview
         open={form.previewOpen}
-        image={form.imageDataUrl}
-        name={form.imageName}
+        image={form.imageDataUrls[form.previewIndex] ?? null}
+        name={form.imageNames[form.previewIndex] ?? null}
         onClose={() => form.setPreviewOpen(false)}
       />
     </>,

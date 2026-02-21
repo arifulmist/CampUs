@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 
 import { supabase } from "@/supabase/supabaseClient";
 
-import { QnAPostCard } from "./QnAPostCard";
+import { QnAPostCard } from "./QnaPostCard";
 import { QnAPostCategory } from "./QnAPostCategory";
 import { SearchAddPostBar } from "./SearchAddPostBar";
 import { Loading } from "../../Fallback/Loading";
 import noPostSvg from "@/assets/images/noPost.svg";
 import { CreateQnAPostModal } from "./CreateQnAPostModal";
 import { formatPostedTimestamp } from "@/utils/datetime";
+import { fetchAttachmentUrlsByPostIds } from "@/utils/postAttachments";
 
 type QnACategory = "All" | "Question" | "Advice" | "Resource";
 
@@ -23,6 +24,7 @@ type QnAFeedPost = {
   likeCount: number;
   commentCount: number;
   attachmentUrl: string | null;
+  attachmentUrls?: string[];
   authorName: string;
   authorBatch: string;
   authorId: string | null;
@@ -295,6 +297,16 @@ export function QAPageContent() {
         }
 
         if (!mountedRef.current) return;
+
+        // Multi-attachment support: fetch urls from post_attachments and merge.
+        const attachmentsById = await fetchAttachmentUrlsByPostIds(mapped.map((p) => p.id));
+        mapped = mapped.map((p) => {
+          const urls = attachmentsById.get(p.id);
+          const fallback = p.attachmentUrl ? [p.attachmentUrl] : [];
+          const merged = urls && urls.length ? urls : fallback;
+          return { ...p, attachmentUrls: merged };
+        });
+
         setPosts((prev) => (reset ? mapped : [...prev, ...mapped]));
 
         const nextHasMore = mapped.length === PAGE_SIZE;
@@ -425,6 +437,7 @@ export function QAPageContent() {
                 postTag={post.category}
                 postTitle={post.title}
                 postPreview={truncateText(post.description, 200)}
+                attachmentUrls={post.attachmentUrls}
                 attachmentUrl={post.attachmentUrl}
                 authorName={post.authorName}
                 authorBatch={post.authorBatch}
