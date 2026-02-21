@@ -670,7 +670,7 @@ export function ChatHistory({
           </div>
         ) : (
           <>
-            {messages.map((message) => (
+            {messages.map((message, idx) => (
               <ChatMessage
                 key={message.id}
                 messageId={message.id}
@@ -688,6 +688,7 @@ export function ChatHistory({
                   setUnsendMessageId(message.id);
                   setUnsendOpen(true);
                 }}
+                isLast={idx === messages.length - 1}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -833,9 +834,10 @@ interface ChatMessageProps {
   onOpenPreview?: (src: string, name?: string) => void;
   onEdit?: () => void;
   onUnsend?: () => void;
+  isLast?: boolean;
 }
 
-function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPreview, onEdit, onUnsend }: ChatMessageProps) {
+function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPreview, onEdit, onUnsend, isLast }: ChatMessageProps) {
   const IMAGE_PREFIX = "__image__:";
   const imageData = (() => {
     if (!message.startsWith(IMAGE_PREFIX)) return null;
@@ -960,7 +962,7 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
             </button>
 
             {menuOpen ? (
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-40 z-50">
+              <div className={`${isLast ? "absolute left-1/2 -translate-x-1/2 bottom-full mb-2" : "absolute left-1/2 -translate-x-1/2 top-full mt-2"} bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-40 z-50`}>
                 <button
                   type="button"
                   disabled={!!imageData}
