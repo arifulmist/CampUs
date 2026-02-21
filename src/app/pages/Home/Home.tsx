@@ -120,7 +120,7 @@ export function Home() {
         `)
         .order("like_count", { ascending: false })
         .order("comment_count", { ascending: false })
-        .limit(10);
+        .limit(3);
 
       if (popError) console.error("Popular posts error:", popError);
       console.log("Popular posts:", popular);
