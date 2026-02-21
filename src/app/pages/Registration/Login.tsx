@@ -18,14 +18,11 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [devOTP, setDevOTP] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const handleEnterToNext = useEnterToNextField();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setDevOTP(null);
     setIsLoading(true);
 
     try {
@@ -37,9 +34,6 @@ export function Login() {
         setIsLoading(false);
         return;
       }
-
-      // Store email for display
-      setUserEmail(credentialCheck.email!);
 
       // 2. Generate OTP
       const otp = generateOTP();
@@ -64,12 +58,6 @@ export function Login() {
         setError(emailResult.message);
         setIsLoading(false);
         return;
-      }
-
-      // If in development or email failed, show OTP
-      if (emailResult.devOTP) {
-        setDevOTP(emailResult.devOTP);
-        // console.log(`Development OTP for ${userId}: ${emailResult.devOTP}`);
       }
 
       // 5. Navigate to 2FA page with state

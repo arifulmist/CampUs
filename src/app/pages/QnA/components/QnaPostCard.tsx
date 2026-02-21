@@ -22,6 +22,7 @@ export type QnaFeedPost = {
 type PostDetail = {
   postId: string;
   postTag: "Question" | "Advice" | "Resource";
+  showPostTypeLabel?: boolean;
   postTitle: string;
   postPreview: string;
   attachmentUrl?: string | null;
@@ -37,6 +38,7 @@ type PostDetail = {
 export function QnAPostCard({
   postId,
   postTag,
+  showPostTypeLabel,
   postTitle,
   postPreview,
   attachmentUrl,
@@ -60,7 +62,17 @@ export function QnAPostCard({
     <div className="flex flex-col lg:gap-4 bg-secondary-lm border border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach transition lg:rounded-xl lg:p-8 group">
       {/* <div className="flex lg:gap-6 justify-between items-start"> */}
         <div className="flex flex-col lg:gap-4 min-w-0 flex-1">
-          <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl group-hover:bg-primary-lm group-hover:transition">{postTag}</p>
+          <div className="flex items-center gap-2">
+            <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl group-hover:bg-primary-lm group-hover:transition">
+              {postTag}
+            </p>
+            {showPostTypeLabel ? (
+              <>
+                <span className="text-text-lighter-lm">•</span>
+                <span className="text-base text-text-lm font-semibold">QnA</span>
+              </>
+            ) : null}
+          </div>
           <p className="font-header font-medium text-xl text-text-lm wrap-break-word">{postTitle}</p>
           <div className="flex justify-between lg:gap-2">
             <div className="lg:space-y-4">
@@ -105,9 +117,11 @@ export function QnAPostCard({
 export function QnaPostCard({
   post,
   onOpenDetail,
+  showPostTypeLabel,
 }: {
   post: QnaFeedPost;
   onOpenDetail: () => void;
+  showPostTypeLabel?: boolean;
   onLike: () => void;
   onAddInlineComment: (text: string) => void;
 }) {
@@ -116,6 +130,7 @@ export function QnaPostCard({
       <QnAPostCard
         postId={post.id}
         postTag={post.category}
+        showPostTypeLabel={showPostTypeLabel}
         postTitle={post.title}
         postPreview={post.content}
         attachmentUrl={post.imageUrl ?? null}

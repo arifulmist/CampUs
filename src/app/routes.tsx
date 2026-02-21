@@ -22,24 +22,26 @@ import { UserProfile } from "./pages/UserProfile/UserProfile";
 import { NotFound } from "./pages/Fallback/Error_NotFound";
 import SearchResults from "./pages/Search/SearchResults";
 
+import { PublicOnly, RequireAuth, RootRedirect } from "./routeGuards";
+
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/signup" replace /> },
-  { path: "/signup", element: <Signup /> },
-  { path: "/signup/ocr", element: <SignupOCR /> },
+  { path: "/", element: <RootRedirect /> },
+  { path: "/signup", element: <PublicOnly><Signup /></PublicOnly> },
+  { path: "/signup/ocr", element: <PublicOnly><SignupOCR /></PublicOnly> },
   {
     path: "/login",
-    element: <Login />,
+    element: <PublicOnly><Login /></PublicOnly>,
     errorElement: <NotFound />, // handle login errors
   },
   {
     path: "/login/2fa/:userId", //should not be able to access without going through login first!!
-    element: <Login2FA />,
+    element: <PublicOnly><Login2FA /></PublicOnly>,
     errorElement: <NotFound />,
   },
 
   /* ---------- APP ROUTES (WITH LAYOUT) ---------- */
   {
-    element: <Layout />,
+    element: <RequireAuth><Layout /></RequireAuth>,
     errorElement: <NotFound />,
     children: [
       { path: "/home", element: <Home />},

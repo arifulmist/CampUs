@@ -74,6 +74,18 @@ type LostFoundMetaRow = {
   category: string | null;
 };
 
+type UserSkillRow = {
+  skill_id: number | null;
+};
+
+type UserInterestRow = {
+  interest_id: number | null;
+};
+
+type PostIdOnlyRow = {
+  post_id: string | null;
+};
+
 function normalizePostType(type: string): "event" | "collab" | "qna" | "lostfound" | string {
   const t = String(type ?? "").trim().toLowerCase();
   if (t === "events" || t === "event") return "event";
@@ -476,15 +488,20 @@ export function Home() {
         // Relevant: posts tagged with user's skills/interests
         let tagMatchedPosts: BasePostResult[] = [];
         if (uid) {
-          const [{ data: skills }, { data: interests }] = await Promise.all([
+          const [skillsRes, interestsRes] = await Promise.all([
             supabase.from("user_skills").select("skill_id").eq("auth_uid", uid),
             supabase.from("user_interests").select("interest_id").eq("auth_uid", uid),
           ]);
 
-          const skillIds = (skills ?? []).map((s: any) => s.skill_id).filter((x: any) => typeof x === "number");
-          const interestIds = (interests ?? [])
-            .map((i: any) => i.interest_id)
-            .filter((x: any) => typeof x === "number");
+          if (skillsRes.error) console.error("user_skills fetch error:", skillsRes.error);
+          if (interestsRes.error) console.error("user_interests fetch error:", interestsRes.error);
+
+          const skillIds = ((skillsRes.data ?? []) as UserSkillRow[])
+            .map((s) => s.skill_id)
+            .filter((x): x is number => typeof x === "number");
+          const interestIds = ((interestsRes.data ?? []) as UserInterestRow[])
+            .map((i) => i.interest_id)
+            .filter((x): x is number => typeof x === "number");
           const combinedIds = Array.from(new Set([...skillIds, ...interestIds]));
 
           setHasSkillsOrInterests(combinedIds.length > 0);
@@ -498,7 +515,11 @@ export function Home() {
             if (tagErr) console.error("post_tags fetch error:", tagErr);
 
             const postIds = Array.from(
-              new Set((tagRows ?? []).map((r: any) => r.post_id).filter((x: any) => typeof x === "string" && x.trim()))
+              new Set(
+                ((tagRows ?? []) as PostIdOnlyRow[])
+                  .map((r) => r.post_id)
+                  .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+              )
             );
 
             if (postIds.length > 0) {
@@ -551,9 +572,10 @@ export function Home() {
       } catch (e) {
         console.error("Home feed load error:", e);
       } finally {
-        if (!mounted) return;
-        setRelatedLoading(false);
-        setPopularLoading(false);
+        if (mounted) {
+          setRelatedLoading(false);
+          setPopularLoading(false);
+        }
       }
     };
 
@@ -593,13 +615,27 @@ export function Home() {
               if (t === "event") {
                 const post = eventById.get(p.post_id);
                 if (!post) return null;
-                return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+                return (
+                  <EventPost
+                    key={p.post_id}
+                    post={post}
+                    showPostTypeLabel
+                    onClick={() => navigate(buildUrl(p))}
+                  />
+                );
               }
 
               if (t === "collab") {
                 const post = collabById.get(p.post_id);
                 if (!post) return null;
-                return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+                return (
+                  <CollabPostCard
+                    key={p.post_id}
+                    post={post}
+                    showPostTypeLabel
+                    onClick={() => navigate(buildUrl(p))}
+                  />
+                );
               }
 
               if (t === "qna") {
@@ -609,6 +645,7 @@ export function Home() {
                   <QnaPostCard
                     key={p.post_id}
                     post={post}
+                    showPostTypeLabel
                     onOpenDetail={() => navigate(buildUrl(p))}
                     onLike={() => {
                       /* Home feed is read-only */
@@ -627,6 +664,7 @@ export function Home() {
                   <LFPostCard
                     key={p.post_id}
                     post={post}
+                    showPostTypeLabel
                     isLiked={false}
                     onToggleLike={() => {
                       /* Home feed is read-only */
@@ -663,13 +701,27 @@ export function Home() {
               if (t === "event") {
                 const post = eventById.get(p.post_id);
                 if (!post) return null;
-                return <EventPost key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+                return (
+                  <EventPost
+                    key={p.post_id}
+                    post={post}
+                    showPostTypeLabel
+                    onClick={() => navigate(buildUrl(p))}
+                  />
+                );
               }
 
               if (t === "collab") {
                 const post = collabById.get(p.post_id);
                 if (!post) return null;
-                return <CollabPostCard key={p.post_id} post={post} onClick={() => navigate(buildUrl(p))} />;
+                return (
+                  <CollabPostCard
+                    key={p.post_id}
+                    post={post}
+                    showPostTypeLabel
+                    onClick={() => navigate(buildUrl(p))}
+                  />
+                );
               }
 
               if (t === "qna") {
@@ -679,6 +731,7 @@ export function Home() {
                   <QnaPostCard
                     key={p.post_id}
                     post={post}
+                    showPostTypeLabel
                     onOpenDetail={() => navigate(buildUrl(p))}
                     onLike={() => {
                       /* Home feed is read-only */
@@ -697,6 +750,7 @@ export function Home() {
                   <LFPostCard
                     key={p.post_id}
                     post={post}
+                    showPostTypeLabel
                     isLiked={false}
                     onToggleLike={() => {
                       /* Home feed is read-only */

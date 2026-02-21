@@ -425,6 +425,7 @@ export function UserPostsSection() {
                 <EventPost
                   key={p.postId}
                   post={post}
+                  showPostTypeLabel
                   onClick={() => navigate(`/events/${p.postId}`)}
                 />
               );
@@ -437,6 +438,7 @@ export function UserPostsSection() {
                 <CollabPostCard
                   key={p.postId}
                   post={post}
+                  showPostTypeLabel
                   onClick={() => navigate(`/collab/${p.postId}`)}
                 />
               );
@@ -449,6 +451,7 @@ export function UserPostsSection() {
                 <QnaPostCard
                   key={p.postId}
                   post={post}
+                  showPostTypeLabel
                   onOpenDetail={() => navigate(postPath("qna", p.postId))}
                   onLike={() => {
                     /* keep profile feed read-only for now */
@@ -467,6 +470,7 @@ export function UserPostsSection() {
                 <LFPostCard
                   key={p.postId}
                   post={post}
+                  showPostTypeLabel
                   isLiked={false}
                   onToggleLike={() => {
                     /* keep profile feed read-only for now */

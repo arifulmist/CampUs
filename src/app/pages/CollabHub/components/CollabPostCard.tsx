@@ -21,9 +21,11 @@ export type CollabPost = {
 export function CollabPostCard({
   post,
   onClick,
+  showPostTypeLabel,
 }: {
   post: CollabPost;
   onClick?: () => void;
+  showPostTypeLabel?: boolean;
 }) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!onClick) return;
@@ -83,6 +85,7 @@ export function CollabPostCard({
         initialLikeCount={post.likes}
         initialCommentCount={post.comments}
         categorySet={"collab"}
+        postTypeLabel={showPostTypeLabel ? "Collab" : undefined}
         title={post.title}
         user={{
           name: post.authorName,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UserInfo } from "@/components/UserInfo";
 import { Heart, MessageCircle, MoreVertical, Share2 } from "lucide-react";
+import { getCategoryClass } from "@/utils/categoryColors";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ export function LFPostCard({
   onRemove,
   isLiked,
   onToggleLike,
+  showPostTypeLabel,
 }: {
   post: LFPost;
   onOpenComments: () => void;
@@ -44,12 +46,19 @@ export function LFPostCard({
   onRemove: () => void;
   isLiked: boolean;
   onToggleLike: () => void;
+  showPostTypeLabel?: boolean;
 }) {
   const categoryLabel = (() => {
     const c = typeof post.category === "string" ? post.category.trim().toLowerCase() : "";
     if (c === "found") return "Found";
     if (c === "lost") return "Lost";
     return c ? c[0].toUpperCase() + c.slice(1) : null;
+  })();
+
+  const categoryKey = (() => {
+    const c = typeof post.category === "string" ? post.category.trim().toLowerCase() : "";
+    if (c === "lost" || c === "found") return c;
+    return null;
   })();
 
   const descRef = useRef<HTMLDivElement | null>(null);
@@ -80,10 +89,25 @@ export function LFPostCard({
     <div className="bg-secondary-lm lg:p-6 lg:rounded-xl lg:border border-stroke-grey hover:border-stroke-peach hover:bg-hover-lm lg:transition lg:animate-slide-in">
       <div className="lg:flex lg:items-start lg:justify-between lg:mb-3">
         <div>
-          {categoryLabel ? (
-            <p className="w-fit lg:px-2.5 lg:py-0.5 bg-hover-lm text-accent-lm text-sm border border-stroke-peach rounded-xl">
-              {categoryLabel}
-            </p>
+          {categoryLabel || showPostTypeLabel ? (
+            <div className="flex items-center gap-2 lg:mb-2">
+              {categoryLabel ? (
+                <p
+                  className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(
+                    categoryKey ?? undefined,
+                    "lostfound"
+                  )}`}
+                >
+                  {categoryLabel}
+                </p>
+              ) : null}
+              {showPostTypeLabel ? (
+                <>
+                  <span className="text-text-lighter-lm">•</span>
+                  <span className="text-base text-text-lm font-semibold">Lost and Found</span>
+                </>
+              ) : null}
+            </div>
           ) : null}
           <h3 className="text-xl lg:font-bold text-text-lm">{post.title}</h3>
           <div className="lg:mt-2 lg:flex lg:items-center lg:gap-2">

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { TopNav } from "../components/TopNav";
 import { BotNav } from "../components/BotNav";
 import { OnlineUsersProvider } from "./OnlineUsersProvider";
+import { LastRouteTracker } from "./routeGuards";
 
 export function Layout() {
   const location = useLocation();
@@ -12,6 +13,7 @@ export function Layout() {
   return (
     <OnlineUsersProvider>
       <>
+        <LastRouteTracker />
         <header className="lg:sticky lg:top-0 lg:w-full lg:z-50">
           {!hideNav && <TopNav />}
           {!hideNav && <BotNav />}

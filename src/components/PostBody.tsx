@@ -20,6 +20,7 @@ interface PostContent {
   initialLikeCount?: number;
   initialCommentCount?: number;
   categorySet?: "events" | "collab" | "lostfound";
+  postTypeLabel?: string;
   title: string;
   user: {
     name: string;
@@ -64,6 +65,7 @@ export function PostBody({
   initialLikeCount,
   initialCommentCount,
   categorySet,
+  postTypeLabel,
   title,
   user,
   content,
@@ -148,12 +150,16 @@ export function PostBody({
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
       {/* Category chip */}
       {category && (
-        <div className="lg:mt-1 lg:mb-3">
-          <p
-            className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${categoryClasses}`}
-          >
+        <div className="lg:mt-1 lg:mb-3 flex items-center gap-2">
+          <p className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${categoryClasses}`}>
             {categoryLabel}
           </p>
+          {postTypeLabel ? (
+            <>
+              <span className="text-text-lighter-lm">•</span>
+              <span className="text-base text-text-lm font-semibold">{postTypeLabel}</span>
+            </>
+          ) : null}
         </div>
       )}
 

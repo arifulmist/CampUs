@@ -41,9 +41,10 @@ export type EventPostType = {
 interface Props {
   post: EventPostType;
   onClick?: () => void; // optional click handler to open detail
+  showPostTypeLabel?: boolean;
 }
 
-export default function EventPost({ post, onClick }: Props) {
+export default function EventPost({ post, onClick, showPostTypeLabel }: Props) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!onClick) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -98,6 +99,7 @@ export default function EventPost({ post, onClick }: Props) {
       initialLikeCount={typeof post.likes === "number" ? post.likes : undefined}
       initialCommentCount={typeof post.comments === "number" ? post.comments : undefined}
       categorySet={"events"}
+      postTypeLabel={showPostTypeLabel ? "Event" : undefined}
       title={post.title}
   user={{
     name: post.author,
