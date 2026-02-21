@@ -188,6 +188,22 @@ export function Signup() {
 
     if (name === "studentId") {
       setStudentIdValid(isValidStudentId(value));
+
+      // Auto-select department from digits at index 4-5 of the student ID
+      if (value.length >= 6) {
+        const extractedDeptId = value.substring(4, 6);
+        const matchingDept = deptOptions.find(
+          (d) => d.dept_id === extractedDeptId,
+        );
+        if (matchingDept) {
+          setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+            dept: matchingDept.dept_id,
+          }));
+          return; // already updated formData above
+        }
+      }
     }
 
     // Clear error when user starts typing
