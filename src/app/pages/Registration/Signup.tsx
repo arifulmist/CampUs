@@ -40,6 +40,7 @@ export function Signup() {
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [emailValid, setEmailValid] = useState(true);
   const [studentIdValid, setStudentIdValid] = useState(true);
+  const [studentIdCharsInvalid, setStudentIdCharsInvalid] = useState(false);
 
   const [deptOptions, setDeptOptions] = useState<DepartmentOption[]>([]);
   const [deptOptionsLoading, setDeptOptionsLoading] = useState(false);
@@ -177,6 +178,46 @@ export function Signup() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
+
+    // Special handling for Student ID: strip non-digits and warn when chars attempted
+    if (name === "studentId") {
+      const raw = value;
+      const digitsOnly = raw.replace(/\D/g, "");
+
+      // If user attempted to enter non-digits, show the small warning
+      setStudentIdCharsInvalid(raw !== digitsOnly);
+
+      // Update form with digits-only value
+      setFormData((prev) => ({
+        ...prev,
+        [name]: digitsOnly,
+      }));
+
+      setStudentIdValid(isValidStudentId(digitsOnly));
+
+      // Auto-select department from digits at index 4-5 of the student ID
+      if (digitsOnly.length >= 6) {
+        const extractedDeptId = digitsOnly.substring(4, 6);
+        const matchingDept = deptOptions.find((d) => d.dept_id === extractedDeptId);
+        if (matchingDept) {
+          setFormData((prev) => ({
+            ...prev,
+            [name]: digitsOnly,
+            dept: matchingDept.dept_id,
+          }));
+          return; // already updated formData above
+        }
+      }
+
+      // Clear error when user starts typing
+      if (signupError) {
+        setSignupError(null);
+      }
+
+      return;
+    }
+
+    // Default handling for other inputs
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -184,26 +225,6 @@ export function Signup() {
 
     if (name === "email") {
       setEmailValid(isValidEmail(value));
-    }
-
-    if (name === "studentId") {
-      setStudentIdValid(isValidStudentId(value));
-
-      // Auto-select department from digits at index 4-5 of the student ID
-      if (value.length >= 6) {
-        const extractedDeptId = value.substring(4, 6);
-        const matchingDept = deptOptions.find(
-          (d) => d.dept_id === extractedDeptId,
-        );
-        if (matchingDept) {
-          setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-            dept: matchingDept.dept_id,
-          }));
-          return; // already updated formData above
-        }
-      }
     }
 
     // Clear error when user starts typing
@@ -436,11 +457,16 @@ export function Signup() {
                 changeHandler={handleInputChange}
                 required
               />
-              {!studentIdValid && (
-                <p className="text-sm text-accent-lm lg:mt-1">
-                  Student ID must be exactly 9 digits.
-                </p>
-              )}
+                {!studentIdValid && (
+                  <p className="text-sm text-accent-lm lg:mt-1">
+                    Student ID must be exactly 9 digits.
+                  </p>
+                )}
+                {studentIdCharsInvalid && (
+                  <p className="text-sm text-accent-lm lg:mt-1">
+                    Characters are not allowed in Student ID. Only digits are accepted.
+                  </p>
+                )}
             </div>
 
             <div className="lg:flex lg:flex-row lg:w-full lg:align-middle lg:justify-between">
