@@ -555,18 +555,60 @@ export async function updateLostAndFoundPost({
 
     const lfUpdates: Partial<LostAndFoundRow> = {};
     if (typeof updates.category === "string") lfUpdates.category = updates.category.toLowerCase();
-    if ("dateLostOrFound" in updates) lfUpdates.date_lost_or_found = updates.dateLostOrFound ?? null;
+    // `date_lost_or_found` is NOT NULL in the DB schema. Only include it in the
+    // upsert when the caller provides a non-empty string. This prevents
+    // attempting to write NULL and violating the constraint.
+    if (typeof updates.dateLostOrFound === "string" && updates.dateLostOrFound.trim() !== "") {
+      lfUpdates.date_lost_or_found = updates.dateLostOrFound;
+    }
     if ("timeLostOrFound" in updates) lfUpdates.time_lost_or_found = updates.timeLostOrFound ?? null;
     if ("imgUrl" in updates) lfUpdates.img_url = updates.imgUrl ?? null;
 
     if (Object.keys(lfUpdates).length) {
+      // Ensure we don't attempt to insert a NULL `category` when the row is missing.
+      // If caller didn't provide `category`, try to reuse existing category from DB
+      // or default to 'lost'. If the DB doesn't have the column, the existing
+      // fallback logic below will strip it and retry.
+      if (!("category" in lfUpdates)) {
+        try {
+          const { data: existing, error: fetchErr } = await supabase
+            .from("lost_and_found_posts")
+            .select("category")
+            .eq("post_id", postId)
+            .maybeSingle();
+          if (!fetchErr && existing && typeof (existing as any).category === "string") {
+            lfUpdates.category = (existing as any).category;
+          } else {
+            lfUpdates.category = "lost";
+          }
+        } catch (e) {
+          // If select fails (older DB without column) or is forbidden by RLS
+          // (403), default to 'lost' so we don't upsert a NULL category.
+          lfUpdates.category = "lost";
+        }
+      }
+
       // upsert into lost_and_found_posts (in case row missing)
       const { error: lfErr } = await supabase
         .from("lost_and_found_posts")
         .upsert([{ post_id: postId, ...lfUpdates }], { onConflict: "post_id" });
       if (lfErr) {
-        // tolerate missing category column
-        if ("category" in lfUpdates) {
+        // Only attempt a fallback that strips `category` when the error strongly
+        // indicates the `category` column is missing from the DB (older schema).
+        // If the upsert failed for another reason (RLS/403, NOT NULL violation,
+        // etc.), rethrow the original error to avoid inserting NULL into the
+        // NOT NULL `category` column.
+        const errMsg = (lfErr && (lfErr as any).message) ? String((lfErr as any).message).toLowerCase() : "";
+        const errCode = (lfErr && (lfErr as any).code) ? String((lfErr as any).code) : "";
+
+        const looksLikeMissingColumn =
+          errCode === "42703" || // undefined_column
+          errMsg.includes("column \"category\"") ||
+          errMsg.includes("does not exist") ||
+          errMsg.includes("unrecognized column") ||
+          errMsg.includes("missing column");
+
+        if ("category" in lfUpdates && looksLikeMissingColumn) {
           const { category: _ignored, ...rest } = lfUpdates as any;
           const fallback = await supabase
             .from("lost_and_found_posts")

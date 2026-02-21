@@ -5,22 +5,23 @@ import placeholderDP from "../assets/images/placeholderUser.png";
 import messageIcon from "../assets/icons/message_icon.svg";
 import messageIconFilled from "../assets/icons/FILLEDmessage_icon.svg";
 import bellIcon from "../assets/icons/bell_icon.svg";
+import filledBellIcon from "../assets/icons/FILLEDbell_icon.svg";
 import userIcon from "../assets/icons/user_icon.svg";
 import signoutIcon from "../assets/icons/logout_icon.svg";
 
 import { UserInfo } from "./UserInfo";
 import { useEffect, useRef, useState } from "react";
-import NotificationsDrawer from "./NotificationsDrawer";
+import { NotificationDrawer } from "@/app/pages/Notifications/NotificationDrawer";
 import { MessageDrawer } from "@/app/pages/Messaging/MessageDrawer";
 import {
   getConversations,
   subscribeToConversations,
 } from "@/app/pages/Messaging/utils/messagingUtils";
 import {
-  subscribe as notiSubscribe,
-  getUnreadCount,
-  markAllRead,
-} from "../mockData/notifications";
+  getUnreadNotificationsCount,
+  ensurePostRecommendationNotifications,
+  subscribeToNotifications,
+} from "@/app/pages/Notifications/utils/notificationUtils";
 import { supabase } from "@/supabase/supabaseClient";
 
 type UserProfileRow = {
@@ -41,9 +42,7 @@ export function TopNav() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(
-    () => getUnreadCount() > 0,
-  );
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [authUid, setAuthUid] = useState<string | null>(null);
@@ -56,19 +55,46 @@ export function TopNav() {
     id: string | null;
     name?: string;
   } | null>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
   const messageButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  useEffect(() => {
-    const unsub = notiSubscribe(() => {
-      setHasUnreadNotifs(getUnreadCount() > 0);
-    });
-    return () => unsub();
-  }, []);
+  const seededRecommendationsForRef = useRef<string | null>(null);
+
+  // Track unread notification count for badge indicator
+  const refreshUnreadNotifs = useRef<() => void>(() => {});
 
   useEffect(() => {
-    if (isNotifOpen) {
-      // mark as read when drawer opens
-      markAllRead();
+    let cancelled = false;
+
+    async function checkUnread() {
+      if (!authUid) return;
+      try {
+        const count = await getUnreadNotificationsCount(authUid);
+        if (cancelled) return;
+        setUnreadNotifCount(count);
+      } catch {
+        // fail silently
+      }
+    }
+
+    refreshUnreadNotifs.current = checkUnread;
+    checkUnread();
+
+    if (!authUid) return;
+    const unsubscribe = subscribeToNotifications(authUid, () => {
+      checkUnread();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [authUid]);
+
+  // Refresh the count when the drawer closes (user may have read notifications)
+  useEffect(() => {
+    if (!isNotifOpen) {
+      refreshUnreadNotifs.current();
     }
   }, [isNotifOpen]);
 
@@ -146,6 +172,75 @@ export function TopNav() {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Seed post recommendation notifications (client-side), once per user.
+  useEffect(() => {
+    if (!authUid) return;
+    if (seededRecommendationsForRef.current === authUid) return;
+    seededRecommendationsForRef.current = authUid;
+
+    (async () => {
+      try {
+        const inserted = await ensurePostRecommendationNotifications(authUid);
+        if (inserted > 0) {
+          refreshUnreadNotifs.current();
+        }
+      } catch {
+        // ignore – recommendations are best-effort
+      }
+    })();
+  }, [authUid]);
+
+  // Keep recommendations fresh when new tags are added to posts.
+  useEffect(() => {
+    if (!authUid) return;
+    const uid = authUid;
+    let cancelled = false;
+    let timeout: number | null = null;
+
+    async function runSeed() {
+      try {
+        const inserted = await ensurePostRecommendationNotifications(uid, {
+          lookbackDays: 14,
+          maxRecentPosts: 80,
+          maxCandidatePosts: 40,
+          maxInsert: 5,
+        });
+        if (!cancelled && inserted > 0) {
+          refreshUnreadNotifs.current();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    function queueSeed() {
+      if (timeout) return;
+      timeout = window.setTimeout(async () => {
+        timeout = null;
+        if (cancelled) return;
+        await runSeed();
+      }, 500);
+    }
+
+    const channel = supabase
+      .channel(`topnav-recommendations-${uid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_tags" },
+        () => queueSeed(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (timeout) {
+        window.clearTimeout(timeout);
+        timeout = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [authUid]);
 
   useEffect(() => {
     if (!authUid) return;
@@ -264,10 +359,20 @@ export function TopNav() {
           <img src={moonIcon} className="lg:size-6 cursor-pointer"></img>
         </button> */}
 
-        <button onClick={() => setIsNotifOpen(true)} className="lg:relative">
-          <img src={bellIcon} className="lg:size-8 cursor-pointer" />
-          {hasUnreadNotifs && (
-            <span className="lg:absolute lg:-top-0.5 lg:-right-0.5 lg:inline-block lg:h-2.5 lg:w-2.5 lg:rounded-full bg-red-500 ring-2 ring-primary-lm" />
+        <button
+          ref={notificationButtonRef}
+          onClick={() => setIsNotifOpen((prev) => !prev)}
+          className="lg:relative"
+        >
+          <img
+            src={isNotifOpen ? filledBellIcon : bellIcon}
+            className="lg:size-8 cursor-pointer"
+          />
+
+          {unreadNotifCount > 0 && !isNotifOpen && (
+            <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-accent-lm text-primary-lm text-[10px] font-bold ring-2 ring-primary-lm">
+              {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+            </span>
           )}
         </button>
 
@@ -326,7 +431,11 @@ export function TopNav() {
         )}
       </div>
 
-      <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
+      <NotificationDrawer
+        open={isNotifOpen}
+        onOpenChange={setIsNotifOpen}
+        notificationButtonRef={notificationButtonRef}
+      />
 
       <MessageDrawer
         open={isMsgOpen}

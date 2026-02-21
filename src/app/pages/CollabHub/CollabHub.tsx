@@ -4,6 +4,7 @@ import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter"
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
 import { addNotification } from "../../../mockData/notifications";
+import { toast } from "react-hot-toast";
 import { supabase } from "@/supabase/supabaseClient";
 import { createCollabPost } from "./backend/collab";
 import { CollabPostCard, type CollabPost } from "./components/CollabPostCard";
@@ -17,11 +18,13 @@ export function CollabHub() {
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadTokenRef = useRef(0);
+  const inFlightRef = useRef(false);
 
   const PAGE_SIZE = 20;
 
@@ -32,15 +35,50 @@ export function CollabHub() {
     return posts.filter((p) => p.category === filter);
   }, [filter, posts]);
 
+  function mergeUniqueById(prev: CollabPost[], next: CollabPost[], reset: boolean): CollabPost[] {
+    if (reset) {
+      const seen = new Set<string>();
+      const out: CollabPost[] = [];
+      for (const p of next) {
+        const key = String(p.id);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(p);
+      }
+      return out;
+    }
+
+    const seen = new Set(prev.map((p) => String(p.id)));
+    const out = [...prev];
+    for (const p of next) {
+      const key = String(p.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(p);
+    }
+    return out;
+  }
+
+  type QueryRes<T> = { data: T | null; error: unknown | null };
+
   async function loadPosts({ reset }: { reset: boolean }) {
+    // Prevent duplicate page loads from the intersection observer.
+    // Allow a reset to start even if something else is in-flight; stale results are ignored via token.
+    if (!reset) {
+      if (inFlightRef.current) return;
+      if (loadingMore || loading || !hasMore) return;
+    }
+
+    const token = ++loadTokenRef.current;
+
+    inFlightRef.current = true;
+
     if (reset) {
       setLoading(true);
-      setInitialLoad(true);
       setHasMore(true);
       setPage(0);
       setPosts([]);
     } else {
-      if (loadingMore || loading || !hasMore) return;
       setLoadingMore(true);
     }
 
@@ -55,32 +93,75 @@ export function CollabHub() {
       });
 
       if (!rpcRes.error && Array.isArray(rpcRes.data)) {
-        const rows = rpcRes.data as any[];
-        const mapped: CollabPost[] = rows.map((r) => {
-          const dept = typeof r.author_department === "string" ? r.author_department : "";
-          const batch = typeof r.author_batch === "string" ? r.author_batch : "";
-          const authorBatch = dept && batch ? `${dept}-${batch}` : dept || "";
+        const rows = rpcRes.data as unknown[];
+        const allowedCategories: Category[] = ["research", "competition", "project"];
+        const mapped = rows
+          .map<CollabPost | null>((row) => {
+            const r = (row ?? {}) as Record<string, unknown>;
+            const dept = typeof r.author_department === "string" ? r.author_department : "";
+            const batch = typeof r.author_batch === "string" ? r.author_batch : "";
+            const authorBatch = dept && batch ? `${dept}-${batch}` : dept || "";
 
-          return {
-            id: String(r.post_id),
-            category: (String(r.category) as Category) ?? "research",
-            title: String(r.title ?? ""),
-            content: String(r.description ?? ""),
-            authorAuthUid: typeof r.author_auth_uid === "string" ? r.author_auth_uid : undefined,
-            authorName: typeof r.author_name === "string" ? r.author_name : "Unknown",
-            authorBatch,
-            authorAvatarUrl: typeof r.author_avatar === "string" ? r.author_avatar : null,
-            tags: Array.isArray(r.tags) ? (r.tags.filter((t: any) => typeof t === "string") as string[]) : [],
-            likes: Number(r.like_count ?? 0),
-            comments: Number(r.comment_count ?? 0),
-            createdAt: typeof r.created_at === "string" ? r.created_at : null,
-          } satisfies CollabPost;
-        });
+            const id = String(r.post_id ?? r.id ?? "").trim();
+            if (!id) return null;
 
-        setPosts((prev) => (reset ? mapped : [...prev, ...mapped]));
-        setHasMore(mapped.length === PAGE_SIZE);
-        setPage((p) => (reset ? 1 : p + 1));
-        return;
+            const catRaw = typeof r.category === "string" ? r.category.trim().toLowerCase() : "";
+            const category: Category = allowedCategories.includes(catRaw as Category)
+              ? (catRaw as Category)
+              : "research";
+
+            const authorAuthUid =
+              typeof r.author_auth_uid === "string"
+                ? r.author_auth_uid
+                : typeof r.author_id === "string"
+                  ? r.author_id
+                  : "";
+
+            return {
+              id,
+              category,
+              title: String(r.title ?? ""),
+              content: String(r.description ?? r.content ?? ""),
+              authorAuthUid,
+              authorName:
+                typeof r.author_name === "string"
+                  ? r.author_name
+                  : typeof r.name === "string"
+                    ? r.name
+                    : "Unknown",
+              authorBatch,
+              authorAvatarUrl:
+                typeof r.author_avatar === "string"
+                  ? r.author_avatar
+                  : typeof r.author_avatar_url === "string"
+                    ? r.author_avatar_url
+                    : typeof r.avatar_url === "string"
+                      ? r.avatar_url
+                      : null,
+              tags: Array.isArray(r.tags)
+                ? (r.tags.filter((t: unknown) => typeof t === "string") as string[])
+                : [],
+              likes: Number(r.like_count ?? r.likes ?? 0),
+              comments: Number(r.comment_count ?? r.comments ?? 0),
+              createdAt: typeof r.created_at === "string" ? r.created_at : null,
+            } satisfies CollabPost;
+          })
+          .filter((x): x is CollabPost => x !== null);
+
+        // If RPC returns rows but we can't map any into UI posts, fall back to
+        // the non-RPC path so the feed doesn't appear empty due to a schema mismatch.
+        if (rows.length === 0 || mapped.length > 0) {
+          if (loadTokenRef.current !== token) return;
+
+          setPosts((prev) => mergeUniqueById(prev, mapped, reset));
+          setHasMore(rows.length === PAGE_SIZE);
+          setPage((p) => (reset ? 1 : p + 1));
+          return;
+        }
+
+        console.warn(
+          "get_collab_feed_page returned rows but none could be mapped; falling back to query loader"
+        );
       }
 
       // Fallback path (kept for environments where RPC isn't applied yet)
@@ -93,10 +174,18 @@ export function CollabHub() {
 
       if (postsError) throw postsError;
 
-      const postIds = (postRows ?? []).filter(Boolean).map((r: any) => r.post_id);
+      const postRowsArr = (postRows ?? []) as Array<Record<string, unknown>>;
+      const postIds = postRowsArr
+        .map((r) => r.post_id)
+        .filter((x): x is string | number => typeof x === "string" || typeof x === "number");
+
       const authorIds = Array.from(
-        new Set((postRows ?? []).map((r: any) => r?.author_id).filter((x: any) => typeof x === "string"))
-      ) as string[];
+        new Set(
+          postRowsArr
+            .map((r) => r.author_id)
+            .filter((x): x is string => typeof x === "string" && x.length > 0)
+        )
+      );
 
       const [
         metaRes,
@@ -108,39 +197,56 @@ export function CollabHub() {
         departmentsRes,
       ] = await Promise.all([
         postIds.length
-          ? supabase.from("collab_posts").select("post_id,category_id").in("post_id", postIds)
-          : Promise.resolve({ data: [], error: null } as any),
+          ? (supabase
+              .from("collab_posts")
+              .select("post_id,category_id")
+              .in("post_id", postIds) as unknown as Promise<QueryRes<Array<Record<string, unknown>>>>)
+          : Promise.resolve({ data: [], error: null } satisfies QueryRes<Array<Record<string, unknown>>>),
         supabase.from("collab_category").select("category_id,category"),
         postIds.length
-          ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", postIds)
-          : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
+          ? (supabase
+              .from("post_tags")
+              .select("post_id,skill_id")
+              .in("post_id", postIds) as unknown as Promise<QueryRes<Array<Record<string, unknown>>>>)
+          : Promise.resolve({ data: [], error: null } satisfies QueryRes<Array<Record<string, unknown>>>),
         postIds.length
-          ? supabase.from("skills_lookup").select("id,skill")
-          : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
+          ? (supabase
+              .from("skills_lookup")
+              .select("id,skill") as unknown as Promise<QueryRes<Array<Record<string, unknown>>>>)
+          : Promise.resolve({ data: [], error: null } satisfies QueryRes<Array<Record<string, unknown>>>),
         authorIds.length
           ? supabase
               .from("user_info")
               .select("auth_uid,name,batch,department,departments_lookup(department_name)")
               .in("auth_uid", authorIds)
-          : Promise.resolve({ data: [], error: null } as any),
+          : Promise.resolve({ data: [], error: null } satisfies QueryRes<Array<Record<string, unknown>>>),
         authorIds.length
-          ? supabase.from("user_profile").select("auth_uid,profile_picture_url").in("auth_uid", authorIds)
-          : Promise.resolve({ data: [], error: null } as any),
+          ? supabase
+              .from("user_profile")
+              .select("auth_uid,profile_picture_url")
+              .in("auth_uid", authorIds)
+          : Promise.resolve({ data: [], error: null } satisfies QueryRes<Array<Record<string, unknown>>>),
         supabase.from("departments_lookup").select("dept_id,department_name"),
       ]);
 
-      if ((metaRes as any).error) throw (metaRes as any).error;
+      if ((metaRes as QueryRes<Array<Record<string, unknown>>>).error) {
+        throw (metaRes as QueryRes<Array<Record<string, unknown>>>).error;
+      }
 
       if (categoriesRes.error) throw categoriesRes.error;
 
-      if (postTagsRes && (postTagsRes as any).error) {
+      if ((postTagsRes as QueryRes<Array<Record<string, unknown>>>).error) {
         // If post_tags is missing or inaccessible, warn and continue without tags.
-        // eslint-disable-next-line no-console
-        console.warn("post_tags fetch failed; continuing without tags:", (postTagsRes as any).error);
+        console.warn(
+          "post_tags fetch failed; continuing without tags:",
+          (postTagsRes as QueryRes<Array<Record<string, unknown>>>).error
+        );
       }
-      if (skillsRes && (skillsRes as any).error) {
-        // eslint-disable-next-line no-console
-        console.warn("skills_lookup fetch failed; continuing without mapping skill names:", (skillsRes as any).error);
+      if ((skillsRes as QueryRes<Array<Record<string, unknown>>>).error) {
+        console.warn(
+          "skills_lookup fetch failed; continuing without mapping skill names:",
+          (skillsRes as QueryRes<Array<Record<string, unknown>>>).error
+        );
       }
       if (usersRes.error) throw usersRes.error;
       if (profilesRes.error) throw profilesRes.error;
@@ -169,11 +275,12 @@ export function CollabHub() {
       for (const row of (postTagsRes?.data ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const skillId = row.skill_id;
-        if (typeof postId === "string") {
-          const arr = tagsByPostId.get(postId) ?? [];
+        if (typeof postId === "string" || typeof postId === "number") {
+          const key = String(postId);
+          const arr = tagsByPostId.get(key) ?? [];
           const skillName = skillNameById.get(skillId as number | string);
           if (skillName) arr.push(skillName);
-          tagsByPostId.set(postId, arr);
+          tagsByPostId.set(key, arr);
         }
       }
 
@@ -222,36 +329,42 @@ export function CollabHub() {
       }
 
       const metaByPostId = new Map<string, string>();
-      for (const row of ((metaRes as any).data ?? []) as Array<Record<string, unknown>>) {
+      for (const row of ((metaRes as QueryRes<Array<Record<string, unknown>>>).data ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const categoryId = row.category_id;
-        if (typeof postId === "string" && (typeof categoryId === "number" || typeof categoryId === "string")) {
-          metaByPostId.set(postId, String(categoryId));
+        if ((typeof postId === "string" || typeof postId === "number") && (typeof categoryId === "number" || typeof categoryId === "string")) {
+          metaByPostId.set(String(postId), String(categoryId));
         }
       }
 
       const merged: CollabPost[] = [];
-      for (const row of (postRows ?? []) as Array<Record<string, unknown>>) {
+      for (const row of postRowsArr) {
         const postId = row.post_id;
         const title = row.title;
         const description = row.description;
         const authorId = row.author_id;
-        const categoryId = typeof postId === "string" ? metaByPostId.get(postId) : undefined;
-        const category = typeof categoryId === "string" ? categoryById.get(categoryId) : undefined;
+        const postKey = (typeof postId === "string" || typeof postId === "number") ? String(postId) : "";
+        const categoryId = postKey ? metaByPostId.get(postKey) : undefined;
+
+        const allowedCategories: Category[] = ["research", "competition", "project"];
+        const categoryRaw = typeof categoryId === "string" ? categoryById.get(categoryId) : undefined;
+        const categoryNorm = typeof categoryRaw === "string" ? categoryRaw.trim().toLowerCase() : "";
+        const category: Category = allowedCategories.includes(categoryNorm as Category)
+          ? (categoryNorm as Category)
+          : "research";
 
         if (
-          typeof postId !== "string" ||
+          (!postKey) ||
           typeof title !== "string" ||
           typeof description !== "string" ||
-          typeof authorId !== "string" ||
-          !category
+          typeof authorId !== "string"
         ) {
           continue;
         }
 
         const user = userByAuthUid.get(authorId);
         merged.push({
-          id: postId,
+          id: postKey,
           category,
           title,
           content: description,
@@ -259,7 +372,7 @@ export function CollabHub() {
           authorName: user?.name ?? "Unknown",
           authorBatch: user?.batch ?? "",
           authorAvatarUrl: user?.avatarUrl ?? null,
-          tags: tagsByPostId.get(postId) ?? [],
+          tags: tagsByPostId.get(postKey) ?? [],
           likes: typeof row.like_count === "number" ? row.like_count : 0,
           comments: typeof row.comment_count === "number" ? row.comment_count : 0,
           createdAt: (typeof row.created_at === "string" || row.created_at === null) ? (row.created_at as string | null) : null,
@@ -268,7 +381,8 @@ export function CollabHub() {
 
       const next = merged;
       const visible = filter === "all" ? next : next.filter((p) => p.category === filter);
-      setPosts((prev) => (reset ? visible : [...prev, ...visible]));
+      if (loadTokenRef.current !== token) return;
+      setPosts((prev) => mergeUniqueById(prev, visible, reset));
       setHasMore(next.length === PAGE_SIZE);
       setPage((p) => (reset ? 1 : p + 1));
     } catch (e) {
@@ -277,7 +391,10 @@ export function CollabHub() {
     } finally {
       setLoading(false);
       setLoadingMore(false);
-      setInitialLoad(false);
+
+      if (loadTokenRef.current === token) {
+        inFlightRef.current = false;
+      }
     }
   }
 
@@ -382,7 +499,9 @@ export function CollabHub() {
               path: "/collab",
             });
 
-            await loadPosts();
+            // Inform user and refresh feed so new post appears immediately
+            toast.success("Post created!");
+            await loadPosts({ reset: true });
           } catch (e) {
             console.error(e);
           }

@@ -135,6 +135,10 @@ export function PostComments({
 
   const [tree, setTree] = useState<CommentNode[]>([]);
   const [likedById, setLikedById] = useState<Record<string, boolean>>({});
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
+
+  const pendingScrollRef = useRef<{ commentId: string; ts: number } | null>(null);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const focusAttemptTokenRef = useRef(0);
@@ -303,6 +307,137 @@ export function PostComments({
     return () => window.removeEventListener("campus:focus_comment_input", handler as EventListener);
   }, [postId]);
 
+  // Smooth-scroll to a specific comment (used by notifications)
+  useEffect(() => {
+    if (!postId) return;
+
+    function isVisibleForScroll(el: HTMLElement): boolean {
+      if (!el.isConnected) return false;
+      if (el.getClientRects().length === 0) return false;
+      const style = window.getComputedStyle(el);
+      if (style.display === "none") return false;
+      if (style.visibility === "hidden") return false;
+      return true;
+    }
+
+    function scrollToCommentWithRetry(
+      targetCommentId: string,
+      { consumeMarker }: { consumeMarker?: () => void } = {}
+    ) {
+      const startedAt = Date.now();
+      const maxMs = 15000;
+
+      const tick = () => {
+        if (!aliveRef.current) return;
+
+        const el = document.getElementById(`comment-${targetCommentId}`);
+        if (el && isVisibleForScroll(el)) {
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch {
+            // ignore scroll failures
+          }
+
+          // Clear any pending scroll once we've actually found and scrolled to the target.
+          pendingScrollRef.current = null;
+
+          setHighlightedCommentId(targetCommentId);
+          if (highlightTimeoutRef.current) {
+            window.clearTimeout(highlightTimeoutRef.current);
+            highlightTimeoutRef.current = null;
+          }
+          highlightTimeoutRef.current = window.setTimeout(() => {
+            if (!aliveRef.current) return;
+            setHighlightedCommentId((prev) => (prev === targetCommentId ? null : prev));
+            highlightTimeoutRef.current = null;
+          }, 400);
+
+          consumeMarker?.();
+          return;
+        }
+
+        if (Date.now() - startedAt > maxMs) return;
+        requestAnimationFrame(tick);
+      };
+
+      requestAnimationFrame(tick);
+    }
+
+    function requestScroll(targetCommentId: string, consumeMarker?: () => void) {
+      pendingScrollRef.current = { commentId: targetCommentId, ts: Date.now() };
+      // If we're not loading, try immediately; otherwise we'll retry once loading completes.
+      if (!loading) {
+        scrollToCommentWithRetry(targetCommentId, { consumeMarker });
+      }
+    }
+
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ postId?: string; commentId?: string }>;
+      const targetPostId = ce?.detail?.postId;
+      const targetCommentId = ce?.detail?.commentId;
+      if (!targetPostId || !targetCommentId) return;
+      if (targetPostId !== postId) return;
+
+      requestScroll(targetCommentId, () => {
+        try {
+          type Marker = { postId?: string; commentId?: string; ts?: number };
+          const win = window as unknown as { __campus_last_scroll_comment?: Marker };
+          const last = win.__campus_last_scroll_comment;
+          if (last?.postId === postId && last?.commentId === targetCommentId) {
+            win.__campus_last_scroll_comment = undefined;
+          }
+        } catch {
+          // ignore
+        }
+      });
+    };
+
+    window.addEventListener("campus:scroll_to_comment", handler as EventListener);
+
+    // Marker in case event fired before mount
+    try {
+      type Marker = { postId?: string; commentId?: string; ts?: number };
+      const win = window as unknown as { __campus_last_scroll_comment?: Marker };
+      const last = win.__campus_last_scroll_comment;
+      if (last?.postId === postId && last?.commentId && Date.now() - (last.ts ?? 0) < 20000) {
+        requestScroll(last.commentId, () => {
+          try {
+            win.__campus_last_scroll_comment = undefined;
+          } catch {
+            // ignore
+          }
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      window.removeEventListener("campus:scroll_to_comment", handler as EventListener);
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
+  }, [postId, loading]);
+
+  // If a notification scroll was requested while we were loading, re-attempt it
+  // after the comments finish loading / rendering.
+  useEffect(() => {
+    if (loading) return;
+    const pending = pendingScrollRef.current;
+    if (!pending) return;
+    if (Date.now() - pending.ts > 20000) {
+      pendingScrollRef.current = null;
+      return;
+    }
+
+    // Trigger the same event path so the existing retry/visibility logic runs.
+    window.dispatchEvent(
+      new CustomEvent("campus:scroll_to_comment", { detail: { postId, commentId: pending.commentId } })
+    );
+  }, [loading, tree, postId]);
+
   const sortedParents = useMemo(() => {
     const parents = [...tree];
 
@@ -444,6 +579,7 @@ export function PostComments({
               key={c.id}
               postId={postId}
               node={c}
+              highlightedCommentId={highlightedCommentId}
               currentUserId={currentUserId}
               getLiked={(id) => Boolean(likedById[id])}
               onToggleLike={async (commentId) => {
@@ -545,6 +681,7 @@ function removeNodePromoteReplies(list: CommentNode[], targetId: string): Commen
 function CommentItem({
   postId,
   node,
+  highlightedCommentId,
   currentUserId,
   getLiked,
   onToggleLike,
@@ -555,6 +692,7 @@ function CommentItem({
 }: {
   postId: string;
   node: CommentNode;
+  highlightedCommentId: string | null;
   currentUserId: string | null;
   getLiked: (id: string) => boolean;
   onToggleLike: (commentId: string) => Promise<void>;
@@ -679,131 +817,134 @@ function CommentItem({
   }, [replying]);
 
   return (
-    <div
-      className={
-        `${isReply && "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey"}`}
-    >
-      <UserInfo
-        userName={node.author}
-        userBatch={batchLabel}
-        postDate={formatRelativeTime(createdAtIso)}
-        userId={node.raw?.author_id ?? undefined}
-        studentId={node.raw?.user_info?.student_id ?? undefined}
-      />
+    <div className={isReply ? "lg:ml-6 lg:pl-6 border-l-2 border-stroke-grey" : ""}>
+      <div
+        id={`comment-${node.id}`}
+        data-comment-id={node.id}
+        className={highlightedCommentId === node.id ? "bg-hover-lm" : ""}
+      >
+        <UserInfo
+          userName={node.author}
+          userBatch={batchLabel}
+          postDate={formatRelativeTime(createdAtIso)}
+          userId={node.raw?.author_id ?? undefined}
+          studentId={node.raw?.user_info?.student_id ?? undefined}
+        />
 
-      <p className="m-0 mt-2 p-0 text-text-lm whitespace-pre-wrap">{node.content}</p>
+        <p className="m-0 mt-2 p-0 text-text-lm whitespace-pre-wrap">{node.content}</p>
 
-      <div className="flex gap-4 mt-3">
-        <button
-          className="flex gap-1 items-center cursor-pointer"
-          onClick={() => void onToggleLike(node.id)}
-        >
-          <img src={getLiked(node.id) ? filledHeartIcon : heartIcon} className="lg:size-4" />
-          <p className="m-0 p-0 text-accent-lm text-sm">{node.likes ?? 0}</p>
-        </button>
-
-        <button
-          className="flex gap-1 items-center cursor-pointer"
-          onClick={() => {
-            setEditing(false);
-            setEditText("");
-            setReplying((p) => !p);
-          }}
-        >
-          <img src={messageIcon} className="lg:size-4" />
-          <p className="m-0 p-0 text-accent-lm text-sm">Reply</p>
-        </button>
-
-        {isOwner ? (
-          <>
-            <button
-              className="cursor-pointer"
-              onClick={() => {
-                setReplying(false);
-                setReplyText("");
-                setEditing(true);
-                setEditText(node.content);
-              }}
-            >
-              <p className="m-0 p-0 text-accent-lm text-sm">Edit</p>
-            </button>
-
-            <button className="cursor-pointer" onClick={() => onRequestDelete(node.id)}>
-              <p className="m-0 p-0 text-text-lighter-lm/80 text-sm">Delete</p>
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      {replying && (
-        <div className="mt-3 flex gap-3 items-center relative">
+        <div className="flex gap-4 mt-3">
           <button
-            type="button"
-            onClick={() => {
-              setReplying(false);
-              setReplyText("");
-            }}
-            aria-label="Cancel reply"
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
+            className="flex gap-1 items-center cursor-pointer"
+            onClick={() => void onToggleLike(node.id)}
           >
-            <LucideX className="size-5 text-accent-lm" />
+            <img src={getLiked(node.id) ? filledHeartIcon : heartIcon} className="lg:size-4" />
+            <p className="m-0 p-0 text-accent-lm text-sm">{node.likes ?? 0}</p>
           </button>
-          <input
-            ref={replyInputRef}
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Write a reply…"
-            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void submitReply();
-              }
-            }}
-          />
-          <ButtonCTA
-            label={posting ? "Replying..." : "Reply"}
-            loading={posting}
-            disabled={!replyText.trim()}
-            clickEvent={() => void submitReply()}
-          />
-        </div>
-      )}
 
-      {editing && (
-        <div className="mt-3 flex gap-3 items-center relative">
           <button
-            type="button"
+            className="flex gap-1 items-center cursor-pointer"
             onClick={() => {
               setEditing(false);
               setEditText("");
+              setReplying((p) => !p);
             }}
-            aria-label="Cancel edit"
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
           >
-            <LucideX className="size-5 text-accent-lm"/>
+            <img src={messageIcon} className="lg:size-4" />
+            <p className="m-0 p-0 text-accent-lm text-sm">Reply</p>
           </button>
-          <input
-            ref={editInputRef}
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            placeholder="Edit your comment…"
-            className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void submitEdit();
-              }
-            }}
-          />
-          <ButtonCTA
-            label={savingEdit ? "Saving..." : "Save"}
-            loading={savingEdit}
-            disabled={!editText.trim()}
-            clickEvent={() => void submitEdit()}
-          />
+
+          {isOwner ? (
+            <>
+              <button
+                className="cursor-pointer"
+                onClick={() => {
+                  setReplying(false);
+                  setReplyText("");
+                  setEditing(true);
+                  setEditText(node.content);
+                }}
+              >
+                <p className="m-0 p-0 text-accent-lm text-sm">Edit</p>
+              </button>
+
+              <button className="cursor-pointer" onClick={() => onRequestDelete(node.id)}>
+                <p className="m-0 p-0 text-text-lighter-lm/80 text-sm">Delete</p>
+              </button>
+            </>
+          ) : null}
         </div>
-      )}
+
+        {replying && (
+          <div className="mt-3 flex gap-3 items-center relative">
+            <button
+              type="button"
+              onClick={() => {
+                setReplying(false);
+                setReplyText("");
+              }}
+              aria-label="Cancel reply"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
+            >
+              <LucideX className="size-5 text-accent-lm" />
+            </button>
+            <input
+              ref={replyInputRef}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Write a reply…"
+              className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void submitReply();
+                }
+              }}
+            />
+            <ButtonCTA
+              label={posting ? "Replying..." : "Reply"}
+              loading={posting}
+              disabled={!replyText.trim()}
+              clickEvent={() => void submitReply()}
+            />
+          </div>
+        )}
+
+        {editing && (
+          <div className="mt-3 flex gap-3 items-center relative">
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setEditText("");
+              }}
+              aria-label="Cancel edit"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-text-lighter-lm cursor-pointer"
+            >
+              <LucideX className="size-5 text-accent-lm" />
+            </button>
+            <input
+              ref={editInputRef}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Edit your comment…"
+              className="flex-1 bg-primary-lm border border-stroke-grey rounded-md px-3 py-2 pl-10 text-text-lm focus:outline-0 focus:border-stroke-peach"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void submitEdit();
+                }
+              }}
+            />
+            <ButtonCTA
+              label={savingEdit ? "Saving..." : "Save"}
+              loading={savingEdit}
+              disabled={!editText.trim()}
+              clickEvent={() => void submitEdit()}
+            />
+          </div>
+        )}
+      </div>
 
       {node.replies && node.replies.length > 0 && (
         <div className="mt-4 flex flex-col gap-4">
@@ -812,6 +953,7 @@ function CommentItem({
               key={r.id}
               postId={postId}
               node={r}
+              highlightedCommentId={highlightedCommentId}
               currentUserId={currentUserId}
               getLiked={getLiked}
               onToggleLike={onToggleLike}

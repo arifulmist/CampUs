@@ -18,7 +18,7 @@ import { supabase } from "@/supabase/supabaseClient";
 export type MessageDrawerProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  messageButtonRef?: React.RefObject<HTMLButtonElement>;
+  messageButtonRef?: React.RefObject<HTMLButtonElement | null>;
   initialUserId?: string | null;
   initialUserName?: string;
 };

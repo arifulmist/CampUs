@@ -423,12 +423,23 @@ export function InterestedButton({ postId }: { postId?: string }) {
     setState((s) => ({ ...s, isInterested: !s.isInterested }));
 
     if (!prev.isInterested) {
-      const { error } = await supabase.from("user_interested_posts").insert({
-        post_id: postId,
-        user_id: user.id,
-      });
+      const { error } = await supabase
+        .from("user_interested_posts")
+        .upsert(
+          {
+            post_id: postId,
+            user_id: user.id,
+          },
+          {
+            onConflict: "post_id,user_id",
+            ignoreDuplicates: true,
+          }
+        );
 
-      if (error) {
+      // Some environments still surface a 409 Conflict for duplicate rows.
+      // Treat it as success since the end state is already "interested".
+      const status = (error as unknown as { status?: unknown } | null)?.status;
+      if (error && status !== 409) {
         console.error(error);
         setState(prev);
         toast.error("Failed to mark interested");
