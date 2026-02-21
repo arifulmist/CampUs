@@ -42,9 +42,16 @@ interface Props {
   post: EventPostType;
   onClick?: () => void; // optional click handler to open detail
   showPostTypeLabel?: boolean;
+  truncateContentAt?: number;
 }
 
-export default function EventPost({ post, onClick, showPostTypeLabel }: Props) {
+function truncateText(text: string, maxChars: number) {
+  if (maxChars <= 0) return "";
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}…`;
+}
+
+export default function EventPost({ post, onClick, showPostTypeLabel, truncateContentAt }: Props) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!onClick) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -85,6 +92,8 @@ export default function EventPost({ post, onClick, showPostTypeLabel }: Props) {
     setTimeout(() => setFormattedDate(text), 0);
   }, [post.createdAt]);
   const deptBatch = `${post.dept ?? ""}-${post.batch ?? ""}`.trim();
+  const rawText = post.body ?? post.excerpt ?? "";
+  const displayText = typeof truncateContentAt === "number" ? truncateText(rawText, truncateContentAt) : rawText;
 
   return (
     <article
@@ -108,7 +117,7 @@ export default function EventPost({ post, onClick, showPostTypeLabel }: Props) {
     userId: post.authorAuthUid,
   }}
   content={{
-    text: post.body ?? post.excerpt ?? "",
+    text: displayText,
     img: post.image ?? undefined,
     imgs: Array.isArray(post.images) ? post.images : undefined,
   }}

@@ -367,7 +367,12 @@ export function Events() {
                 </div>
               ) : (
                 filtered.map((p) => (
-                  <EventPost key={p.id} post={p} onClick={() => navigate(`/events/${p.id}`)} />
+                  <EventPost
+                    key={p.id}
+                    post={p}
+                    truncateContentAt={200}
+                    onClick={() => navigate(`/events/${p.id}`)}
+                  />
                 ))
               )}
 
