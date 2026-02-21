@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
 import CreateCollabPost from "./components/CreateCollabPost";
-import { addNotification } from "../../../mockData/notifications";
 import { toast } from "react-hot-toast";
 import { supabase } from "@/supabase/supabaseClient";
 import { createCollabPost } from "./backend/collab";
@@ -491,13 +490,7 @@ export function CollabHub() {
             });
 
             // Reload feed so avatar/name reflect DB.
-            // (We keep notifications behavior unchanged.)
-            addNotification({
-              type: "collab",
-              title: `New Collab: ${payload.title}`,
-              description: payload.description,
-              path: "/collab",
-            });
+            // (Previously triggered a local mock notification; removed.)
 
             // Inform user and refresh feed so new post appears immediately
             toast.success("Post created!");
