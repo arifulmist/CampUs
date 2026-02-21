@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { EventPostRoute } from "./components/EventPostRoute";
-import { PostComments } from "@/components/PostComments";
+import { PostComments } from "@/components/PostComments.tsx";
 import { Loading } from "../Fallback/Loading";
 
 function EventPostDetailInner({ postId }: { postId: string }) {

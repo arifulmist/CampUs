@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
@@ -21,11 +21,30 @@ export function LostFound() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  async function loadPosts() {
-    setLoading(true);
+  const PAGE_SIZE = 20;
+
+  async function loadPosts({ reset }: { reset: boolean }) {
+    if (reset) {
+      setLoading(true);
+      setInitialLoad(true);
+      setHasMore(true);
+      setPage(0);
+      setPosts([]);
+    } else {
+      if (loadingMore || loading || !hasMore) return;
+      setLoadingMore(true);
+    }
+
+    const offset = (reset ? 0 : page) * PAGE_SIZE;
+    const categoryArg = filter === "all" ? null : filter;
+
     try {
-      const backend = await fetchLostAndFoundPosts({ limit: 50, order: "newest" });
+      const backend = await fetchLostAndFoundPosts({ limit: PAGE_SIZE, offset, order: "newest", category: categoryArg });
       const mapped: LostFoundPostType[] = (backend ?? []).map((p) => ({
         id: p.id,
         category: p.category === "found" ? "found" : "lost",
@@ -38,30 +57,53 @@ export function LostFound() {
         likes: p.likeCount ?? 0,
         comments: p.commentCount ?? 0,
         createdAt: p.createdAt ?? null,
+        dateLostOrFound: p.dateLostOrFound ?? null,
+        timeLostOrFound: p.timeLostOrFound ?? null,
         profilePictureUrl: p.authorAvatar ?? null,
       }));
-      setPosts(mapped);
+
+      setPosts((prev) => (reset ? mapped : [...prev, ...mapped]));
+      setHasMore(mapped.length === PAGE_SIZE);
+      setPage((p) => (reset ? 1 : p + 1));
     } catch (err) {
       console.error(err);
       toast.error("Error loading Lost & Found");
-      setPosts([]);
+      if (reset) setPosts([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setInitialLoad(false);
     }
   }
 
   useEffect(() => {
-    void loadPosts();
-  }, []);
+    void loadPosts({ reset: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return posts;
-    return posts.filter((p) => p.category === filter);
-  }, [posts, filter]);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    if (!hasMore) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        void loadPosts({ reset: false });
+      },
+      { root: null, rootMargin: "400px", threshold: 0 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loadingMore, loading, page]);
+
+  const filtered = useMemo(() => posts, [posts]);
 
   async function handleCreate() {
-    await loadPosts();
+    await loadPosts({ reset: true });
   }
 
   if (initialLoad && loading) {
@@ -94,6 +136,14 @@ export function LostFound() {
                   <LostFoundPost key={p.id} post={p} onClick={() => navigate(`/lost-and-found/${p.id}`)} />
                 ))
               )}
+
+              {loadingMore ? (
+                <div className="lg:flex lg:items-center lg:justify-center lg:py-4">
+                  <p className="text-text-lighter-lm">Loading more…</p>
+                </div>
+              ) : null}
+
+              <div ref={sentinelRef} />
             </div>
           </div>
         </div>

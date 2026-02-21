@@ -12,6 +12,7 @@ import { UserInfo } from "@/components/UserInfo";
 import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { DeleteQnAPostModal } from "./DeleteQnAPostModal";
 import { EditQnAPostModal } from "./EditQnAPostModal";
+import ImagePreview from "@/components/ImagePreview";
 
 type QnAPostDetail = {
   id: string;
@@ -77,6 +78,23 @@ export function QnAPostRoute({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
+
+  const openPreview = (src: string | null, name?: string) => {
+    if (!src) return;
+    setPreviewSrc(src);
+    setPreviewName(name ?? null);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewSrc(null);
+    setPreviewName(null);
+  };
 
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -315,9 +333,15 @@ export function QnAPostRoute({
       {detail.attachmentUrl ? (
         <div className="lg:mt-5 w-full h-full flex justify-center">
           <div className="rounded-xl overflow-hidden bg-primary-lm w-[80%] h-[30%]">
-            <img src={detail.attachmentUrl} alt="Post attachment" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => openPreview(detail.attachmentUrl, undefined)} className="w-full h-full block">
+              <img src={detail.attachmentUrl} alt="Post attachment" className="w-full h-full object-cover" />
+            </button>
           </div>
         </div>
+      ) : null}
+
+      {previewOpen && previewSrc ? (
+        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
       ) : null}
 
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-2">

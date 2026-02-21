@@ -15,6 +15,8 @@ export type LostFoundPostType = {
   comments?: number;
   createdAt?: string | null;
   profilePictureUrl?: string | null;
+  dateLostOrFound?: string | null;
+  timeLostOrFound?: string | null;
 };
 
 function formatRelativeTime(dateString?: string | null) {
@@ -84,6 +86,8 @@ export default function LostFoundPost({ post, onClick }: { post: LostFoundPostTy
         }}
         category={post.category}
         formattedDate={formattedDate}
+        lostFoundDate={post.dateLostOrFound ?? null}
+        lostFoundTime={post.timeLostOrFound ?? null}
       />
     </article>
   );

@@ -63,23 +63,129 @@ export type LFPost = {
  */
 export async function fetchLostAndFoundPosts({
   limit = 50,
+  offset = 0,
   order = "newest",
+  category,
 }: {
   limit?: number;
+  offset?: number;
   order?: "newest" | "oldest";
+  category?: "lost" | "found" | null;
 } = {}): Promise<LFPost[]> {
   // Query all_posts for type = 'lostfound' and join lost_and_found_posts using two-step fetch
   try {
     const orderAsc = order === "oldest";
 
+    // Prefer RPC (fewer round-trips). Keep fallback for environments where migrations aren't applied yet.
+    if (!orderAsc) {
+      const rpcRes = await supabase.rpc("get_lostfound_feed_page", {
+        p_limit: limit,
+        p_offset: offset,
+        p_category: category ?? null,
+      });
+
+      if (!rpcRes.error && Array.isArray(rpcRes.data)) {
+        const rows = rpcRes.data as any[];
+        return rows.map((r) => {
+          const dept = typeof r.author_department === "string" ? r.author_department : "";
+          const batch = typeof r.author_batch === "string" ? r.author_batch : "";
+          const course = dept && batch ? `${dept}-${batch}` : dept || undefined;
+
+          return {
+            id: String(r.post_id),
+            category: typeof r.lf_category === "string" ? r.lf_category : "lost",
+            title: String(r.title ?? ""),
+            description: String(r.description ?? ""),
+            authorAuthUid: typeof r.author_auth_uid === "string" ? r.author_auth_uid : undefined,
+            authorName: typeof r.author_name === "string" ? r.author_name : "Unknown",
+            authorCourse: course,
+            authorAvatar: typeof r.author_avatar === "string" ? r.author_avatar : null,
+            likeCount: Number(r.like_count ?? 0),
+            commentCount: Number(r.comment_count ?? 0),
+            createdAt: typeof r.created_at === "string" ? r.created_at : null,
+            updatedAt: null,
+            imgUrl: typeof r.img_url === "string" ? r.img_url : null,
+            dateLostOrFound: r.date_lost_or_found ? String(r.date_lost_or_found) : null,
+            timeLostOrFound: r.time_lost_or_found ? String(r.time_lost_or_found) : null,
+          } satisfies LFPost;
+        });
+      }
+
+      if (rpcRes.error) {
+        console.warn(
+          "fetchLostAndFoundPosts: get_lostfound_feed_page RPC unavailable; falling back to slower multi-query path",
+          rpcRes.error
+        );
+      }
+    }
+
+    // Fast fallback (1 round-trip): use PostgREST embedded selects.
+    // If relationships/columns aren't present (older schema), this will error and we fall back.
+    try {
+      let q = supabase
+        .from("all_posts")
+        .select(
+          `post_id,title,description,author_id,like_count,comment_count,created_at,updated_at,
+           lost_and_found_posts!inner(date_lost_or_found,time_lost_or_found,img_url,category),
+           author:user_info!fk_author(auth_uid,name,batch,department,departments_lookup(department_name),user_profile(profile_picture_url))`
+        )
+        .eq("type", "lostfound")
+        .order("created_at", { ascending: orderAsc })
+        .range(offset, offset + Math.max(0, limit - 1));
+
+      if (category) {
+        // Will fail on older DBs where category column doesn't exist.
+        q = q.eq("lost_and_found_posts.category", category);
+      }
+
+      const { data, error } = await q;
+      if (!error && Array.isArray(data)) {
+        const mapped: LFPost[] = (data as any[])
+          .map((row) => {
+            const lfRaw = row?.lost_and_found_posts;
+            const lf = Array.isArray(lfRaw) ? lfRaw[0] : lfRaw;
+            const author = row?.author;
+            const deptName = author?.departments_lookup?.department_name ?? author?.department ?? "";
+            const batch = author?.batch;
+            const course = deptName && (typeof batch === "string" || typeof batch === "number") ? `${deptName}-${String(batch)}` : deptName || undefined;
+            const avatar = author?.user_profile?.profile_picture_url ?? null;
+
+            return {
+              id: String(row.post_id),
+              category: (typeof lf?.category === "string" ? lf.category : "lost").toLowerCase(),
+              title: String(row.title ?? ""),
+              description: String(row.description ?? ""),
+              authorAuthUid: typeof row.author_id === "string" ? row.author_id : undefined,
+              authorName: typeof author?.name === "string" ? author.name : "Unknown",
+              authorCourse: course,
+              authorAvatar: typeof avatar === "string" ? avatar : null,
+              likeCount: Number(row.like_count ?? 0),
+              commentCount: Number(row.comment_count ?? 0),
+              createdAt: typeof row.created_at === "string" ? row.created_at : null,
+              updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+              imgUrl: typeof lf?.img_url === "string" ? lf.img_url : null,
+              dateLostOrFound: lf?.date_lost_or_found ? String(lf.date_lost_or_found) : null,
+              timeLostOrFound: lf?.time_lost_or_found ? String(lf.time_lost_or_found) : null,
+            } satisfies LFPost;
+          })
+          .filter((p) => Boolean(p?.id));
+
+        // Keep behavior correct on older DBs
+        return category ? mapped.filter((p) => p.category === category) : mapped;
+      }
+    } catch (e) {
+      // ignore and continue with multi-query fallback
+      console.warn("fetchLostAndFoundPosts: embedded-select fast fallback failed; using multi-query fallback", e);
+    }
+
     const { data: rows, error } = await supabase
       .from("all_posts")
       .select(
-        `post_id, type, title, description, author_id, like_count, comment_count, created_at, updated_at`
+        `post_id, title, description, author_id, like_count, comment_count, created_at, updated_at`
       )
       .eq("type", "lostfound")
       .order("created_at", { ascending: orderAsc })
-      .limit(limit);
+      .range(offset, offset + Math.max(0, limit - 1));
 
     if (error) {
       console.error("fetchLostAndFoundPosts: all_posts fetch error", error);
@@ -95,10 +201,17 @@ export async function fetchLostAndFoundPosts({
     // Fetch lost_and_found_posts rows for these postIds
     // NOTE: tolerate older DBs where the new `category` column doesn't exist yet.
     let lfRows: unknown[] | null = null;
-    const lfTry1 = await supabase
+    let lfTry1Query = supabase
       .from("lost_and_found_posts")
       .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .in("post_id", postIds);
+
+    if (category) {
+      // If the category column doesn't exist yet, this will error and we will fall back.
+      lfTry1Query = lfTry1Query.eq("category", category);
+    }
+
+    const lfTry1 = await lfTry1Query;
 
     if (lfTry1.error) {
       console.warn("fetchLostAndFoundPosts: lost_and_found_posts lookup error", lfTry1.error);
@@ -121,7 +234,7 @@ export async function fetchLostAndFoundPosts({
     }
 
     // Fetch user_info and user_profile for all authors in bulk
-    const [userInfoRes, userProfileRes, departmentsRes] = await Promise.all([
+    const [userInfoRes, userProfileRes] = await Promise.all([
       authorIds.length
         ? supabase
             .from("user_info")
@@ -134,8 +247,6 @@ export async function fetchLostAndFoundPosts({
             .select("auth_uid, profile_picture_url")
             .in("auth_uid", authorIds)
         : Promise.resolve({ data: [], error: null } as any),
-      // departments lookup optional - helpful to convert department id to readable name if you use lookup table
-      supabase.from("departments_lookup").select("dept_id, department_name"),
     ]);
 
     if (userInfoRes.error) {
@@ -144,20 +255,11 @@ export async function fetchLostAndFoundPosts({
     if (userProfileRes.error) {
       console.warn("fetchLostAndFoundPosts: user_profile lookup error", userProfileRes.error);
     }
-    if (departmentsRes.error) {
-      console.warn("fetchLostAndFoundPosts: departments_lookup fetch error", departmentsRes.error);
-    }
-
-    const deptNameById = new Map<string, string>();
-    for (const d of (departmentsRes.data ?? []) as any[]) {
-      if (d?.dept_id && d?.department_name) deptNameById.set(d.dept_id, d.department_name);
-    }
-
     const userInfoById = new Map<string, UserInfoRow>();
     for (const u of (userInfoRes.data ?? []) as any[]) {
       if (!u?.auth_uid) continue;
       const deptLookupName = u?.departments_lookup?.department_name ?? null;
-      const dept = deptLookupName ?? (typeof u.department === "string" ? deptNameById.get(u.department) ?? u.department : u.department);
+      const dept = deptLookupName ?? (typeof u.department === "string" ? u.department : u.department);
       userInfoById.set(u.auth_uid, {
         auth_uid: u.auth_uid,
         name: u.name ?? null,
@@ -204,7 +306,9 @@ export async function fetchLostAndFoundPosts({
       } as LFPost;
     });
 
-    return result;
+    // If category column is missing in DB, we may not be able to filter in the SQL query.
+    // Keep behavior correct by filtering the mapped results as a last step.
+    return category ? result.filter((p) => p.category === category) : result;
   } catch (err) {
     console.error("fetchLostAndFoundPosts unexpected error", err);
     throw err;

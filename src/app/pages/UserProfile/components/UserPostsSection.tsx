@@ -12,6 +12,15 @@ import {
 import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnAPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
 
+function asCollabCategory(value: unknown): CollabPost["category"] | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  if (v === "all" || v === "research" || v === "competition" || v === "project") {
+    return v as CollabPost["category"];
+  }
+  return null;
+}
+
 function postPath(type: string, postId: string) {
   const t = type.trim().toLowerCase();
   const base = t === "lostfound" ? "lost-and-found" : t;
@@ -272,7 +281,8 @@ export function UserPostsSection() {
             }
 
             const categoryId = metaByPostId.get(postId);
-            const category = categoryId ? categoryById.get(categoryId) : undefined;
+            const categoryRaw = categoryId ? categoryById.get(categoryId) : undefined;
+            const category = asCollabCategory(categoryRaw);
             if (!category) continue;
 
             map.set(postId, {
@@ -307,7 +317,7 @@ export function UserPostsSection() {
           const { data: rows, error } = await supabase
             .from("all_posts")
             .select("post_id,title,description,like_count,comment_count,created_at")
-            .eq("type", "qna")
+            .ilike("type", "qna")
             .in("post_id", idsByType.qna);
           if (error) throw error;
 

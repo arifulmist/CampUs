@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { PostComments } from "@/components/PostComments";
+import { PostComments } from "@/components/PostComments.tsx";
 import { CollabPostRoute } from "./components/CollabPostRoute.tsx";
 import { Loading } from "../Fallback/Loading";
 

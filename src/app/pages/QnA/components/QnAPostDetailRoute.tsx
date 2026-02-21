@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { PostComments } from "@/components/PostComments";
+import { PostComments } from "@/components/PostComments.tsx";
 import { QnAPostRoute } from "./QnAPostRoute";
 import { Loading } from "../../Fallback/Loading";
 

@@ -15,6 +15,7 @@ import { supabase } from "@/supabase/supabaseClient";
 
 import { EditLostFoundModal } from "./EditLostFoundModal";
 import { DeleteLostFoundModal } from "./DeleteLostFoundModal";
+import ImagePreview from "@/components/ImagePreview";
 
 class LocalErrorBoundary extends React.Component<
   { children?: React.ReactNode },
@@ -131,6 +132,21 @@ function formatDateDisplay(dateString?: string | null) {
   }
 }
 
+function formatTimeDisplay(timeString?: string | null) {
+  if (!timeString) return "";
+  try {
+    const parts = String(timeString).split(":");
+    const h = parseInt(parts[0] ?? "0", 10) || 0;
+    const m = (parts[1] ?? "00").padStart(2, "0");
+    const suffix = h >= 12 ? "PM" : "AM";
+    let hour12 = h % 12;
+    if (hour12 === 0) hour12 = 12;
+    return `${hour12}:${m} ${suffix}`;
+  } catch {
+    return String(timeString);
+  }
+}
+
 export function LostFoundPostRoute({
   postId,
   onInitialLoadDone,
@@ -147,8 +163,30 @@ export function LostFoundPostRoute({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
+
+  const openPreview = (src: string | null, name?: string) => {
+    if (!src) return;
+    setPreviewSrc(src);
+    setPreviewName(name ?? null);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewSrc(null);
+    setPreviewName(null);
+  };
+
   const menuRef = useRef<HTMLDivElement | null>(null);
   const initialLoadNotifiedRef = useRef(false);
+  const onInitialLoadDoneRef = useRef(onInitialLoadDone);
+
+  useEffect(() => {
+    onInitialLoadDoneRef.current = onInitialLoadDone;
+  }, [onInitialLoadDone]);
 
   useEffect(() => {
     initialLoadNotifiedRef.current = false;
@@ -297,7 +335,7 @@ export function LostFoundPostRoute({
           setLoading(false);
           if (!initialLoadNotifiedRef.current) {
             initialLoadNotifiedRef.current = true;
-            onInitialLoadDone?.();
+            onInitialLoadDoneRef.current?.();
           }
         }
       }
@@ -384,10 +422,16 @@ export function LostFoundPostRoute({
       {(detail.dateLostOrFound || detail.timeLostOrFound) && (
         <div className="mt-2">
           {detail.dateLostOrFound ? (
-            <p className="text-accent-lm font-semibold text-md">{formatDateDisplay(detail.dateLostOrFound)}</p>
+            <p className="text-accent-lm font-semibold text-md">
+              {detail.category === "lost" ? "Date Lost: " : "Date Found: "}
+              {formatDateDisplay(detail.dateLostOrFound)}
+            </p>
           ) : null}
           {detail.timeLostOrFound ? (
-            <p className="text-text-lm font-semibold text-md mt-1">{detail.timeLostOrFound}</p>
+            <p className="text-text-lm font-semibold text-md mt-1">
+              {detail.category === "lost" ? "Time Lost: " : "Time Found: "}
+              {formatTimeDisplay(detail.timeLostOrFound)}
+            </p>
           ) : null}
         </div>
       )}
@@ -407,12 +451,18 @@ export function LostFoundPostRoute({
 
       {detail.imageUrl ? (
         <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <img
-            src={detail.imageUrl}
-            alt="lost and found post"
-            className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
-          />
+          <button type="button" onClick={() => openPreview(detail.imageUrl, undefined)} className="w-full h-full block">
+            <img
+              src={detail.imageUrl}
+              alt="lost and found post"
+              className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
+            />
+          </button>
         </div>
+      ) : null}
+
+      {previewOpen && previewSrc ? (
+        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
       ) : null}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">

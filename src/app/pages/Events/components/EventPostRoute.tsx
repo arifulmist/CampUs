@@ -40,6 +40,7 @@ import { EventSegment } from "./EventSegment";
 import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
+import ImagePreview from "@/components/ImagePreview";
 
 type EventPostsRow = {
   post_id: string;
@@ -194,6 +195,23 @@ export function EventPostRoute({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
+
+  const openPreview = (src: string | null, name?: string) => {
+    if (!src) return;
+    setPreviewSrc(src);
+    setPreviewName(name ?? null);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewSrc(null);
+    setPreviewName(null);
+  };
 
   
 
@@ -568,12 +586,18 @@ export function EventPostRoute({
 
       {detail.imageUrl ? (
         <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <img
-            src={detail.imageUrl}
-            alt="event post"
-            className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
-          />
+          <button type="button" onClick={() => openPreview(detail.imageUrl, undefined)} className="w-full h-full block">
+            <img
+              src={detail.imageUrl}
+              alt="event post"
+              className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
+            />
+          </button>
         </div>
+      ) : null}
+
+      {previewOpen && previewSrc ? (
+        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
       ) : null}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LucideArrowLeft, LucidePaperclip, LucideSendHorizontal, LucideX } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import ImagePreview from "@/components/ImagePreview";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   getMessagesPage,
@@ -53,6 +53,9 @@ export function ChatHistory({
   const [sending, setSending] = useState(false);
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [attachedImagePreviewUrl, setAttachedImagePreviewUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
@@ -123,6 +126,18 @@ export function ChatHistory({
 
     // allow selecting the same file again after clearing
     e.target.value = "";
+  };
+
+  const openPreview = (src: string, name?: string) => {
+    setPreviewSrc(src);
+    setPreviewName(name ?? null);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewSrc(null);
+    setPreviewName(null);
   };
 
   const getFileExtension = (filename: string) => {
@@ -461,6 +476,7 @@ export function ChatHistory({
   }
 
   return (
+    <>
     <div className="flex flex-col flex-1 min-h-0 bg-primary-lm overflow-hidden">
       {/* Chat header */}
       <div className="bg-primary-lm border-b border-b-stroke-grey lg:p-2 shrink-0">
@@ -557,6 +573,7 @@ export function ChatHistory({
                 isCurrentUser={message.sender_id === currentUserId}
                 userAvatar={userAvatar}
                 timestamp={message.created_at}
+                onOpenPreview={openPreview}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -635,6 +652,10 @@ export function ChatHistory({
         </div>
       </div>
     </div>
+    {previewOpen && previewSrc ? (
+      <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
+    ) : null}
+    </>
   );
 }
 
@@ -643,9 +664,10 @@ interface ChatMessageProps {
   isCurrentUser: boolean;
   userAvatar: string;
   timestamp: string;
+  onOpenPreview?: (src: string, name?: string) => void;
 }
 
-function ChatMessage({ message, isCurrentUser, userAvatar, timestamp }: ChatMessageProps) {
+function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPreview }: ChatMessageProps) {
   const IMAGE_PREFIX = "__image__:";
   const imageData = (() => {
     if (!message.startsWith(IMAGE_PREFIX)) return null;
@@ -748,27 +770,18 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp }: ChatMess
       >
         {imageData ? (
           resolvedImageUrl ? (
-            <Dialog>
-              <DialogTrigger asChild>
-                <button type="button" className="block" title={imageData.name}>
-                  <img
-                    src={resolvedImageUrl}
-                    alt={imageData.name}
-                    className="max-w-55 max-h-55 rounded-md object-cover"
-                  />
-                </button>
-              </DialogTrigger>
-              <DialogContent
-                overlayClassName="bg-[rgba(0,0,0,0.4)]"
-                className="bg-primary-lm border-stroke-grey text-text-lm p-4 sm:max-w-5xl"
-              >
-                <img
-                  src={resolvedImageUrl}
-                  alt={imageData.name}
-                  className="w-full h-auto max-h-[85vh] object-contain rounded-md"
-                />
-              </DialogContent>
-            </Dialog>
+            <button
+              type="button"
+              onClick={() => onOpenPreview?.(resolvedImageUrl, imageData.name)}
+              className="block"
+              title={imageData.name}
+            >
+              <img
+                src={resolvedImageUrl}
+                alt={imageData.name}
+                className="max-w-55 max-h-55 rounded-md object-cover"
+              />
+            </button>
           ) : (
             <p className="m-0 text-sm opacity-70">Loading image...</p>
           )
