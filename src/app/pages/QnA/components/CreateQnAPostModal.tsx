@@ -1,10 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Tag as LucideTag } from "lucide-react";
 
 import { supabase } from "@/supabase/supabaseClient";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { ButtonCTA } from "@/components/ButtonCTA";
+import ImageUploader from "@/app/pages/Events/components/CreateEventModal/ImageUploader";
+import ImagePreview from "@/app/pages/Events/components/CreateEventModal/ImagePreview";
+import { MAX_POST_ATTACHMENTS, tryReplacePostAttachments } from "@/utils/postAttachments";
 
 type QnATag = "Question" | "Advice" | "Resource";
 
@@ -32,6 +35,61 @@ export function CreateQnAPostModal({
   const [description, setDescription] = useState("");
   const [tag, setTag] = useState<QnATag | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
+  const [imageNames, setImageNames] = useState<string[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    setImageDataUrls([]);
+    setImageNames([]);
+    setPreviewOpen(false);
+    setPreviewIndex(0);
+  }, [open]);
+
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onload = () => {
+        if (typeof reader.result === "string") resolve(reader.result);
+        else reject(new Error("Unexpected file result"));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    const remaining = Math.max(0, MAX_POST_ATTACHMENTS - imageDataUrls.length);
+    if (remaining <= 0) {
+      toast.error("Cannot add more than 5 images");
+      return;
+    }
+
+    if (files.length > remaining) {
+      toast.error("Cannot add more than 5 images");
+    }
+
+    const selected = files.slice(0, remaining);
+    const urls = await Promise.all(selected.map((f) => fileToDataUrl(f)));
+    setImageDataUrls((prev) => [...prev, ...urls]);
+    setImageNames((prev) => [...prev, ...selected.map((f) => f.name)]);
+  }
+
+  function removeImageAt(index: number) {
+    setImageDataUrls((prev) => prev.filter((_, i) => i !== index));
+    setImageNames((prev) => prev.filter((_, i) => i !== index));
+    setPreviewIndex((prev) => {
+      if (index < prev) return prev - 1;
+      if (index === prev) return 0;
+      return prev;
+    });
+  }
 
   if (!open) return null;
 
@@ -116,6 +174,7 @@ export function CreateQnAPostModal({
         {
           post_id: postId,
           category_id: categoryId,
+          img_url: imageDataUrls[0] ?? null,
         },
       ]);
 
@@ -128,6 +187,9 @@ export function CreateQnAPostModal({
       setTitle("");
       setDescription("");
       setTag(null);
+
+      await tryReplacePostAttachments(postId, imageDataUrls);
+
       onClose();
       onCreated(postId);
     } catch (e: unknown) {
@@ -230,6 +292,20 @@ export function CreateQnAPostModal({
                   ))}
                 </div>
               </div>
+
+              <ImageUploader
+                images={imageDataUrls}
+                imageNames={imageNames}
+                onSelect={handleFileInput}
+                onPreview={(idx) => {
+                  setPreviewIndex(typeof idx === "number" ? idx : 0);
+                  setPreviewOpen(true);
+                }}
+                onRemove={(idx) => {
+                  if (typeof idx !== "number") return;
+                  removeImageAt(idx);
+                }}
+              />
             </div>
 
             <div className="text-right lg:pt-4">
@@ -243,6 +319,13 @@ export function CreateQnAPostModal({
           </form>
         </div>
       </div>
+
+      <ImagePreview
+        open={previewOpen}
+        image={imageDataUrls[previewIndex] ?? null}
+        name={imageNames[previewIndex] ?? null}
+        onClose={() => setPreviewOpen(false)}
+      />
     </>
   );
 }

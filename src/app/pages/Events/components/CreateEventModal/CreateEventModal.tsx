@@ -12,6 +12,7 @@ import { supabase } from "@/supabase/supabaseClient";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { toast } from "react-hot-toast";
 import { ButtonCTA } from "@/components/ButtonCTA";
+import { tryReplacePostAttachments } from "@/utils/postAttachments";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -113,7 +114,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
 
         // Use client-side multi-insert helper instead of RPC (server function still references removed column)
         try {
-          await createEvent({
+          const createdPostId = await createEvent({
             type: event_data.type,
             title: event_data.title,
             description: event_data.description,
@@ -127,6 +128,8 @@ export default function CreateEventModal({ open, onClose }: Props) {
             segments: segments_data,
             tags: tags_data,
           });
+
+          await tryReplacePostAttachments(createdPostId, form.imageDataUrls);
         } catch (err: any) {
           console.error("createEvent error:", err);
           toast.error("Failed to save event: " + (err.message ?? JSON.stringify(err)));
@@ -278,14 +281,17 @@ export default function CreateEventModal({ open, onClose }: Props) {
 
 
             <ImageUploader
-              image={form.imageDataUrl}
-              imageName={form.imageName}
-                onSelect={form.handleImage}
-                onPreview={() => form.setPreviewOpen(true)}
-                onRemove={() => {
-                  form.setImageDataUrl(null);
-                  form.setImageName(null);
-                }}
+              images={form.imageDataUrls}
+              imageNames={form.imageNames}
+              onSelect={form.handleImage}
+              onPreview={(idx) => {
+                form.setPreviewIndex(typeof idx === "number" ? idx : 0);
+                form.setPreviewOpen(true);
+              }}
+              onRemove={(idx) => {
+                if (typeof idx !== "number") return;
+                form.removeImageAt(idx);
+              }}
             />
             </div>
 
@@ -314,8 +320,8 @@ export default function CreateEventModal({ open, onClose }: Props) {
 
       <ImagePreview
         open={form.previewOpen}
-        image={form.imageDataUrl}
-        name={form.imageName}
+        image={form.imageDataUrls[form.previewIndex] ?? null}
+        name={form.imageNames[form.previewIndex] ?? null}
         onClose={() => form.setPreviewOpen(false)}
       />
     </>

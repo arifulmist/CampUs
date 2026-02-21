@@ -1,6 +1,7 @@
 import crossBtnIcon from "@/assets/icons/cross_btn.svg";
 import { LucidePlus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 
 import type {
   ContactPlatformRow,
@@ -13,6 +14,7 @@ import {
   generateUuidV4,
   getErrorMessage,
   getPlatformIconSrc,
+    normalizePlatform,
   isAllowedImage,
   MAX_PROFILE_IMAGE_BYTES,
   PLACEHOLDER_USER_IMG,
@@ -159,7 +161,7 @@ export function EditProfileModal({
     const nextBio = bioDraft.trim();
 
     if (!nextName) {
-      setProfileSaveError("Name cannot be empty.");
+      toast.error("Name cannot be empty");
       return;
     }
 
@@ -210,6 +212,16 @@ export function EditProfileModal({
           detail: { authUid, url: nextProfilePictureUrl ?? null },
         })
       );
+
+      // Validate contact inputs: any added contact must have a non-empty link
+      const hasEmptyContact = contactsDraft.some(
+        (c) => Number.isFinite(c.platformId) && c.contactLink.trim().length === 0,
+      );
+
+      if (hasEmptyContact) {
+        toast.error("Contact cannot be empty");
+        return;
+      }
 
       const cleanedContacts = contactsDraft
         .map((c) => ({
@@ -431,27 +443,44 @@ export function EditProfileModal({
                   <div className="flex gap-2 items-center">
                     <select
                       value={selectedContactPlatformId}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        setSelectedContactPlatformId(raw);
-                        setContactsDraftError("");
-                        const platformId = Number(raw);
-                        if (!Number.isFinite(platformId)) return;
+                        onChange={async (e) => {
+                          const raw = e.target.value;
+                          setSelectedContactPlatformId(raw);
+                          setContactsDraftError("");
+                          const platformId = Number(raw);
+                          if (!Number.isFinite(platformId)) return;
 
-                        if (contactsDraft.some((c) => c.platformId === platformId)) {
-                          setContactsDraftError("You already added this platform.");
+                          if (contactsDraft.some((c) => c.platformId === platformId)) {
+                            setContactsDraftError("You already added this platform.");
+                            setSelectedContactPlatformId("");
+                            return;
+                          }
+
+                          const newKey = generateUuidV4();
+                          setContactsDraft((prev) => [
+                            ...prev,
+                            { key: newKey, platformId, contactLink: "" },
+                          ]);
+
+                          // If the chosen platform is Email, autofill with the user's registered email.
+                          const platformName = contactPlatforms.find((p) => p.id === platformId)?.platform ?? "";
+                          if (normalizePlatform(platformName) === "email") {
+                            try {
+                              const { data } = await supabase.auth.getUser();
+                              const email = data.user?.email ?? "";
+                              if (email) {
+                                setContactsDraft((prev) =>
+                                  prev.map((row) => (row.key === newKey ? { ...row, contactLink: email } : row))
+                                );
+                              }
+                            } catch {
+                              // ignore — leave empty for user to fill
+                            }
+                          }
+
                           setSelectedContactPlatformId("");
-                          return;
-                        }
-
-                        setContactsDraft((prev) => [
-                          ...prev,
-                          { key: generateUuidV4(), platformId, contactLink: "" },
-                        ]);
-
-                        setSelectedContactPlatformId("");
-                        setContactPickerOpen(false);
-                      }}
+                          setContactPickerOpen(false);
+                        }}
                       className="rounded-md border border-stroke-grey bg-primary-lm px-3 py-2"
                       disabled={contactPlatformsLoading}
                     >
@@ -462,6 +491,18 @@ export function EditProfileModal({
                         </option>
                       ))}
                     </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContactPickerOpen(false);
+                        setSelectedContactPlatformId("");
+                        setContactsDraftError("");
+                      }}
+                      className="rounded-full lg:p-0.5 hover:bg-accent-lm/8 transition duration-150"
+                      aria-label="Cancel add contact"
+                    >
+                      <img src={crossBtnIcon} className="size-5" alt="Cancel" />
+                    </button>
                   </div>
                 )}
               </div>

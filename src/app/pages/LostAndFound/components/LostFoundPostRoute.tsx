@@ -21,6 +21,7 @@ import { supabase } from "@/supabase/supabaseClient";
 import { EditLostFoundModal } from "./EditLostFoundModal";
 import { DeleteLostFoundModal } from "./DeleteLostFoundModal";
 import ImagePreview from "@/components/ImagePreview";
+import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
 
 class LocalErrorBoundary extends React.Component<
   { children?: React.ReactNode },
@@ -100,6 +101,7 @@ type Detail = {
   likeCount: number;
   commentCount: number;
   imageUrl: string | null;
+  attachmentUrls?: string[];
   dateLostOrFound: string | null;
   timeLostOrFound: string | null;
 };
@@ -169,6 +171,12 @@ export function LostFoundPostRoute({
     if (!detail?.authorId || !currentUserId) return false;
     return detail.authorId === currentUserId;
   }, [detail?.authorId, currentUserId]);
+
+  const imageUrls = useMemo(() => {
+    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    if (fromDetail && fromDetail.length) return fromDetail;
+    return detail?.imageUrl ? [detail.imageUrl] : [];
+  }, [detail?.attachmentUrls, detail?.imageUrl]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -277,6 +285,11 @@ export function LostFoundPostRoute({
 
         const cat = (lf?.category ? String(lf.category) : "lost").toLowerCase() === "found" ? "found" : "lost";
 
+        const attachmentUrls = normalizeAttachmentUrls([
+          ...(typeof lf?.img_url === "string" ? [lf.img_url] : []),
+          ...(await fetchAttachmentUrlsByPostId(postId)),
+        ]);
+
         const d: Detail = {
           postId,
           category: cat,
@@ -291,6 +304,7 @@ export function LostFoundPostRoute({
           likeCount: Number(all.like_count ?? 0),
           commentCount: Number(all.comment_count ?? 0),
           imageUrl: typeof lf?.img_url === "string" ? lf.img_url : null,
+          attachmentUrls,
           dateLostOrFound: lf?.date_lost_or_found ?? null,
           timeLostOrFound: lf?.time_lost_or_found ?? null,
         };
@@ -422,16 +436,30 @@ export function LostFoundPostRoute({
 
       <p className="mt-2 text-text-lm whitespace-pre-wrap">{detail.description}</p>
 
-      {detail.imageUrl ? (
-        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <button type="button" onClick={() => openPreview(detail.imageUrl, undefined)} className="w-full h-full block">
-            <img
-              src={detail.imageUrl}
-              alt="lost and found post"
-              className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
-            />
-          </button>
-        </div>
+      {imageUrls.length > 0 ? (
+        imageUrls.length === 1 ? (
+          <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+            <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
+              <img
+                src={imageUrls[0]}
+                alt="lost and found post"
+                className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
+              />
+            </button>
+          </div>
+        ) : (
+          <div className="lg:w-full lg:mt-4">
+            <div className="grid grid-cols-2 gap-2">
+              {imageUrls.map((src, idx) => (
+                <div key={src + idx} className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm">
+                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
+                    <img src={src} alt="lost and found post" className="w-full lg:h-80 object-cover" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       ) : null}
 
       {previewOpen && previewSrc ? (
@@ -461,6 +489,7 @@ export function LostFoundPostRoute({
             dateLostOrFound: detail.dateLostOrFound,
             timeLostOrFound: detail.timeLostOrFound,
             imageUrl: detail.imageUrl,
+            imageUrls: detail.attachmentUrls,
           }}
           onSaved={() => {
             setReloadToken((t) => t + 1);

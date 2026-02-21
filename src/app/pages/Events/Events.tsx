@@ -9,6 +9,7 @@ import type { Category } from "@/app/pages/CollabHub/components/Category";
 import { toast } from "react-hot-toast";
 import postEmptyState from "@/assets/images/noPost.svg";
 import { Loading } from "../Fallback/Loading";
+import { fetchAttachmentUrlsByPostIds, normalizeAttachmentUrls } from "@/utils/postAttachments";
 
 export function Events() {
   const navigate = useNavigate();
@@ -84,8 +85,20 @@ export function Events() {
       }
 
       if (mappedFromRpc) {
-        setPosts((prev) => (reset ? mappedFromRpc! : [...prev, ...mappedFromRpc!]));
-        setHasMore(mappedFromRpc.length === PAGE_SIZE);
+        const postIds = mappedFromRpc.map((p) => p.id);
+        const attachmentMap = await fetchAttachmentUrlsByPostIds(postIds);
+        const withAttachments = mappedFromRpc.map((p) => {
+          const fromTable = attachmentMap.get(p.id) ?? [];
+          const merged = normalizeAttachmentUrls([...fromTable, p.image ?? undefined]);
+          return {
+            ...p,
+            images: merged.length ? merged : undefined,
+            image: merged[0] ?? p.image ?? null,
+          } satisfies EventPostType;
+        });
+
+        setPosts((prev) => (reset ? withAttachments : [...prev, ...withAttachments]));
+        setHasMore(withAttachments.length === PAGE_SIZE);
         setPage((p) => (reset ? 1 : p + 1));
       } else {
         // Fallback: existing query/merge (kept for environments where RPC isn't deployed yet)
@@ -252,7 +265,21 @@ export function Events() {
           };
         });
 
-        const visible = filter === "all" ? mergedPosts : mergedPosts.filter((p: any) => p.category === filter);
+        const mergedIds = mergedPosts.map((p: any) => String(p.id));
+        const attachmentMap = await fetchAttachmentUrlsByPostIds(mergedIds);
+        const mergedWithAttachments = mergedPosts.map((p: any) => {
+          const fromTable = attachmentMap.get(String(p.id)) ?? [];
+          const merged = normalizeAttachmentUrls([...fromTable, p.image ?? undefined]);
+          return {
+            ...p,
+            images: merged.length ? merged : undefined,
+            image: merged[0] ?? p.image ?? null,
+          };
+        });
+
+        const visible = filter === "all"
+          ? mergedWithAttachments
+          : mergedWithAttachments.filter((p: any) => p.category === filter);
         setPosts((prev) => (reset ? visible : [...prev, ...visible]));
         setHasMore((events ?? []).length === PAGE_SIZE);
         setPage((p) => (reset ? 1 : p + 1));

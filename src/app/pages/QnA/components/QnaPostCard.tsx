@@ -1,5 +1,6 @@
 import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
+import moreImages from "@/assets/images/more_images.png";
 
 export type QnaFeedPost = {
   id: string;
@@ -24,6 +25,7 @@ type PostDetail = {
   postTitle: string;
   postPreview: string;
   attachmentUrl?: string | null;
+  attachmentUrls?: string[];
   authorName: string;
   authorBatch: string;
   authorId?: string | null;
@@ -38,6 +40,7 @@ export function QnAPostCard({
   postTitle,
   postPreview,
   attachmentUrl,
+  attachmentUrls,
   authorName,
   authorBatch,
   authorId,
@@ -46,6 +49,13 @@ export function QnAPostCard({
   initialCommentCount,
 }: PostDetail)
 {
+  const urls = Array.isArray(attachmentUrls) && attachmentUrls.length
+    ? attachmentUrls
+    : (attachmentUrl ? [attachmentUrl] : []);
+
+  const showMoreTile = urls.length > 1;
+  const remaining = Math.max(0, urls.length - 1);
+
   return(
     <div className="flex flex-col lg:gap-4 bg-secondary-lm border border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach transition lg:rounded-xl lg:p-8 group">
       {/* <div className="flex lg:gap-6 justify-between items-start"> */}
@@ -62,12 +72,23 @@ export function QnAPostCard({
               />
               <p className="text-text-lm wrap-break-word">{postPreview}</p>
             </div>
-            
-            {attachmentUrl ? (
-            <div className="size-25 rounded-xl overflow-hidden border border-stroke-grey shrink-0 bg-primary-lm">
-              <img src={attachmentUrl} alt="Post attachment" className="w-full h-full object-cover" />
-            </div>
-          ) : null}
+
+            {urls.length > 0 ? (
+              <div className="flex gap-2 shrink-0">
+                <div className="size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
+                  <img src={urls[0]} alt="Post attachment" className="w-full h-full object-cover" />
+                </div>
+
+                {showMoreTile ? (
+                  <div className="relative size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
+                    <img src={moreImages} alt="More images" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <p className="text-primary-lm font-semibold text-lg">+{remaining}</p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 

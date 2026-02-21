@@ -8,6 +8,7 @@ import ImageUploader from "@/app/pages/Events/components/CreateEventModal/ImageU
 import CategorySelector from "@/components/CategorySelector";
 import { supabase } from "@/supabase/supabaseClient";
 import { createLostAndFoundPost } from "../backend/lostAndFoundService";
+import { MAX_POST_ATTACHMENTS, tryReplacePostAttachments } from "@/utils/postAttachments";
 
 export default function CreateLostFoundModal({
   open,
@@ -26,9 +27,10 @@ export default function CreateLostFoundModal({
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<string>("");
   const [time, setTime] = useState<string>("");
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [imageName, setImageName] = useState<string | null>(null);
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
+  const [imageNames, setImageNames] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -37,24 +39,55 @@ export default function CreateLostFoundModal({
     setDescription("");
     setDate("");
     setTime("");
-    setImageDataUrl(null);
-    setImageName(null);
+    setImageDataUrls([]);
+    setImageNames([]);
     setPreviewOpen(false);
+    setPreviewIndex(0);
   }, [open]);
 
   if (!open) return null;
   if (typeof document === "undefined") return null;
 
-  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onload = () => {
+        if (typeof reader.result === "string") resolve(reader.result);
+        else reject(new Error("Unexpected file result"));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
-    setImageName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageDataUrl(typeof reader.result === "string" ? reader.result : null);
-    };
-    reader.readAsDataURL(file);
+  async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    const remaining = Math.max(0, MAX_POST_ATTACHMENTS - imageDataUrls.length);
+    if (remaining <= 0) {
+      toast.error("Cannot add more than 5 images");
+      return;
+    }
+
+    if (files.length > remaining) {
+      toast.error("Cannot add more than 5 images");
+    }
+
+    const selected = files.slice(0, remaining);
+    const urls = await Promise.all(selected.map((f) => fileToDataUrl(f)));
+    setImageDataUrls((prev) => [...prev, ...urls]);
+    setImageNames((prev) => [...prev, ...selected.map((f) => f.name)]);
+  }
+
+  function removeImageAt(index: number) {
+    setImageDataUrls((prev) => prev.filter((_, i) => i !== index));
+    setImageNames((prev) => prev.filter((_, i) => i !== index));
+    setPreviewIndex((prev) => {
+      if (index < prev) return prev - 1;
+      if (index === prev) return 0;
+      return prev;
+    });
   }
 
   async function handlePost() {
@@ -86,15 +119,17 @@ export default function CreateLostFoundModal({
         return;
       }
 
-      await createLostAndFoundPost({
+      const created = await createLostAndFoundPost({
         authorAuthUid: authUid,
         category,
         title: title.trim(),
         description: description.trim(),
         dateLostOrFound: date || null,
         timeLostOrFound: time || null,
-        imgUrl: imageDataUrl ?? null,
+        imgUrl: imageDataUrls[0] ?? null,
       });
+
+      await tryReplacePostAttachments(created.id, imageDataUrls);
 
       toast.success("Posted successfully!");
       setIsPosting(false);
@@ -206,18 +241,17 @@ export default function CreateLostFoundModal({
             </div>
 
             <ImageUploader
-              image={imageDataUrl}
-              imageName={imageName ?? (imageDataUrl ? "Selected image" : null)}
+              images={imageDataUrls}
+              imageNames={imageNames}
               onSelect={handleFileInput}
-              onPreview={() => setPreviewOpen(true)}
-              onRemove={
-                imageDataUrl
-                  ? () => {
-                      setImageDataUrl(null);
-                      setImageName(null);
-                    }
-                  : undefined
-              }
+              onPreview={(idx) => {
+                setPreviewIndex(typeof idx === "number" ? idx : 0);
+                setPreviewOpen(true);
+              }}
+              onRemove={(idx) => {
+                if (typeof idx !== "number") return;
+                removeImageAt(idx);
+              }}
             />
 
             <div className="flex justify-end gap-3">
@@ -243,8 +277,8 @@ export default function CreateLostFoundModal({
       
       <ImagePreview
         open={previewOpen}
-        image={imageDataUrl}
-        name={imageName}
+        image={imageDataUrls[previewIndex] ?? null}
+        name={imageNames[previewIndex] ?? null}
         onClose={() => setPreviewOpen(false)}
       />
     </>,

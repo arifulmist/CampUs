@@ -505,25 +505,32 @@ export function MessageDrawer({
                     <p className="lg:m-0 lg:p-0 text-center text-text-lighter-lm">No conversations.</p>
                   </div>
                 ) : (
-                  filteredConversations.map((conv, index) => (
-                    <div key={conv.id}>
-                      <MessageChannel
-                        userName={conv.other_user.name}
-                        userAvatar={conv.other_user.profile_picture_url || placeholderUserImg}
-                        onlineStatus={onlineUserIds.has(conv.other_user.auth_uid)}
-                        messagePreview={
-                          conv.last_message
-                            ? getPreviewText(conv.last_message.message_body)
-                            : "Start a conversation"
-                        }
-                        isUnread={conv.unread_count > 0}
-                        onClick={() => handleConversationClick(conv.id)}
-                      />
-                      {index < filteredConversations.length - 1 && (
-                        <hr className="border-stroke-grey lg:my-1" />
-                      )}
-                    </div>
-                  ))
+                  filteredConversations.map((conv, index) => {
+                    const lastMessage = conv.last_message;
+                    const basePreview = lastMessage
+                      ? getPreviewText(lastMessage.message_body)
+                      : "Start a conversation";
+                    const messagePreview =
+                      lastMessage && lastMessage.sender_id === currentUserId
+                        ? `You: ${basePreview}`
+                        : basePreview;
+
+                    return (
+                      <div key={conv.id}>
+                        <MessageChannel
+                          userName={conv.other_user.name}
+                          userAvatar={conv.other_user.profile_picture_url || placeholderUserImg}
+                          onlineStatus={onlineUserIds.has(conv.other_user.auth_uid)}
+                          messagePreview={messagePreview}
+                          isUnread={conv.unread_count > 0}
+                          onClick={() => handleConversationClick(conv.id)}
+                        />
+                        {index < filteredConversations.length - 1 && (
+                          <hr className="border-stroke-grey lg:my-1" />
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </>
             )}

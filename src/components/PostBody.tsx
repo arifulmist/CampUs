@@ -30,6 +30,7 @@ interface PostContent {
   content: {
     text: string;
     img?: string;
+    imgs?: string[];
   };
   eventStartDate?: string | null;
   eventEndDate?: string | null;
@@ -40,6 +41,22 @@ interface PostContent {
   formattedDate?: string;
   lostFoundDate?: string | null;
   lostFoundTime?: string | null;
+}
+
+function normalizeImages(content: { img?: string; imgs?: string[] }): string[] {
+  const fromArray = Array.isArray(content.imgs) ? content.imgs : [];
+  const out = [...fromArray, content.img].filter((v): v is string => typeof v === "string");
+  const trimmed = out.map((v) => v.trim()).filter((v) => v.length > 0);
+
+  const seen = new Set<string>();
+  const uniq: string[] = [];
+  for (const url of trimmed) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    uniq.push(url);
+  }
+
+  return uniq;
 }
 
 export function PostBody({
@@ -70,6 +87,62 @@ export function PostBody({
         : postId && categorySet === "lostfound"
           ? `/lost-and-found/${postId}`
           : undefined;
+
+  const images = normalizeImages(content);
+  const shouldUseFeedCollage = (categorySet === "events" || categorySet === "lostfound") && images.length > 1;
+
+  const feedCollage = shouldUseFeedCollage ? (() => {
+    const total = images.length;
+    const shown = images.slice(0, 3);
+    const remaining = Math.max(0, total - 3);
+
+    // Layout rules (feed):
+    // - show up to 3 images
+    // - if >3, show a 4th grey tile with +N
+    if (total >= 4) {
+      return (
+        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+          <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full">
+            {shown.map((src, idx) => (
+              <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
+                <img src={src} alt="post attachment" className="w-full h-full object-cover" />
+              </div>
+            ))}
+            <div className="w-full h-full rounded-lg bg-stroke-grey flex items-center justify-center">
+              <p className="text-text-lm font-semibold text-3xl">+{remaining}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (total === 3) {
+      return (
+        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+          <div className="grid grid-cols-3 gap-2 w-full h-full">
+            {shown.map((src, idx) => (
+              <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
+                <img src={src} alt="post attachment" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // total === 2
+    return (
+      <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+        <div className="grid grid-cols-2 gap-2 w-full h-full">
+          {shown.map((src, idx) => (
+            <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
+              <img src={src} alt="post attachment" className="w-full h-full object-cover" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  })() : null;
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
@@ -160,8 +233,9 @@ export function PostBody({
       {/* Body text */}
       <p className="mt-2">{content.text}</p>
 
-      {/* Image */}
-      {content.img && (
+      {/* Images */}
+      {feedCollage}
+      {!shouldUseFeedCollage && content.img ? (
         <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
           <img
             src={content.img}
@@ -169,7 +243,7 @@ export function PostBody({
             className="lg:object-cover lg:object-center lg:w-full lg:h-full lg:rounded-lg"
           />
         </div>
-      )}
+      ) : null}
 
       {/* Buttons */}
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">

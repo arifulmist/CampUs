@@ -42,6 +42,7 @@ import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
 import ImagePreview from "@/components/ImagePreview";
+import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
 
 type EventPostsRow = {
   post_id: string;
@@ -114,6 +115,7 @@ type EventDetail = {
   tags: string[];
   tagObjects: Array<{ skill_id: number; name: string }>;
   imageUrl: string | null;
+  attachmentUrls?: string[];
   likeCount: number;
   commentCount: number;
   segments?: Array<{
@@ -191,6 +193,12 @@ export function EventPostRoute({
     if (!detail?.authorId || !currentUserId) return false;
     return detail.authorId === currentUserId;
   }, [detail?.authorId, currentUserId]);
+
+  const imageUrls = useMemo(() => {
+    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    if (fromDetail && fromDetail.length) return fromDetail;
+    return detail?.imageUrl ? [detail.imageUrl] : [];
+  }, [detail?.attachmentUrls, detail?.imageUrl]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -331,6 +339,11 @@ export function EventPostRoute({
         const authorProfile =
           (authorProfileRes.data as unknown as UserProfileRow | null) ?? null;
 
+        const attachmentUrls = normalizeAttachmentUrls([
+          ...(typeof eventRow.img_url === "string" ? [eventRow.img_url] : []),
+          ...(await fetchAttachmentUrlsByPostId(postId)),
+        ]);
+
         const d: EventDetail = {
           postId,
           categoryId: Number(eventRow.category_id ?? eventRow.events_category?.category_id ?? 0),
@@ -350,6 +363,7 @@ export function EventPostRoute({
           tags,
           tagObjects,
           imageUrl: typeof eventRow.img_url === "string" ? eventRow.img_url : null,
+          attachmentUrls,
           likeCount: Number(eventRow.all_posts.like_count ?? 0),
           commentCount: Number(eventRow.all_posts.comment_count ?? 0),
           segments: [],
@@ -549,16 +563,30 @@ export function EventPostRoute({
         </div>
       )}
 
-      {detail.imageUrl ? (
-        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <button type="button" onClick={() => openPreview(detail.imageUrl, undefined)} className="w-full h-full block">
-            <img
-              src={detail.imageUrl}
-              alt="event post"
-              className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
-            />
-          </button>
-        </div>
+      {imageUrls.length > 0 ? (
+        imageUrls.length === 1 ? (
+          <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+            <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
+              <img
+                src={imageUrls[0]}
+                alt="event post"
+                className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
+              />
+            </button>
+          </div>
+        ) : (
+          <div className="lg:w-full lg:mt-4">
+            <div className="grid grid-cols-2 gap-2">
+              {imageUrls.map((src, idx) => (
+                <div key={src + idx} className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm">
+                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
+                    <img src={src} alt="event post" className="w-full lg:h-80 object-cover" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       ) : null}
 
       {previewOpen && previewSrc ? (
@@ -589,6 +617,7 @@ export function EventPostRoute({
             eventStartDate: detail.eventStartDate,
             eventEndDate: detail.eventEndDate,
             imageUrl: detail.imageUrl,
+            imageUrls: detail.attachmentUrls,
             segments: (detail.segments ?? []).map((s) => ({
               id: s.id,
               name: s.name,

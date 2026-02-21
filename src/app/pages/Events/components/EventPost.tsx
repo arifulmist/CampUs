@@ -26,6 +26,7 @@ export type EventPostType = {
   body?: string;
   location?: string;          
   image?: string | null;
+  images?: string[];
   eventStartDate?: string | null;
   eventEndDate?: string | null;
   segments?: Segment[];
@@ -107,6 +108,7 @@ export default function EventPost({ post, onClick }: Props) {
   content={{
     text: post.body ?? post.excerpt ?? "",
     img: post.image ?? undefined,
+    imgs: Array.isArray(post.images) ? post.images : undefined,
   }}
   tags={post.tags.map((tag) => tag.name)}
   category={post.category}
