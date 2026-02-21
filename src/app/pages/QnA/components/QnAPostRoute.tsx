@@ -9,12 +9,20 @@ import {
 
 import { supabase } from "@/supabase/supabaseClient";
 import { UserInfo } from "@/components/UserInfo";
-import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import {
+  CommentButton,
+  LikeButton,
+  ShareButton,
+} from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 import { DeleteQnAPostModal } from "./DeleteQnAPostModal";
 import { EditQnAPostModal } from "./EditQnAPostModal";
 import ImagePreview from "@/components/ImagePreview";
 import { formatPostedTimestamp } from "@/utils/datetime";
-import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
+import {
+  fetchAttachmentUrlsByPostId,
+  normalizeAttachmentUrls,
+} from "@/utils/postAttachments";
 
 type QnAPostDetail = {
   id: string;
@@ -35,7 +43,10 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
-function getRecord(obj: Record<string, unknown>, key: string): Record<string, unknown> | null {
+function getRecord(
+  obj: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | null {
   const v = obj[key];
   return isRecord(v) ? v : null;
 }
@@ -51,7 +62,8 @@ export function QnAPostRoute({
 }) {
   const navigate = useNavigate();
   const initialLoadNotifiedRef = useRef(false);
-  const onInitialLoadDoneRef = useRef<typeof onInitialLoadDone>(onInitialLoadDone);
+  const onInitialLoadDoneRef =
+    useRef<typeof onInitialLoadDone>(onInitialLoadDone);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [detail, setDetail] = useState<QnAPostDetail | null>(null);
@@ -115,7 +127,8 @@ export function QnAPostRoute({
       setLoading(true);
       setError("");
       try {
-        const { data: authData, error: authError } = await supabase.auth.getUser();
+        const { data: authData, error: authError } =
+          await supabase.auth.getUser();
         if (authError) throw authError;
         const uid = authData?.user?.id ?? null;
         if (alive) setCurrentUserId(uid);
@@ -140,7 +153,7 @@ export function QnAPostRoute({
               batch,
               departments_lookup!inner(department_name)
             )
-          `
+          `,
           )
           .eq("post_id", postId)
           .maybeSingle();
@@ -161,15 +174,22 @@ export function QnAPostRoute({
         const createdAt = row.created_at;
 
         const qnaPosts = getRecord(row, "qna_posts");
-        const qnaCategory = qnaPosts ? getRecord(qnaPosts, "qna_category") : null;
+        const qnaCategory = qnaPosts
+          ? getRecord(qnaPosts, "qna_category")
+          : null;
         const categoryName = qnaCategory?.category_name;
         const category: QnAPostDetail["category"] =
-          categoryName === "Advice" || categoryName === "Resource" || categoryName === "Question"
+          categoryName === "Advice" ||
+          categoryName === "Resource" ||
+          categoryName === "Question"
             ? categoryName
             : "Question";
 
         const attachmentRaw = qnaPosts?.img_url;
-        const attachmentUrl = typeof attachmentRaw === "string" && attachmentRaw.trim() ? attachmentRaw : null;
+        const attachmentUrl =
+          typeof attachmentRaw === "string" && attachmentRaw.trim()
+            ? attachmentRaw
+            : null;
 
         const attachmentUrls = normalizeAttachmentUrls([
           ...(attachmentUrl ? [attachmentUrl] : []),
@@ -178,17 +198,27 @@ export function QnAPostRoute({
 
         const likeCountRaw = row.like_count;
         const commentCountRaw = row.comment_count;
-        const likeCount = typeof likeCountRaw === "number" ? likeCountRaw : Number(likeCountRaw ?? 0);
-        const commentCount = typeof commentCountRaw === "number" ? commentCountRaw : Number(commentCountRaw ?? 0);
+        const likeCount =
+          typeof likeCountRaw === "number"
+            ? likeCountRaw
+            : Number(likeCountRaw ?? 0);
+        const commentCount =
+          typeof commentCountRaw === "number"
+            ? commentCountRaw
+            : Number(commentCountRaw ?? 0);
 
         const author = getRecord(row, "author");
         const authorName = author?.name;
         const authorId = author?.auth_uid;
         const batch = author?.batch;
-        const deptLookup = author ? getRecord(author, "departments_lookup") : null;
+        const deptLookup = author
+          ? getRecord(author, "departments_lookup")
+          : null;
         const dept = deptLookup?.department_name;
         const authorBatch =
-          typeof dept === "string" && dept.trim() && (typeof batch === "string" || typeof batch === "number")
+          typeof dept === "string" &&
+          dept.trim() &&
+          (typeof batch === "string" || typeof batch === "number")
             ? `${dept}-${String(batch)}`
             : "N/A";
 
@@ -202,12 +232,18 @@ export function QnAPostRoute({
           title,
           description: typeof description === "string" ? description : "",
           category,
-          createdAt: typeof createdAt === "string" ? createdAt : new Date().toISOString(),
+          createdAt:
+            typeof createdAt === "string"
+              ? createdAt
+              : new Date().toISOString(),
           likeCount: Number.isFinite(likeCount) ? likeCount : 0,
           commentCount: Number.isFinite(commentCount) ? commentCount : 0,
           attachmentUrl,
           attachmentUrls,
-          authorName: typeof authorName === "string" && authorName.trim() ? authorName : "Unknown",
+          authorName:
+            typeof authorName === "string" && authorName.trim()
+              ? authorName
+              : "Unknown",
           authorBatch,
           authorId: typeof authorId === "string" ? authorId : null,
         });
@@ -237,7 +273,9 @@ export function QnAPostRoute({
   }, [detail]);
 
   const imageUrls = useMemo(() => {
-    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    const fromDetail = Array.isArray(detail?.attachmentUrls)
+      ? detail?.attachmentUrls
+      : [];
     if (fromDetail && fromDetail.length) return fromDetail;
     return detail?.attachmentUrl ? [detail.attachmentUrl] : [];
   }, [detail?.attachmentUrls, detail?.attachmentUrl]);
@@ -314,7 +352,9 @@ export function QnAPostRoute({
         ) : null}
       </div>
 
-      <p className="font-header font-medium text-xl text-text-lm wrap-break-word">{detail.title}</p>
+      <p className="font-header font-medium text-xl text-text-lm wrap-break-word">
+        {detail.title}
+      </p>
 
       <UserInfo
         userName={detail.authorName}
@@ -323,14 +363,24 @@ export function QnAPostRoute({
         postDate={postDate}
       />
 
-      <p className="text-text-lm whitespace-pre-wrap wrap-break-word">{detail.description}</p>
+      <p className="text-text-lm whitespace-pre-wrap wrap-break-word">
+        {detail.description}
+      </p>
 
       {imageUrls.length > 0 ? (
         imageUrls.length === 1 ? (
           <div className="lg:mt-5 w-full h-full flex justify-center">
             <div className="rounded-xl overflow-hidden bg-primary-lm w-[80%] h-[30%] border border-stroke-grey">
-              <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
-                <img src={imageUrls[0]} alt="Post attachment" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => openPreview(imageUrls[0], undefined)}
+                className="w-full h-full block"
+              >
+                <img
+                  src={imageUrls[0]}
+                  alt="Post attachment"
+                  className="w-full h-full object-cover"
+                />
               </button>
             </div>
           </div>
@@ -338,9 +388,20 @@ export function QnAPostRoute({
           <div className="lg:mt-5 w-full">
             <div className="grid grid-cols-2 gap-2">
               {imageUrls.map((src, idx) => (
-                <div key={src + idx} className="w-full overflow-hidden rounded-xl border border-stroke-grey bg-primary-lm">
-                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
-                    <img src={src} alt="Post attachment" className="w-full lg:h-80 object-cover" />
+                <div
+                  key={src + idx}
+                  className="w-full overflow-hidden rounded-xl border border-stroke-grey bg-primary-lm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => openPreview(src, undefined)}
+                    className="w-full h-full block"
+                  >
+                    <img
+                      src={src}
+                      alt="Post attachment"
+                      className="w-full lg:h-80 object-cover"
+                    />
                   </button>
                 </div>
               ))}
@@ -350,12 +411,23 @@ export function QnAPostRoute({
       ) : null}
 
       {previewOpen && previewSrc ? (
-        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
+        <ImagePreview
+          src={previewSrc}
+          filename={previewName ?? undefined}
+          onClose={closePreview}
+        />
       ) : null}
+
+      {detail.id && (detail.likeCount ?? 0) > 0 && (
+        <LikedByText postId={detail.id} likeCount={detail.likeCount ?? 0} />
+      )}
 
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-2">
         <LikeButton postId={detail.id} initialLikeCount={detail.likeCount} />
-        <CommentButton postId={detail.id} initialCommentCount={detail.commentCount} />
+        <CommentButton
+          postId={detail.id}
+          initialCommentCount={detail.commentCount}
+        />
         <ShareButton />
       </div>
 

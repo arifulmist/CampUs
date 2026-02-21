@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEventHandler } from "react"
+import { useEffect, useState, type MouseEventHandler } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
@@ -55,7 +55,9 @@ function scheduleLikeBatchFetch() {
     const userId = await getCachedUserId();
     if (!userId) {
       for (const id of ids) likedByPostId.set(id, false);
-      window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }));
+      window.dispatchEvent(
+        new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }),
+      );
       return;
     }
 
@@ -67,7 +69,9 @@ function scheduleLikeBatchFetch() {
 
     const likedIds = new Set((data ?? []).map((r: any) => String(r.post_id)));
     for (const id of ids) likedByPostId.set(id, likedIds.has(id));
-    window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }));
+    window.dispatchEvent(
+      new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }),
+    );
   }, 0);
 }
 
@@ -92,7 +96,9 @@ function scheduleInterestedBatchFetch() {
     const userId = await getCachedUserId();
     if (!userId) {
       for (const id of ids) interestedByPostId.set(id, false);
-      window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }));
+      window.dispatchEvent(
+        new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }),
+      );
       return;
     }
 
@@ -102,9 +108,13 @@ function scheduleInterestedBatchFetch() {
       .eq("user_id", userId)
       .in("post_id", ids);
 
-    const interestedIds = new Set((data ?? []).map((r: any) => String(r.post_id)));
+    const interestedIds = new Set(
+      (data ?? []).map((r: any) => String(r.post_id)),
+    );
     for (const id of ids) interestedByPostId.set(id, interestedIds.has(id));
-    window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }));
+    window.dispatchEvent(
+      new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }),
+    );
   }, 0);
 }
 
@@ -114,16 +124,13 @@ function ensureInterestedCached(postId: string) {
   scheduleInterestedBatchFetch();
 }
 
-
-interface ButtonProps
-{
-  icon: string,
-  label: string | number,
-  clickEvent?: MouseEventHandler<HTMLButtonElement>
+interface ButtonProps {
+  icon: string;
+  label: string | number;
+  clickEvent?: MouseEventHandler<HTMLButtonElement>;
 }
 
-function ButtonBase({icon, label, clickEvent}:ButtonProps)
-{
+function ButtonBase({ icon, label, clickEvent }: ButtonProps) {
   return (
     <button
       type="button"
@@ -143,9 +150,11 @@ function ButtonBase({icon, label, clickEvent}:ButtonProps)
 export function LikeButton({
   postId,
   initialLikeCount,
+  onLikeCountChange,
 }: {
   postId?: string;
   initialLikeCount?: number;
+  onLikeCountChange?: (count: number) => void;
 }) {
   const [likeState, setLikeState] = useState({
     isLiked: false,
@@ -175,9 +184,14 @@ export function LikeButton({
         if (!alive) return;
         if (error) return;
 
-        const countRaw = (data as unknown as { like_count?: unknown } | null)?.like_count;
-        const likeCount = typeof countRaw === "number" ? countRaw : Number(countRaw ?? 0);
-        setLikeState((prev) => ({ ...prev, likeCount: Math.max(0, likeCount) }));
+        const countRaw = (data as unknown as { like_count?: unknown } | null)
+          ?.like_count;
+        const likeCount =
+          typeof countRaw === "number" ? countRaw : Number(countRaw ?? 0);
+        setLikeState((prev) => ({
+          ...prev,
+          likeCount: Math.max(0, likeCount),
+        }));
       })();
     }
 
@@ -225,11 +239,18 @@ export function LikeButton({
     }
 
     const row = data as unknown as { like_count?: unknown; liked?: unknown };
-    const likeCount = typeof row.like_count === "number" ? row.like_count : Number(row.like_count ?? 0);
+    const likeCount =
+      typeof row.like_count === "number"
+        ? row.like_count
+        : Number(row.like_count ?? 0);
     const liked = Boolean(row.liked);
     likedByPostId.set(postId, liked);
-    window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: [postId] } }));
-    setLikeState({ likeCount: Math.max(0, likeCount), isLiked: liked });
+    window.dispatchEvent(
+      new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: [postId] } }),
+    );
+    const finalCount = Math.max(0, likeCount);
+    setLikeState({ likeCount: finalCount, isLiked: liked });
+    onLikeCountChange?.(finalCount);
   }
 
   return (
@@ -253,7 +274,7 @@ export function CommentButton({
   const navigate = useNavigate();
   const location = useLocation();
   const [commentCount, setCommentCount] = useState(
-    typeof initialCommentCount === "number" ? initialCommentCount : 0
+    typeof initialCommentCount === "number" ? initialCommentCount : 0,
   );
 
   async function refreshCount(targetPostId: string) {
@@ -289,8 +310,15 @@ export function CommentButton({
       void refreshCount(postId);
     };
 
-    window.addEventListener("campus:comments_changed", handler as EventListener);
-    return () => window.removeEventListener("campus:comments_changed", handler as EventListener);
+    window.addEventListener(
+      "campus:comments_changed",
+      handler as EventListener,
+    );
+    return () =>
+      window.removeEventListener(
+        "campus:comments_changed",
+        handler as EventListener,
+      );
   }, [postId]);
 
   return (
@@ -301,9 +329,16 @@ export function CommentButton({
         if (postId) {
           // persistent marker in case PostComments mounts after this event
           try {
-            (window as any).__campus_last_focus_comment = { postId, ts: Date.now() };
+            (window as any).__campus_last_focus_comment = {
+              postId,
+              ts: Date.now(),
+            };
           } catch {}
-          window.dispatchEvent(new CustomEvent("campus:focus_comment_input", { detail: { postId } }));
+          window.dispatchEvent(
+            new CustomEvent("campus:focus_comment_input", {
+              detail: { postId },
+            }),
+          );
 
           if (navigateTo && location.pathname !== navigateTo) {
             navigate(navigateTo);
@@ -314,19 +349,25 @@ export function CommentButton({
   );
 }
 
-export function ShareButton({ postId, categorySet }: { postId?: string; categorySet?: string }) {
+export function ShareButton({
+  postId,
+  categorySet,
+}: {
+  postId?: string;
+  categorySet?: string;
+}) {
   async function handleShare() {
     const base = window.location.origin;
     const url = postId
       ? categorySet === "events"
         ? `${base}/events/${postId}`
         : categorySet === "collab"
-        ? `${base}/collab/${postId}`
-        : categorySet === "lostfound"
-        ? `${base}/lost-and-found/${postId}`
-        : categorySet === "qna"
-        ? `${base}/qna/${postId}`
-        : `${base}/post/${postId}`
+          ? `${base}/collab/${postId}`
+          : categorySet === "lostfound"
+            ? `${base}/lost-and-found/${postId}`
+            : categorySet === "qna"
+              ? `${base}/qna/${postId}`
+              : `${base}/post/${postId}`
       : window.location.href;
 
     try {
@@ -358,7 +399,11 @@ export function ShareButton({ postId, categorySet }: { postId?: string; category
   }
 
   return (
-    <ButtonBase icon={shareIcon} label={"Share"} clickEvent={() => void handleShare()}></ButtonBase>
+    <ButtonBase
+      icon={shareIcon}
+      label={"Share"}
+      clickEvent={() => void handleShare()}
+    ></ButtonBase>
   );
 }
 
@@ -396,7 +441,10 @@ export function InterestedButton({ postId }: { postId?: string }) {
 
     return () => {
       alive = false;
-      window.removeEventListener(INTEREST_CACHE_EVENT, handler as EventListener);
+      window.removeEventListener(
+        INTEREST_CACHE_EVENT,
+        handler as EventListener,
+      );
     };
   }, [postId]);
 
@@ -450,7 +498,9 @@ export function InterestedButton({ postId }: { postId?: string }) {
     }
 
     interestedByPostId.set(postId, !prev.isInterested);
-    window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: [postId] } }));
+    window.dispatchEvent(
+      new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: [postId] } }),
+    );
 
     window.dispatchEvent(new CustomEvent(INTERESTED_EVENT_NAME));
     window.dispatchEvent(new CustomEvent(UPCOMING_EVENT_NAME));

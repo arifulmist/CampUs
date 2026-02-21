@@ -20,7 +20,9 @@ class LocalErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="bg-primary-lm border border-stroke-grey rounded-lg p-4">
-          <p className="text-text-lighter-lm">Something went wrong loading this panel.</p>
+          <p className="text-text-lighter-lm">
+            Something went wrong loading this panel.
+          </p>
         </div>
       );
     }
@@ -33,16 +35,29 @@ import {
   Trash2 as LucideTrash2,
 } from "lucide-react";
 
-import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import {
+  CommentButton,
+  InterestedButton,
+  LikeButton,
+  ShareButton,
+} from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
-import { formatDateToLocale, formatRelativeTime, isSameDay } from "@/utils/datetime";
+import {
+  formatDateToLocale,
+  formatRelativeTime,
+  isSameDay,
+} from "@/utils/datetime";
 import { EventSegment } from "./EventSegment";
 import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
 import ImagePreview from "@/components/ImagePreview";
-import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
+import {
+  fetchAttachmentUrlsByPostId,
+  normalizeAttachmentUrls,
+} from "@/utils/postAttachments";
 
 type EventPostsRow = {
   post_id: string;
@@ -145,8 +160,6 @@ function formatDateDisplay(dateString?: string | null) {
   });
 }
 
-
-
 export function EventPostRoute({
   postId,
   onInitialLoadDone,
@@ -180,8 +193,6 @@ export function EventPostRoute({
     setPreviewName(null);
   };
 
-  
-
   const menuRef = useRef<HTMLDivElement | null>(null);
   const initialLoadNotifiedRef = useRef(false);
 
@@ -195,7 +206,9 @@ export function EventPostRoute({
   }, [detail?.authorId, currentUserId]);
 
   const imageUrls = useMemo(() => {
-    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    const fromDetail = Array.isArray(detail?.attachmentUrls)
+      ? detail?.attachmentUrls
+      : [];
     if (fromDetail && fromDetail.length) return fromDetail;
     return detail?.imageUrl ? [detail.imageUrl] : [];
   }, [detail?.attachmentUrls, detail?.imageUrl]);
@@ -247,7 +260,7 @@ export function EventPostRoute({
               category_id,
               category_name
             )
-          `
+          `,
           )
           .eq("post_id", postId)
           .maybeSingle();
@@ -263,25 +276,42 @@ export function EventPostRoute({
 
         const authorId: string | null = eventRow.all_posts.author_id ?? null;
 
-        const [authorInfoRes, authorProfileRes, tagsRes, skillsRes, segmentsRes, departmentsRes] =
-          await Promise.all([
-            authorId
-              ? supabase
-                  .from("user_info")
-                  .select("auth_uid,name,batch,department,student_id,departments_lookup(department_name)")
-                  .eq("auth_uid", authorId)
-                  .maybeSingle()
-              : Promise.resolve({ data: null as UserInfoRow | null, error: null as unknown }),
-            authorId
-              ? supabase
-                  .from("user_profile")
-                  .select("profile_picture_url")
-                  .eq("auth_uid", authorId)
-                  .maybeSingle()
-              : Promise.resolve({ data: null as UserProfileRow | null, error: null as unknown }),
-            supabase.from("post_tags").select("skill_id").eq("post_id", postId),
-            supabase.from("skills_lookup").select("id, skill"),
-            supabase.from("event_segment").select(`
+        const [
+          authorInfoRes,
+          authorProfileRes,
+          tagsRes,
+          skillsRes,
+          segmentsRes,
+          departmentsRes,
+        ] = await Promise.all([
+          authorId
+            ? supabase
+                .from("user_info")
+                .select(
+                  "auth_uid,name,batch,department,student_id,departments_lookup(department_name)",
+                )
+                .eq("auth_uid", authorId)
+                .maybeSingle()
+            : Promise.resolve({
+                data: null as UserInfoRow | null,
+                error: null as unknown,
+              }),
+          authorId
+            ? supabase
+                .from("user_profile")
+                .select("profile_picture_url")
+                .eq("auth_uid", authorId)
+                .maybeSingle()
+            : Promise.resolve({
+                data: null as UserProfileRow | null,
+                error: null as unknown,
+              }),
+          supabase.from("post_tags").select("skill_id").eq("post_id", postId),
+          supabase.from("skills_lookup").select("id, skill"),
+          supabase
+            .from("event_segment")
+            .select(
+              `
               segment_id,
               segment_title,
               segment_description,
@@ -290,9 +320,13 @@ export function EventPostRoute({
               segment_start_time,
               segment_end_time,
               segment_location
-            `).eq("post_id", postId),
-            supabase.from("departments_lookup").select("dept_id, department_name"),
-          ]);
+            `,
+            )
+            .eq("post_id", postId),
+          supabase
+            .from("departments_lookup")
+            .select("dept_id, department_name"),
+        ]);
 
         if (authorInfoRes.error) throw authorInfoRes.error;
         if (authorProfileRes.error) throw authorProfileRes.error;
@@ -301,20 +335,26 @@ export function EventPostRoute({
         if (segmentsRes && segmentsRes.error) throw segmentsRes.error;
         if (departmentsRes.error) throw departmentsRes.error;
 
-        const userInfo = (authorInfoRes.data as unknown as UserInfoRow | null) ?? null;
-        const departments = (departmentsRes.data as unknown as DepartmentRow[] | null) ?? [];
+        const userInfo =
+          (authorInfoRes.data as unknown as UserInfoRow | null) ?? null;
+        const departments =
+          (departmentsRes.data as unknown as DepartmentRow[] | null) ?? [];
 
         const deptName =
           userInfo?.departments_lookup?.department_name ??
           (userInfo?.department
-            ? departments.find((d) => d.dept_id === userInfo.department)?.department_name ?? null
+            ? (departments.find((d) => d.dept_id === userInfo.department)
+                ?.department_name ?? null)
             : null);
 
         const authorName = userInfo?.name ?? "Unknown";
         const batch = userInfo?.batch;
         const deptPart = (deptName ?? userInfo?.department ?? "").trim();
-        const batchPart = batch !== null && batch !== undefined ? String(batch) : "";
-        const authorDeptBatch = [deptPart, batchPart].filter((x) => x).join("-");
+        const batchPart =
+          batch !== null && batch !== undefined ? String(batch) : "";
+        const authorDeptBatch = [deptPart, batchPart]
+          .filter((x) => x)
+          .join("-");
 
         const skillById = new Map<number, string>();
         const skills = (skillsRes.data as unknown as SkillRow[] | null) ?? [];
@@ -346,7 +386,9 @@ export function EventPostRoute({
 
         const d: EventDetail = {
           postId,
-          categoryId: Number(eventRow.category_id ?? eventRow.events_category?.category_id ?? 0),
+          categoryId: Number(
+            eventRow.category_id ?? eventRow.events_category?.category_id ?? 0,
+          ),
           category: eventRow.events_category?.category_name ?? "Uncategorized",
           title: eventRow.all_posts.title ?? "Untitled",
           description: eventRow.all_posts.description ?? "",
@@ -362,35 +404,33 @@ export function EventPostRoute({
           authorProfilePictureUrl: authorProfile?.profile_picture_url ?? null,
           tags,
           tagObjects,
-          imageUrl: typeof eventRow.img_url === "string" ? eventRow.img_url : null,
+          imageUrl:
+            typeof eventRow.img_url === "string" ? eventRow.img_url : null,
           attachmentUrls,
           likeCount: Number(eventRow.all_posts.like_count ?? 0),
           commentCount: Number(eventRow.all_posts.comment_count ?? 0),
           segments: [],
         };
 
-        const segRows =
-          ((segmentsRes.data as unknown as
-            | Array<{
-                segment_id: string;
-                segment_title: string;
-                segment_description: string;
-                segment_start_date: string;
-                segment_end_date: string;
-                segment_start_time: string;
-                segment_end_time: string;
-                segment_location: string | null;
-              }>
-            | null) ?? []) as Array<{
-            segment_id: string;
-            segment_title: string;
-            segment_description: string;
-            segment_start_date: string;
-            segment_end_date: string;
-            segment_start_time: string;
-            segment_end_time: string;
-            segment_location: string | null;
-          }>;
+        const segRows = ((segmentsRes.data as unknown as Array<{
+          segment_id: string;
+          segment_title: string;
+          segment_description: string;
+          segment_start_date: string;
+          segment_end_date: string;
+          segment_start_time: string;
+          segment_end_time: string;
+          segment_location: string | null;
+        }> | null) ?? []) as Array<{
+          segment_id: string;
+          segment_title: string;
+          segment_description: string;
+          segment_start_date: string;
+          segment_end_date: string;
+          segment_start_time: string;
+          segment_end_time: string;
+          segment_location: string | null;
+        }>;
 
         d.segments = segRows.map((s) => ({
           id: s.segment_id,
@@ -440,7 +480,9 @@ export function EventPostRoute({
     return (
       <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-6 w-full">
-          <p className="text-text-lighter-lm">Event not found or you do not have access to view it.</p>
+          <p className="text-text-lighter-lm">
+            Event not found or you do not have access to view it.
+          </p>
         </div>
       </div>
     );
@@ -496,25 +538,37 @@ export function EventPostRoute({
         ) : null}
       </div>
 
-      <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
+      <h3 className="text-text-lm lg:font-extrabold lg:font-header">
+        {detail.title}
+      </h3>
       {(detail.eventStartDate || detail.eventEndDate || detail.location) && (
         <div className="mt-2">
           {(detail.eventStartDate || detail.eventEndDate) && (
             <p className="text-accent-lm font-semibold text-md">
-              {detail.eventStartDate && detail.eventEndDate && isSameDay(detail.eventStartDate, detail.eventEndDate)
-                ? formatDateDisplay(detail.eventStartDate)
-                : (
-                    <>
-                      {detail.eventStartDate ? formatDateDisplay(detail.eventStartDate) : ""}
-                      {detail.eventStartDate && detail.eventEndDate ? " \u2014 " : ""}
-                      {detail.eventEndDate ? formatDateDisplay(detail.eventEndDate) : ""}
-                    </>
-                  )}
+              {detail.eventStartDate &&
+              detail.eventEndDate &&
+              isSameDay(detail.eventStartDate, detail.eventEndDate) ? (
+                formatDateDisplay(detail.eventStartDate)
+              ) : (
+                <>
+                  {detail.eventStartDate
+                    ? formatDateDisplay(detail.eventStartDate)
+                    : ""}
+                  {detail.eventStartDate && detail.eventEndDate
+                    ? " \u2014 "
+                    : ""}
+                  {detail.eventEndDate
+                    ? formatDateDisplay(detail.eventEndDate)
+                    : ""}
+                </>
+              )}
             </p>
           )}
 
           {detail.location ? (
-            <p className="text-text-lm font-semibold text-md mt-1">{detail.location}</p>
+            <p className="text-text-lm font-semibold text-md mt-1">
+              {detail.location}
+            </p>
           ) : null}
         </div>
       )}
@@ -543,7 +597,9 @@ export function EventPostRoute({
         />
       </div>
 
-      <p className="mt-2 text-text-lm whitespace-pre-wrap">{detail.description}</p>
+      <p className="mt-2 text-text-lm whitespace-pre-wrap">
+        {detail.description}
+      </p>
 
       {detail.segments && detail.segments.length > 0 && (
         <div className="flex flex-col lg:gap-3 lg:mt-4 lg:mb-3">
@@ -566,7 +622,11 @@ export function EventPostRoute({
       {imageUrls.length > 0 ? (
         imageUrls.length === 1 ? (
           <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-            <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
+            <button
+              type="button"
+              onClick={() => openPreview(imageUrls[0], undefined)}
+              className="w-full h-full block"
+            >
               <img
                 src={imageUrls[0]}
                 alt="event post"
@@ -578,9 +638,20 @@ export function EventPostRoute({
           <div className="lg:w-full lg:mt-4">
             <div className="grid grid-cols-2 gap-2">
               {imageUrls.map((src, idx) => (
-                <div key={src + idx} className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm">
-                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
-                    <img src={src} alt="event post" className="w-full lg:h-80 object-cover" />
+                <div
+                  key={src + idx}
+                  className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => openPreview(src, undefined)}
+                    className="w-full h-full block"
+                  >
+                    <img
+                      src={src}
+                      alt="event post"
+                      className="w-full lg:h-80 object-cover"
+                    />
                   </button>
                 </div>
               ))}
@@ -590,13 +661,27 @@ export function EventPostRoute({
       ) : null}
 
       {previewOpen && previewSrc ? (
-        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
+        <ImagePreview
+          src={previewSrc}
+          filename={previewName ?? undefined}
+          onClose={closePreview}
+        />
       ) : null}
+
+      {detail.postId && (detail.likeCount ?? 0) > 0 && (
+        <LikedByText postId={detail.postId} likeCount={detail.likeCount ?? 0} />
+      )}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
-          <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
-          <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
+          <LikeButton
+            postId={detail.postId}
+            initialLikeCount={detail.likeCount}
+          />
+          <CommentButton
+            postId={detail.postId}
+            initialCommentCount={detail.commentCount}
+          />
           <ShareButton />
         </div>
         <div>
