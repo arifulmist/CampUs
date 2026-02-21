@@ -314,15 +314,51 @@ export function CommentButton({
   );
 }
 
-export function ShareButton()
-{
-  // const [isClicked, setIsClicked]=useState(false);
+export function ShareButton({ postId, categorySet }: { postId?: string; categorySet?: string }) {
+  async function handleShare() {
+    const base = window.location.origin;
+    const url = postId
+      ? categorySet === "events"
+        ? `${base}/events/${postId}`
+        : categorySet === "collab"
+        ? `${base}/collab/${postId}`
+        : categorySet === "lostfound"
+        ? `${base}/lost-and-found/${postId}`
+        : categorySet === "qna"
+        ? `${base}/qna/${postId}`
+        : `${base}/post/${postId}`
+      : window.location.href;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Linked copied!");
+        return;
+      }
+
+      // Fallback for older browsers
+      const el = document.createElement("textarea");
+      el.value = url;
+      el.setAttribute("readonly", "");
+      el.style.position = "absolute";
+      el.style.left = "-9999px";
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(el);
+      if (ok) {
+        toast.success("Linked copied!");
+      } else {
+        throw new Error("copy-failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to copy link");
+    }
+  }
 
   return (
-    <>
-      <ButtonBase icon={shareIcon} label={"Share"}></ButtonBase>
-      {/* {isClicked && <ShareModal/>} */}
-    </>
+    <ButtonBase icon={shareIcon} label={"Share"} clickEvent={() => void handleShare()}></ButtonBase>
   );
 }
 

@@ -74,7 +74,7 @@ export function QnAPostCard({
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-2">
         <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
         <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={`/qna/${postId}`} />
-        <ShareButton></ShareButton>
+        <ShareButton postId={postId} categorySet={"qna"}></ShareButton>
       </div>
     </div>
   );

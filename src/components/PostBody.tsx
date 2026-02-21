@@ -176,7 +176,7 @@ export function PostBody({
         <div className="lg:flex lg:gap-3 lg:justify-start">
           <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
           <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={commentNavigateTo} />
-          <ShareButton />
+          <ShareButton postId={postId} categorySet={categorySet} />
         </div>
         <div>{postId && categorySet === "events" ? <InterestedButton postId={postId} /> : null}</div>
       </div>
