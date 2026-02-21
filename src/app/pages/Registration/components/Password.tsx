@@ -10,7 +10,7 @@ interface PasswordProps {
   onMatchChange?: (matches: boolean) => void;
 }
 
-export const checkPasswordStrength = (password: string) => {
+const checkPasswordStrength = (password: string) => {
   if (!password) return { score: 0, messages: [], strength: "" };
   
   let score:number = 0;
@@ -64,12 +64,20 @@ export function Password({
 }: PasswordProps) {
   const [showPassword, setShowPassword] = useState(false);
   const passwordStrength = checkPasswordStrength(value);
+
+  const requirements = [
+    { label: "At least 8 characters", ok: value.length >= 8 },
+    { label: "One uppercase letter", ok: /[A-Z]/.test(value) },
+    { label: "One lowercase letter", ok: /[a-z]/.test(value) },
+    { label: "One number", ok: /\d/.test(value) },
+    { label: "One special character", ok: /[!@#$%^&*(),.?":{}|<>]/.test(value) },
+  ];
   
   // Check if passwords match (only if compareValue is provided)
   const passwordsMatch = compareValue ? value === compareValue : true;
   
   // Notify parent about match status
-  React.useEffect(() => {
+  useEffect(() => {
     if (compareValue && onMatchChange) {
       onMatchChange(passwordsMatch);
     }
@@ -148,9 +156,19 @@ export function Password({
               }}
             />
           </div>
-          
-          
-          {/* requirements removed — use toast for short passwords */}
+
+          <p className="lg:mt-2 text-sm">
+            <span className="text-text-lighter-lm">Requirements: </span>
+            {requirements.map((req, idx) => (
+              <span
+                key={req.label}
+                className={req.ok ? "text-text-lighter-lm" : "text-accent-lm"}
+              >
+                {req.label}
+                {idx < requirements.length - 1 ? ", " : ""}
+              </span>
+            ))}
+          </p>
         </div>
       )}
 
