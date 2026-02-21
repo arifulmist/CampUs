@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { InputField } from "@/components/InputField";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import { ButtonCTA } from "@/components/ButtonCTA";
@@ -103,16 +104,18 @@ export function NotesAddModal({
     // Note: onClose is called by parent component after successful submission
   }
 
-  return (
-    <>
-      {/* Modal backdrop */}
-      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50" />
+  if (typeof document === "undefined") return null;
 
-      {/* Modal */}
-      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center">
+  return createPortal(
+    <>
+      {/* Modal backdrop (viewport-fixed, above nav/sidebars) */}
+      <div className="fixed inset-0 z-1000" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} />
+
+      {/* Modal (centered on viewport) */}
+      <div className="fixed inset-0 z-1001 flex items-center justify-center">
         <form
           onSubmit={handleSubmit}
-          className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-10 lg:py-8 lg:w-130 lg:relative"
+          className="bg-secondary-lm border-2 border-stroke-grey rounded-xl px-10 py-8 w-130 relative"
         >
           <div className="lg:flex lg:justify-between">
             <h4 className="lg:font-header text-text-lm lg:font-medium">
@@ -244,9 +247,9 @@ export function NotesAddModal({
 
       {/* Full preview overlay */}
       {isPreviewOpen && previewUrl && (
-        <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-60 lg:flex lg:items-center lg:justify-center">
+        <div className="fixed inset-0 z-1002 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
           <button
-            className="lg:absolute lg:top-6 lg:right-6 text-accent-lm text-2xl"
+            className="absolute top-6 right-6 text-accent-lm text-2xl"
             onClick={() => setIsPreviewOpen(false)}
           >
             ✖
@@ -256,17 +259,18 @@ export function NotesAddModal({
             <img
               src={previewUrl}
               alt={file.name}
-              className="lg:max-w-[90%] lg:max-h-[90%] lg:object-contain"
+              className="max-w-[90%] max-h-[90%] object-contain"
             />
           ) : (
             <iframe
               src={previewUrl}
-              className="lg:w-[80%] lg:h-[90%] bg-white"
+              className="w-[80%] h-[90%] bg-white"
               title="File preview"
             />
           )}
         </div>
       )}
-    </>
+    </>,
+    document.body,
   );
 }
