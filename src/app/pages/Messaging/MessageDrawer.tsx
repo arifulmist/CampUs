@@ -275,6 +275,11 @@ export function MessageDrawer({
         return;
       }
 
+      // If an image preview overlay is open, ignore outside clicks so preview controls don't close the drawer.
+      if ((window as any).__campusImagePreviewOpen) {
+        return;
+      }
+
       if (
         drawerRef.current &&
         !drawerRef.current.contains(event.target as Node) &&

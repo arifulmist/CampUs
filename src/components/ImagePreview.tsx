@@ -40,30 +40,77 @@ export default function ImagePreview({
     const closeBtn = closeBtnRef.current;
     if (!downloadBtn && !closeBtn) return;
 
-    const onDownloadCapture = (ev: PointerEvent) => {
+    const onDownloadPointer = (ev: Event) => {
       try {
-        ev.stopPropagation();
-        ev.stopImmediatePropagation();
+        const pev = ev as PointerEvent;
+        pev.stopPropagation();
+        pev.stopImmediatePropagation();
       } catch {}
       downloadImage();
     };
 
-    const onCloseCapture = (ev: PointerEvent) => {
+    const onDownloadMouse = (ev: Event) => {
       try {
-        ev.stopPropagation();
-        ev.stopImmediatePropagation();
+        const mev = ev as MouseEvent;
+        mev.stopPropagation();
+        mev.stopImmediatePropagation();
       } catch {}
-      onClose();
+      // intentionally do not call downloadImage here to avoid double-invocation
     };
 
-    if (downloadBtn) downloadBtn.addEventListener("pointerdown", onDownloadCapture, { capture: true });
-    if (closeBtn) closeBtn.addEventListener("pointerdown", onCloseCapture, { capture: true });
+    const onClosePointer = (ev: Event) => {
+      try {
+        const pev = ev as PointerEvent;
+        pev.stopPropagation();
+        pev.stopImmediatePropagation();
+      } catch {}
+      // Defer closing until after the current event loop so global preview
+      // flag remains set for any document-level handlers that check it.
+      setTimeout(() => onClose(), 0);
+    };
+
+    const onCloseMouse = (ev: Event) => {
+      try {
+        const mev = ev as MouseEvent;
+        mev.stopPropagation();
+        mev.stopImmediatePropagation();
+      } catch {}
+      // intentionally do not call onClose here to avoid double-invocation
+    };
+
+    if (downloadBtn) {
+      downloadBtn.addEventListener("pointerdown", onDownloadPointer as EventListener, { capture: true });
+      downloadBtn.addEventListener("mousedown", onDownloadMouse as EventListener, { capture: true });
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("pointerdown", onClosePointer as EventListener, { capture: true });
+      closeBtn.addEventListener("mousedown", onCloseMouse as EventListener, { capture: true });
+    }
 
     return () => {
-      if (downloadBtn) downloadBtn.removeEventListener("pointerdown", onDownloadCapture, { capture: true } as any);
-      if (closeBtn) closeBtn.removeEventListener("pointerdown", onCloseCapture, { capture: true } as any);
+      if (downloadBtn) {
+        downloadBtn.removeEventListener("pointerdown", onDownloadPointer as EventListener, { capture: true });
+        downloadBtn.removeEventListener("mousedown", onDownloadMouse as EventListener, { capture: true });
+      }
+      if (closeBtn) {
+        closeBtn.removeEventListener("pointerdown", onClosePointer as EventListener, { capture: true });
+        closeBtn.removeEventListener("mousedown", onCloseMouse as EventListener, { capture: true });
+      }
     };
   }, [downloadImage, onClose]);
+
+  // Signal to other UI (MessageDrawer) that an image preview is open so
+  // outside-click-to-close behavior can be temporarily disabled.
+  useEffect(() => {
+    try {
+      (window as any).__campusImagePreviewOpen = true;
+    } catch {}
+    return () => {
+      try {
+        delete (window as any).__campusImagePreviewOpen;
+      } catch {}
+    };
+  }, []);
 
   const content = (
     <div

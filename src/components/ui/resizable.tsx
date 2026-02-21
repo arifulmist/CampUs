@@ -4,7 +4,7 @@ import * as React from "react";
 import { GripVerticalIcon } from "lucide-react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 
 const ResizablePanelGroupPrimitive = (ResizablePrimitive as any).PanelGroup;
 const ResizablePanelPrimitive = (ResizablePrimitive as any).Panel;
