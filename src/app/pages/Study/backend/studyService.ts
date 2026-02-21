@@ -8,6 +8,7 @@ export interface DBNote {
   course: string;
   course_code: string;
   file_url: string;
+  file_hash: string | null;
   author_id: string | null;
   upload_date: string;
   upload_time: string;
@@ -230,11 +231,16 @@ export async function fetchResources(
     if (error) throw error;
     resources = data as any[];
   } catch (e: any) {
-    console.error("Joined resource query failed, falling back:", e?.message ?? e);
+    console.error(
+      "Joined resource query failed, falling back:",
+      e?.message ?? e,
+    );
     // Fallback: fetch without join
     const { data, error } = await supabase
       .from("resources")
-      .select("resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id")
+      .select(
+        "resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id",
+      )
       .eq("semester_id", semester.semester_id)
       .order("upload_date", { ascending: false });
 
@@ -248,7 +254,9 @@ export async function fetchResources(
   if (!resources || resources.length === 0) return [];
 
   // Batch-fetch author info for all unique author_ids (used by fallback and to fill missing joined fields)
-  const authorIds = [...new Set(resources.map((r: any) => r.author_id).filter(Boolean))];
+  const authorIds = [
+    ...new Set(resources.map((r: any) => r.author_id).filter(Boolean)),
+  ];
   const authorMap = await fetchAuthorMap(authorIds);
 
   // Transform to frontend format, preferring joined `user_info` fields when available
@@ -296,12 +304,13 @@ export async function fetchResources(
           "";
 
         const batchValue =
-          (ui?.batch ?? null) ?? (authorMap[r.author_id]?.batch ?? null);
+          ui?.batch ?? null ?? authorMap[r.author_id]?.batch ?? null;
 
         if (deptName && batchValue !== null && batchValue !== undefined) {
           return `${deptName}-${batchValue}`;
         }
-        if (batchValue !== null && batchValue !== undefined) return String(batchValue);
+        if (batchValue !== null && batchValue !== undefined)
+          return String(batchValue);
         return "";
       })(),
       imgURL: null,
@@ -321,6 +330,7 @@ export async function createNote(data: {
   course: string;
   courseCode: string;
   fileUrl: string;
+  fileHash?: string;
 }): Promise<Note> {
   const {
     data: { user },
@@ -343,6 +353,7 @@ export async function createNote(data: {
       course: data.course.toUpperCase(),
       course_code: data.courseCode,
       file_url: data.fileUrl,
+      file_hash: data.fileHash ?? null,
       author_id: user.id,
     })
     .select(
@@ -446,7 +457,9 @@ export async function createResource(data: {
     deptLookup.department_name.trim()
       ? deptLookup.department_name
       : null) ??
-    (typeof (authorInfo as any)?.department === "string" ? (authorInfo as any).department : "");
+    (typeof (authorInfo as any)?.department === "string"
+      ? (authorInfo as any).department
+      : "");
 
   const batchValue = (authorInfo as any)?.batch ?? null;
   const displayBatch =
@@ -467,6 +480,53 @@ export async function createResource(data: {
     title: resource.title,
     course: `${resource.course}-${resource.course_code}`,
     resourceLink: resource.resource_link,
+  };
+}
+
+// Compute SHA-256 hash of a File (runs entirely in the browser via SubtleCrypto)
+export async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Check whether a note with the given file hash already exists.
+// Returns the matching note metadata when a duplicate is found, or null otherwise.
+export async function checkDuplicateNote(
+  fileHash: string,
+): Promise<{
+  noteId: string;
+  title: string;
+  courseCode: string;
+  uploadedBy: string;
+} | null> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select(
+      "note_id, title, course, course_code, author_id, user_info ( name )",
+    )
+    .eq("file_hash", fileHash)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking duplicate note:", error);
+    return null; // fail-open so uploads are not blocked by transient errors
+  }
+
+  if (!data) return null;
+
+  const authorName =
+    (Array.isArray((data as any).user_info)
+      ? (data as any).user_info?.[0]?.name
+      : (data as any).user_info?.name) ?? "Unknown";
+
+  return {
+    noteId: data.note_id,
+    title: data.title,
+    courseCode: `${data.course}-${data.course_code}`,
+    uploadedBy: authorName,
   };
 }
 
@@ -506,13 +566,18 @@ export async function uploadNoteFile(file: File): Promise<string> {
 async function fetchAuthorMap(
   authorIds: string[],
 ): Promise<
-  Record<string, { name: string; batch: any; department: any; departmentName: string | null }>
+  Record<
+    string,
+    { name: string; batch: any; department: any; departmentName: string | null }
+  >
 > {
   if (authorIds.length === 0) return {};
 
   const { data, error } = await supabase
     .from("user_info")
-    .select("auth_uid, name, batch, department, departments_lookup(department_name)")
+    .select(
+      "auth_uid, name, batch, department, departments_lookup(department_name)",
+    )
     .in("auth_uid", authorIds);
 
   if (error) {
@@ -530,7 +595,8 @@ async function fetchAuthorMap(
       | null
       | undefined;
     const deptName =
-      typeof deptLookup?.department_name === "string" && deptLookup.department_name.trim()
+      typeof deptLookup?.department_name === "string" &&
+      deptLookup.department_name.trim()
         ? deptLookup.department_name
         : null;
     map[author.auth_uid] = {
@@ -541,6 +607,137 @@ async function fetchAuthorMap(
     };
   }
   return map;
+}
+
+// Delete a note (owner-only)
+export async function deleteNote(noteId: string): Promise<void> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to delete notes");
+
+  // Verify ownership before deleting
+  const { data: note, error: fetchError } = await supabase
+    .from("notes")
+    .select("note_id, author_id, file_url")
+    .eq("note_id", noteId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!note) throw new Error("Note not found");
+  if (note.author_id !== user.id) {
+    throw new Error("You can only delete your own notes");
+  }
+
+  // Delete the file from storage if it exists
+  if (note.file_url) {
+    try {
+      const url = new URL(note.file_url);
+      const parts = url.pathname.split("/storage/v1/object/");
+      if (parts.length === 2) {
+        let objectPath = parts[1].replace(/^public\//, "");
+        if (objectPath.startsWith("notes/"))
+          objectPath = objectPath.slice("notes/".length);
+        await supabase.storage.from("notes").remove([objectPath]);
+      }
+    } catch {
+      // If storage cleanup fails, still proceed with DB deletion
+      console.warn("Could not remove file from storage");
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("notes")
+    .delete()
+    .eq("note_id", noteId);
+
+  if (deleteError) throw deleteError;
+}
+
+// Delete a resource (owner-only)
+export async function deleteResource(resourceId: string): Promise<void> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to delete resources");
+
+  // Verify ownership before deleting
+  const { data: resource, error: fetchError } = await supabase
+    .from("resources")
+    .select("resource_id, author_id")
+    .eq("resource_id", resourceId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!resource) throw new Error("Resource not found");
+  if (resource.author_id !== user.id) {
+    throw new Error("You can only delete your own resources");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("resources")
+    .delete()
+    .eq("resource_id", resourceId);
+
+  if (deleteError) throw deleteError;
+}
+
+// Get the current authenticated user's batch (department) from user_info
+// Returns the full batch name like "CSE-23" by combining department_name + batch number
+export async function getCurrentUserBatch(): Promise<string> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in");
+
+  const { data: userInfo, error } = await supabase
+    .from("user_info")
+    .select("batch, department, departments_lookup(department_name)")
+    .eq("auth_uid", user.id)
+    .single();
+
+  if (error) throw error;
+  if (userInfo?.batch == null) throw new Error("User batch not found");
+
+  // Extract department name from the joined departments_lookup
+  const deptLookup = (userInfo as any)?.departments_lookup as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const deptName =
+    typeof deptLookup?.department_name === "string" &&
+    deptLookup.department_name.trim()
+      ? deptLookup.department_name
+      : typeof (userInfo as any)?.department === "string" &&
+          (userInfo as any).department.trim()
+        ? (userInfo as any).department
+        : null;
+
+  if (!deptName) {
+    console.error("getCurrentUserBatch: could not resolve department name.", {
+      rawDepartment: (userInfo as any)?.department,
+      deptLookup,
+    });
+    throw new Error("User department not found. Please update your profile.");
+  }
+
+  const batchName = `${deptName}-${userInfo.batch}`;
+  console.log("getCurrentUserBatch resolved:", batchName);
+  return batchName;
+}
+
+// Get the current authenticated user's ID
+export async function getCurrentUserId(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
 }
 
 // Helper functions

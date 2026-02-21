@@ -11,7 +11,11 @@ import signoutIcon from "../assets/icons/logout_icon.svg";
 import { UserInfo } from "./UserInfo";
 import { useEffect, useRef, useState } from "react";
 import NotificationsDrawer from "./NotificationsDrawer";
-import {MessageDrawer} from "@/app/pages/Messaging/MessageDrawer";
+import { MessageDrawer } from "@/app/pages/Messaging/MessageDrawer";
+import {
+  getConversations,
+  subscribeToConversations,
+} from "@/app/pages/Messaging/utils/messagingUtils";
 import {
   subscribe as notiSubscribe,
   getUnreadCount,
@@ -37,12 +41,17 @@ export function TopNav() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(() => getUnreadCount() > 0);
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(
+    () => getUnreadCount() > 0,
+  );
   const [isMsgOpen, setIsMsgOpen] = useState(false);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("Loading...");
   const [userBatch, setUserBatch] = useState<string>("");
-  const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(null);
+  const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(
+    null,
+  );
   const [msgTarget, setMsgTarget] = useState<{
     id: string | null;
     name?: string;
@@ -85,7 +94,7 @@ export function TopNav() {
         supabase
           .from("user_info")
           .select(
-            "name,batch,department,student_id,departments_lookup(department_name)"
+            "name,batch,department,student_id,departments_lookup(department_name)",
           )
           .eq("auth_uid", authUid)
           .maybeSingle(),
@@ -99,7 +108,10 @@ export function TopNav() {
       if (!mounted) return;
 
       if (infoRes.error || profileRes.error) {
-        console.error("Failed to load user profile:", infoRes.error || profileRes.error);
+        console.error(
+          "Failed to load user profile:",
+          infoRes.error || profileRes.error,
+        );
         setUserName("User");
         setUserBatch("");
         setUserProfilePicUrl(null);
@@ -107,12 +119,17 @@ export function TopNav() {
       }
 
       const profile = infoRes.data as unknown as UserProfileRow | null;
-      const profileExtras = profileRes.data as unknown as UserProfileExtrasRow | null;
+      const profileExtras =
+        profileRes.data as unknown as UserProfileExtrasRow | null;
 
       const displayName = profile?.name?.trim() || "User";
-      const deptName = profile?.departments_lookup?.department_name || profile?.department || "";
+      const deptName =
+        profile?.departments_lookup?.department_name ||
+        profile?.department ||
+        "";
       const batchValue = profile?.batch ?? null;
-      const displayBatch = deptName && batchValue ? `${deptName}-${batchValue}` : "";
+      const displayBatch =
+        deptName && batchValue ? `${deptName}-${batchValue}` : "";
 
       setUserName(displayName);
       setUserBatch(displayBatch);
@@ -144,12 +161,15 @@ export function TopNav() {
           filter: `auth_uid=eq.${authUid}`,
         },
         (payload) => {
-          const rec = payload.new as unknown as Record<string, unknown> | null | undefined;
+          const rec = payload.new as unknown as
+            | Record<string, unknown>
+            | null
+            | undefined;
           const nextUrl = rec?.profile_picture_url;
           if (typeof nextUrl === "string" || nextUrl === null) {
             setUserProfilePicUrl(nextUrl);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -167,8 +187,49 @@ export function TopNav() {
     };
 
     window.addEventListener("campus:profilePictureUpdated", handler);
-    return () => window.removeEventListener("campus:profilePictureUpdated", handler);
+    return () =>
+      window.removeEventListener("campus:profilePictureUpdated", handler);
   }, [authUid]);
+
+  // Track unread message count for the badge indicator
+  const refreshUnreadCount = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkUnread() {
+      try {
+        const convs = await getConversations();
+        if (cancelled) return;
+        const total = convs.reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
+        setUnreadMsgCount(total);
+      } catch {
+        // fail silently – don't block the navbar
+      }
+    }
+
+    refreshUnreadCount.current = checkUnread;
+
+    // Initial check
+    checkUnread();
+
+    // Re-check whenever a new message arrives via realtime
+    const unsubscribe = subscribeToConversations(() => {
+      checkUnread();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  // Refresh the count when the message drawer closes (user may have read messages)
+  useEffect(() => {
+    if (!isMsgOpen) {
+      refreshUnreadCount.current();
+    }
+  }, [isMsgOpen]);
 
   // Listen for global message open events
   useEffect(() => {
@@ -221,6 +282,12 @@ export function TopNav() {
             src={isMsgOpen ? messageIconFilled : messageIcon}
             className="lg:size-6 cursor-pointer"
           />
+
+          {unreadMsgCount > 0 && !isMsgOpen && (
+            <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-accent-lm text-primary-lm text-[10px] font-bold ring-2 ring-primary-lm">
+              {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -261,7 +328,7 @@ export function TopNav() {
 
       <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
 
-      <MessageDrawer 
+      <MessageDrawer
         open={isMsgOpen}
         onOpenChange={setIsMsgOpen}
         messageButtonRef={messageButtonRef}
@@ -287,21 +354,17 @@ function UserClickModal({
   userImg: string;
   onSignOut: () => void | Promise<void>;
 }) {
-    const modalRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(e.target as Node)
-      ) {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         onClose();
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
   return (
