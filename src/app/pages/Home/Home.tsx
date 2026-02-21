@@ -144,16 +144,7 @@ export function Home() {
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in justify-center items-start">
       <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-10 lg:w-[70vw]">
 
-        {/* Related Posts */}
-        <h2 className="text-lg font-bold">Related Posts</h2>
-        {!hasSkillsOrInterests && relatedPosts.length === 0 && (
-          <div className="text-gray-500">
-            Add skills and interests to see related posts here.
-          </div>
-        )}
-        {relatedPosts.length === 0 && hasSkillsOrInterests && (
-          <div className="text-gray-500">No related posts found</div>
-        )}
+        
         {relatedPosts.map((p) => (
           <Link key={p.post_id} to={buildUrl(p)} className="block hover:bg-gray-50 rounded-lg">
             <PostBody
