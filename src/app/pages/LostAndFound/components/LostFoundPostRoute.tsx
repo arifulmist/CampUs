@@ -8,7 +8,13 @@ import {
   Trash2 as LucideTrash2,
 } from "lucide-react";
 
-import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import {
+  CommentButton,
+  InterestedButton,
+  LikeButton,
+  ShareButton,
+} from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
 import {
@@ -21,7 +27,10 @@ import { supabase } from "@/supabase/supabaseClient";
 import { EditLostFoundModal } from "./EditLostFoundModal";
 import { DeleteLostFoundModal } from "./DeleteLostFoundModal";
 import ImagePreview from "@/components/ImagePreview";
-import { fetchAttachmentUrlsByPostId, normalizeAttachmentUrls } from "@/utils/postAttachments";
+import {
+  fetchAttachmentUrlsByPostId,
+  normalizeAttachmentUrls,
+} from "@/utils/postAttachments";
 
 class LocalErrorBoundary extends React.Component<
   { children?: React.ReactNode },
@@ -41,7 +50,9 @@ class LocalErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="bg-primary-lm border border-stroke-grey rounded-lg p-4">
-          <p className="text-text-lighter-lm">Something went wrong loading this panel.</p>
+          <p className="text-text-lighter-lm">
+            Something went wrong loading this panel.
+          </p>
         </div>
       );
     }
@@ -173,7 +184,9 @@ export function LostFoundPostRoute({
   }, [detail?.authorId, currentUserId]);
 
   const imageUrls = useMemo(() => {
-    const fromDetail = Array.isArray(detail?.attachmentUrls) ? detail?.attachmentUrls : [];
+    const fromDetail = Array.isArray(detail?.attachmentUrls)
+      ? detail?.attachmentUrls
+      : [];
     if (fromDetail && fromDetail.length) return fromDetail;
     return detail?.imageUrl ? [detail.imageUrl] : [];
   }, [detail?.attachmentUrls, detail?.imageUrl]);
@@ -204,12 +217,16 @@ export function LostFoundPostRoute({
         const [allRes, lfResTry1] = await Promise.all([
           supabase
             .from("all_posts")
-            .select("post_id,title,description,author_id,like_count,comment_count,created_at")
+            .select(
+              "post_id,title,description,author_id,like_count,comment_count,created_at",
+            )
             .eq("post_id", postId)
             .maybeSingle(),
           supabase
             .from("lost_and_found_posts")
-            .select("post_id,date_lost_or_found,time_lost_or_found,img_url,category")
+            .select(
+              "post_id,date_lost_or_found,time_lost_or_found,img_url,category",
+            )
             .eq("post_id", postId)
             .maybeSingle(),
         ]);
@@ -227,7 +244,10 @@ export function LostFoundPostRoute({
             .eq("post_id", postId)
             .maybeSingle();
           if (lfResTry2.error) {
-            console.warn("LostFoundPostRoute: failed loading lost_and_found_posts", lfResTry1.error);
+            console.warn(
+              "LostFoundPostRoute: failed loading lost_and_found_posts",
+              lfResTry1.error,
+            );
             lf = null;
           } else {
             lf = (lfResTry2.data as unknown as LFRow | null) ?? null;
@@ -244,46 +264,68 @@ export function LostFoundPostRoute({
 
         const authorId: string | null = all.author_id ?? null;
 
-        const [authorInfoRes, authorProfileRes, departmentsRes] = await Promise.all([
-          authorId
-            ? supabase
-                .from("user_info")
-                .select("auth_uid,name,batch,department,student_id,departments_lookup(department_name)")
-                .eq("auth_uid", authorId)
-                .maybeSingle()
-            : Promise.resolve({ data: null as UserInfoRow | null, error: null as unknown }),
-          authorId
-            ? supabase
-                .from("user_profile")
-                .select("profile_picture_url")
-                .eq("auth_uid", authorId)
-                .maybeSingle()
-            : Promise.resolve({ data: null as UserProfileRow | null, error: null as unknown }),
-          supabase.from("departments_lookup").select("dept_id, department_name"),
-        ]);
+        const [authorInfoRes, authorProfileRes, departmentsRes] =
+          await Promise.all([
+            authorId
+              ? supabase
+                  .from("user_info")
+                  .select(
+                    "auth_uid,name,batch,department,student_id,departments_lookup(department_name)",
+                  )
+                  .eq("auth_uid", authorId)
+                  .maybeSingle()
+              : Promise.resolve({
+                  data: null as UserInfoRow | null,
+                  error: null as unknown,
+                }),
+            authorId
+              ? supabase
+                  .from("user_profile")
+                  .select("profile_picture_url")
+                  .eq("auth_uid", authorId)
+                  .maybeSingle()
+              : Promise.resolve({
+                  data: null as UserProfileRow | null,
+                  error: null as unknown,
+                }),
+            supabase
+              .from("departments_lookup")
+              .select("dept_id, department_name"),
+          ]);
 
         if (authorInfoRes.error) throw authorInfoRes.error;
         if (authorProfileRes.error) throw authorProfileRes.error;
         if (departmentsRes.error) throw departmentsRes.error;
 
-        const userInfo = (authorInfoRes.data as unknown as UserInfoRow | null) ?? null;
-        const departments = (departmentsRes.data as unknown as DepartmentRow[] | null) ?? [];
+        const userInfo =
+          (authorInfoRes.data as unknown as UserInfoRow | null) ?? null;
+        const departments =
+          (departmentsRes.data as unknown as DepartmentRow[] | null) ?? [];
 
         const deptName =
           userInfo?.departments_lookup?.department_name ??
           (userInfo?.department
-            ? departments.find((d) => d.dept_id === userInfo.department)?.department_name ?? null
+            ? (departments.find((d) => d.dept_id === userInfo.department)
+                ?.department_name ?? null)
             : null);
 
         const authorName = userInfo?.name ?? "Unknown";
         const batch = userInfo?.batch;
         const deptPart = (deptName ?? userInfo?.department ?? "").trim();
-        const batchPart = batch !== null && batch !== undefined ? String(batch) : "";
-        const authorDeptBatch = [deptPart, batchPart].filter((x) => x).join("-");
+        const batchPart =
+          batch !== null && batch !== undefined ? String(batch) : "";
+        const authorDeptBatch = [deptPart, batchPart]
+          .filter((x) => x)
+          .join("-");
 
-        const authorProfile = (authorProfileRes.data as unknown as UserProfileRow | null) ?? null;
+        const authorProfile =
+          (authorProfileRes.data as unknown as UserProfileRow | null) ?? null;
 
-        const cat = (lf?.category ? String(lf.category) : "lost").toLowerCase() === "found" ? "found" : "lost";
+        const cat =
+          (lf?.category ? String(lf.category) : "lost").toLowerCase() ===
+          "found"
+            ? "found"
+            : "lost";
 
         const attachmentUrls = normalizeAttachmentUrls([
           ...(typeof lf?.img_url === "string" ? [lf.img_url] : []),
@@ -346,13 +388,16 @@ export function LostFoundPostRoute({
     return (
       <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
         <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-6 w-full">
-          <p className="text-text-lighter-lm">Post not found or you do not have access to view it.</p>
+          <p className="text-text-lighter-lm">
+            Post not found or you do not have access to view it.
+          </p>
         </div>
       </div>
     );
   }
 
-  const categoryLabel = detail.category.charAt(0).toUpperCase() + detail.category.slice(1);
+  const categoryLabel =
+    detail.category.charAt(0).toUpperCase() + detail.category.slice(1);
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
@@ -404,7 +449,9 @@ export function LostFoundPostRoute({
         ) : null}
       </div>
 
-      <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
+      <h3 className="text-text-lm lg:font-extrabold lg:font-header">
+        {detail.title}
+      </h3>
 
       {(detail.dateLostOrFound || detail.timeLostOrFound) && (
         <div className="mt-2">
@@ -434,12 +481,18 @@ export function LostFoundPostRoute({
         />
       </div>
 
-      <p className="mt-2 text-text-lm whitespace-pre-wrap">{detail.description}</p>
+      <p className="mt-2 text-text-lm whitespace-pre-wrap">
+        {detail.description}
+      </p>
 
       {imageUrls.length > 0 ? (
         imageUrls.length === 1 ? (
           <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-            <button type="button" onClick={() => openPreview(imageUrls[0], undefined)} className="w-full h-full block">
+            <button
+              type="button"
+              onClick={() => openPreview(imageUrls[0], undefined)}
+              className="w-full h-full block"
+            >
               <img
                 src={imageUrls[0]}
                 alt="lost and found post"
@@ -451,9 +504,20 @@ export function LostFoundPostRoute({
           <div className="lg:w-full lg:mt-4">
             <div className="grid grid-cols-2 gap-2">
               {imageUrls.map((src, idx) => (
-                <div key={src + idx} className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm">
-                  <button type="button" onClick={() => openPreview(src, undefined)} className="w-full h-full block">
-                    <img src={src} alt="lost and found post" className="w-full lg:h-80 object-cover" />
+                <div
+                  key={src + idx}
+                  className="w-full overflow-hidden rounded-lg border border-stroke-grey bg-primary-lm"
+                >
+                  <button
+                    type="button"
+                    onClick={() => openPreview(src, undefined)}
+                    className="w-full h-full block"
+                  >
+                    <img
+                      src={src}
+                      alt="lost and found post"
+                      className="w-full lg:h-80 object-cover"
+                    />
                   </button>
                 </div>
               ))}
@@ -463,13 +527,27 @@ export function LostFoundPostRoute({
       ) : null}
 
       {previewOpen && previewSrc ? (
-        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
+        <ImagePreview
+          src={previewSrc}
+          filename={previewName ?? undefined}
+          onClose={closePreview}
+        />
       ) : null}
+
+      {detail.postId && (detail.likeCount ?? 0) > 0 && (
+        <LikedByText postId={detail.postId} likeCount={detail.likeCount ?? 0} />
+      )}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
-          <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
-          <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
+          <LikeButton
+            postId={detail.postId}
+            initialLikeCount={detail.likeCount}
+          />
+          <CommentButton
+            postId={detail.postId}
+            initialCommentCount={detail.commentCount}
+          />
           <ShareButton />
         </div>
         <div>

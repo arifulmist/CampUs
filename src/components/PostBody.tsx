@@ -1,5 +1,12 @@
+import { useState } from "react";
 import { UserInfo } from "./UserInfo";
-import { CommentButton, InterestedButton, LikeButton, ShareButton } from "./PostButtons";
+import {
+  CommentButton,
+  InterestedButton,
+  LikeButton,
+  ShareButton,
+} from "./PostButtons";
+import { LikedByText } from "./LikedByText";
 import { getCategoryClass } from "@/utils/categoryColors";
 import {
   formatDateToLocale,
@@ -46,7 +53,9 @@ interface PostContent {
 
 function normalizeImages(content: { img?: string; imgs?: string[] }): string[] {
   const fromArray = Array.isArray(content.imgs) ? content.imgs : [];
-  const out = [...fromArray, content.img].filter((v): v is string => typeof v === "string");
+  const out = [...fromArray, content.img].filter(
+    (v): v is string => typeof v === "string",
+  );
   const trimmed = out.map((v) => v.trim()).filter((v) => v.length > 0);
 
   const seen = new Set<string>();
@@ -78,8 +87,12 @@ export function PostBody({
   eventEndDate,
   location,
 }: PostContent) {
-  const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : "";
-  const categoryClasses = category ? getCategoryClass(category, categorySet) : "";
+  const categoryLabel = category
+    ? category.charAt(0).toUpperCase() + category.slice(1)
+    : "";
+  const categoryClasses = category
+    ? getCategoryClass(category, categorySet)
+    : "";
 
   const commentNavigateTo =
     postId && categorySet === "events"
@@ -90,61 +103,92 @@ export function PostBody({
           ? `/lost-and-found/${postId}`
           : undefined;
 
+  const [liveLikeCount, setLiveLikeCount] = useState(
+    typeof initialLikeCount === "number" ? initialLikeCount : 0,
+  );
+
   const images = normalizeImages(content);
-  const shouldUseFeedCollage = (categorySet === "events" || categorySet === "lostfound") && images.length > 1;
+  const shouldUseFeedCollage =
+    (categorySet === "events" || categorySet === "lostfound") &&
+    images.length > 1;
 
-  const feedCollage = shouldUseFeedCollage ? (() => {
-    const total = images.length;
-    const shown = images.slice(0, 3);
-    const remaining = Math.max(0, total - 3);
+  const feedCollage = shouldUseFeedCollage
+    ? (() => {
+        const total = images.length;
+        const shown = images.slice(0, 3);
+        const remaining = Math.max(0, total - 3);
 
-    // Layout rules (feed):
-    // - show up to 3 images
-    // - if >3, show a 4th grey tile with +N
-    if (total >= 4) {
-      return (
-        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full">
-            {shown.map((src, idx) => (
-              <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
-                <img src={src} alt="post attachment" className="w-full h-full object-cover" />
+        // Layout rules (feed):
+        // - show up to 3 images
+        // - if >3, show a 4th grey tile with +N
+        if (total >= 4) {
+          return (
+            <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+              <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full">
+                {shown.map((src, idx) => (
+                  <div
+                    key={src + idx}
+                    className="w-full h-full overflow-hidden rounded-lg"
+                  >
+                    <img
+                      src={src}
+                      alt="post attachment"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+                <div className="w-full h-full rounded-lg bg-stroke-grey flex items-center justify-center">
+                  <p className="text-text-lm font-semibold text-3xl">
+                    +{remaining}
+                  </p>
+                </div>
               </div>
-            ))}
-            <div className="w-full h-full rounded-lg bg-stroke-grey flex items-center justify-center">
-              <p className="text-text-lm font-semibold text-3xl">+{remaining}</p>
+            </div>
+          );
+        }
+
+        if (total === 3) {
+          return (
+            <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+              <div className="grid grid-cols-3 gap-2 w-full h-full">
+                {shown.map((src, idx) => (
+                  <div
+                    key={src + idx}
+                    className="w-full h-full overflow-hidden rounded-lg"
+                  >
+                    <img
+                      src={src}
+                      alt="post attachment"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        // total === 2
+        return (
+          <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
+            <div className="grid grid-cols-2 gap-2 w-full h-full">
+              {shown.map((src, idx) => (
+                <div
+                  key={src + idx}
+                  className="w-full h-full overflow-hidden rounded-lg"
+                >
+                  <img
+                    src={src}
+                    alt="post attachment"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      );
-    }
-
-    if (total === 3) {
-      return (
-        <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <div className="grid grid-cols-3 gap-2 w-full h-full">
-            {shown.map((src, idx) => (
-              <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
-                <img src={src} alt="post attachment" className="w-full h-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // total === 2
-    return (
-      <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-        <div className="grid grid-cols-2 gap-2 w-full h-full">
-          {shown.map((src, idx) => (
-            <div key={src + idx} className="w-full h-full overflow-hidden rounded-lg">
-              <img src={src} alt="post attachment" className="w-full h-full object-cover" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  })() : null;
+        );
+      })()
+    : null;
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
@@ -166,24 +210,31 @@ export function PostBody({
       {/* Title */}
       <h3 className="text-text-lm lg:font-bold lg:font-header">{title}</h3>
 
-      {(categorySet === "lostfound" && (lostFoundDate || lostFoundTime)) && (
+      {categorySet === "lostfound" && (lostFoundDate || lostFoundTime) && (
         <div>
           {lostFoundDate ? (
             <p className="text-text-lm font-semibold text-md">
-              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateToLocale(lostFoundDate, "en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}`}
+              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateToLocale(
+                lostFoundDate,
+                "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                },
+              )}`}
             </p>
           ) : null}
           {lostFoundTime ? (
             <p className="text-text-lm font-semibold text-md mt-1">
-              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTime12hFromTimeString(lostFoundTime, {
-                spaceBeforePeriod: true,
-                periodCase: "upper",
-                convertOffsetToLocal: false,
-              })}`}
+              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTime12hFromTimeString(
+                lostFoundTime,
+                {
+                  spaceBeforePeriod: true,
+                  periodCase: "upper",
+                  convertOffsetToLocal: false,
+                },
+              )}`}
             </p>
           ) : null}
         </div>
@@ -193,20 +244,24 @@ export function PostBody({
         <div>
           {(eventStartDate || eventEndDate) && (
             <p className="text-accent-lm font-semibold text-md">
-              {eventStartDate && eventEndDate && isSameDay(eventStartDate, eventEndDate)
-                ? formatEventDateDisplay(eventStartDate)
-                : (
-                    <>
-                      {eventStartDate ? formatEventDateDisplay(eventStartDate) : ""}
-                      {eventStartDate && eventEndDate ? " \u2014 " : ""}
-                      {eventEndDate ? formatEventDateDisplay(eventEndDate) : ""}
-                    </>
-                  )}
+              {eventStartDate &&
+              eventEndDate &&
+              isSameDay(eventStartDate, eventEndDate) ? (
+                formatEventDateDisplay(eventStartDate)
+              ) : (
+                <>
+                  {eventStartDate ? formatEventDateDisplay(eventStartDate) : ""}
+                  {eventStartDate && eventEndDate ? " \u2014 " : ""}
+                  {eventEndDate ? formatEventDateDisplay(eventEndDate) : ""}
+                </>
+              )}
             </p>
           )}
 
           {location ? (
-            <p className="text-text-lm font-semibold text-md mt-1">{location}</p>
+            <p className="text-text-lm font-semibold text-md mt-1">
+              {location}
+            </p>
           ) : null}
         </div>
       )}
@@ -231,8 +286,8 @@ export function PostBody({
           userName={user.name}
           userBatch={user.batch}
           userImg={user.imgURL}
-            postDate={formattedDate}
-            userId={user.userId}
+          postDate={formattedDate}
+          userId={user.userId}
         />
       </div>
 
@@ -251,16 +306,32 @@ export function PostBody({
         </div>
       ) : null}
 
+      {/* Liked-by text */}
+      {postId && liveLikeCount > 0 && (
+        <LikedByText postId={postId} likeCount={liveLikeCount} />
+      )}
+
       {/* Buttons */}
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
-          <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-          <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={commentNavigateTo} />
+          <LikeButton
+            postId={postId}
+            initialLikeCount={initialLikeCount}
+            onLikeCountChange={setLiveLikeCount}
+          />
+          <CommentButton
+            postId={postId}
+            initialCommentCount={initialCommentCount}
+            navigateTo={commentNavigateTo}
+          />
           <ShareButton postId={postId} categorySet={categorySet} />
         </div>
-        <div>{postId && categorySet === "events" ? <InterestedButton postId={postId} /> : null}</div>
+        <div>
+          {postId && categorySet === "events" ? (
+            <InterestedButton postId={postId} />
+          ) : null}
+        </div>
       </div>
     </div>
   );
 }
-

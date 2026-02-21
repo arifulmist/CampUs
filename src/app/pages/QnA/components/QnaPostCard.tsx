@@ -1,4 +1,9 @@
-import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import {
+  CommentButton,
+  LikeButton,
+  ShareButton,
+} from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 import { UserInfo } from "@/components/UserInfo";
 import moreImages from "@/assets/images/more_images.png";
 
@@ -49,16 +54,18 @@ export function QnAPostCard({
   postDate,
   initialLikeCount,
   initialCommentCount,
-}: PostDetail)
-{
-  const urls = Array.isArray(attachmentUrls) && attachmentUrls.length
-    ? attachmentUrls
-    : (attachmentUrl ? [attachmentUrl] : []);
+}: PostDetail) {
+  const urls =
+    Array.isArray(attachmentUrls) && attachmentUrls.length
+      ? attachmentUrls
+      : attachmentUrl
+        ? [attachmentUrl]
+        : [];
 
   const showMoreTile = urls.length > 1;
   const remaining = Math.max(0, urls.length - 1);
 
-  return(
+  return (
     <div className="flex flex-col lg:gap-4 bg-secondary-lm border border-stroke-grey hover:bg-hover-lm hover:border-stroke-peach transition lg:rounded-xl lg:p-8 group">
       {/* <div className="flex lg:gap-6 justify-between items-start"> */}
         <div className="flex flex-col lg:gap-4 min-w-0 flex-1">
@@ -85,28 +92,46 @@ export function QnAPostCard({
               <p className="text-text-lm wrap-break-word">{postPreview}</p>
             </div>
 
-            {urls.length > 0 ? (
-              <div className="flex gap-2 shrink-0">
-                <div className="size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
-                  <img src={urls[0]} alt="Post attachment" className="w-full h-full object-cover" />
-                </div>
-
-                {showMoreTile ? (
-                  <div className="relative size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
-                    <img src={moreImages} alt="More images" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-primary-lm font-semibold text-lg">+{remaining}</p>
-                    </div>
-                  </div>
-                ) : null}
+          {urls.length > 0 ? (
+            <div className="flex gap-2 shrink-0">
+              <div className="size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
+                <img
+                  src={urls[0]}
+                  alt="Post attachment"
+                  className="w-full h-full object-cover"
+                />
               </div>
-            ) : null}
-          </div>
+
+              {showMoreTile ? (
+                <div className="relative size-25 rounded-xl overflow-hidden border border-stroke-grey bg-primary-lm">
+                  <img
+                    src={moreImages}
+                    alt="More images"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-primary-lm font-semibold text-lg">
+                      +{remaining}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+      </div>
+
+      {postId && (initialLikeCount ?? 0) > 0 && (
+        <LikedByText postId={postId} likeCount={initialLikeCount ?? 0} />
+      )}
 
       <div className="lg:flex lg:gap-3 lg:justify-start lg:mt-2">
         <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-        <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={`/qna/${postId}`} />
+        <CommentButton
+          postId={postId}
+          initialCommentCount={initialCommentCount}
+          navigateTo={`/qna/${postId}`}
+        />
         <ShareButton postId={postId} categorySet={"qna"}></ShareButton>
       </div>
     </div>
@@ -126,7 +151,12 @@ export function QnaPostCard({
   onAddInlineComment: (text: string) => void;
 }) {
   return (
-    <div role="button" tabIndex={0} onClick={onOpenDetail} className="cursor-pointer">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpenDetail}
+      className="cursor-pointer"
+    >
       <QnAPostCard
         postId={post.id}
         postTag={post.category}

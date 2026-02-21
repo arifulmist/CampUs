@@ -4,9 +4,19 @@ import { supabase } from "@/supabase/supabaseClient";
 import { getCategoryClass } from "@/utils/categoryColors";
 import { formatRelativeTime } from "@/utils/datetime";
 import { UserInfo } from "@/components/UserInfo";
-import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import {
+  CommentButton,
+  InterestedButton,
+  LikeButton,
+  ShareButton,
+} from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 import { toast } from "react-hot-toast";
-import { LucideEllipsisVertical, LucidePencil, LucideTrash2 } from "lucide-react";
+import {
+  LucideEllipsisVertical,
+  LucidePencil,
+  LucideTrash2,
+} from "lucide-react";
 
 import { EditCollabModal } from "./EditCollabModal";
 import { DeleteCollabModal } from "./DeleteCollabModal";
@@ -127,10 +137,16 @@ export function CollabPostRoute({
           supabase.auth.getUser(),
           supabase
             .from("all_posts")
-            .select("post_id,type,title,description,author_id,like_count,comment_count,created_at")
+            .select(
+              "post_id,type,title,description,author_id,like_count,comment_count,created_at",
+            )
             .eq("post_id", postId)
             .maybeSingle(),
-          supabase.from("collab_posts").select("post_id,category_id").eq("post_id", postId).maybeSingle(),
+          supabase
+            .from("collab_posts")
+            .select("post_id,category_id")
+            .eq("post_id", postId)
+            .maybeSingle(),
           supabase.from("post_tags").select("skill_id").eq("post_id", postId),
         ]);
 
@@ -144,14 +160,16 @@ export function CollabPostRoute({
         if (tagRes.error) throw tagRes.error;
 
         const postRow = (postRes.data as unknown as AllPostRow | null) ?? null;
-        const collabRow = (collabRes.data as unknown as CollabPostRow | null) ?? null;
+        const collabRow =
+          (collabRes.data as unknown as CollabPostRow | null) ?? null;
 
         if (!postRow || postRow.type !== "collab" || !collabRow) {
           setDetail(null);
           return;
         }
 
-        const authorId = typeof postRow.author_id === "string" ? postRow.author_id : null;
+        const authorId =
+          typeof postRow.author_id === "string" ? postRow.author_id : null;
 
         const [categoryRes, skillsRes] = await Promise.all([
           supabase.from("collab_category").select("category_id,category"),
@@ -162,8 +180,10 @@ export function CollabPostRoute({
         if (skillsRes.error) throw skillsRes.error;
 
         const categoryById = new Map<string, CollabCategory>();
-        for (const row of (categoryRes.data ?? []) as unknown as CategoryRow[]) {
-          if (row?.category_id && row?.category) categoryById.set(String(row.category_id), row.category);
+        for (const row of (categoryRes.data ??
+          []) as unknown as CategoryRow[]) {
+          if (row?.category_id && row?.category)
+            categoryById.set(String(row.category_id), row.category);
         }
 
         const category = categoryById.get(String(collabRow.category_id));
@@ -179,41 +199,65 @@ export function CollabPostRoute({
           const [userInfoRes, profileRes] = await Promise.all([
             supabase
               .from("user_info")
-              .select("auth_uid,name,batch,department,student_id,departments_lookup(department_name)")
+              .select(
+                "auth_uid,name,batch,department,student_id,departments_lookup(department_name)",
+              )
               .eq("auth_uid", authorId)
               .maybeSingle(),
-            supabase.from("user_profile").select("profile_picture_url").eq("auth_uid", authorId).maybeSingle(),
+            supabase
+              .from("user_profile")
+              .select("profile_picture_url")
+              .eq("auth_uid", authorId)
+              .maybeSingle(),
           ]);
           if (userInfoRes.error) throw userInfoRes.error;
           if (profileRes.error) throw profileRes.error;
-          userInfo = (userInfoRes.data as unknown as UserInfoRow | null) ?? null;
-          profile = (profileRes.data as unknown as UserProfileRow | null) ?? null;
+          userInfo =
+            (userInfoRes.data as unknown as UserInfoRow | null) ?? null;
+          profile =
+            (profileRes.data as unknown as UserProfileRow | null) ?? null;
         }
 
         const deptName =
-          (typeof userInfo?.departments_lookup?.department_name === "string" && userInfo.departments_lookup.department_name) ||
+          (typeof userInfo?.departments_lookup?.department_name === "string" &&
+            userInfo.departments_lookup.department_name) ||
           (typeof userInfo?.department === "string" ? userInfo.department : "");
 
         const batchVal = userInfo?.batch;
-        const batch = typeof batchVal === "number" ? String(batchVal) : typeof batchVal === "string" ? batchVal : "";
-        const deptBatch = deptName && batch ? `${deptName}-${batch}` : deptName || "";
+        const batch =
+          typeof batchVal === "number"
+            ? String(batchVal)
+            : typeof batchVal === "string"
+              ? batchVal
+              : "";
+        const deptBatch =
+          deptName && batch ? `${deptName}-${batch}` : deptName || "";
 
         const skillNameById = new Map<number, string>();
         for (const s of (skillsRes.data ?? []) as unknown as SkillRow[]) {
-          if (typeof s?.id === "number" && typeof s?.skill === "string") skillNameById.set(s.id, s.skill);
+          if (typeof s?.id === "number" && typeof s?.skill === "string")
+            skillNameById.set(s.id, s.skill);
         }
 
         const tagRows = (tagRes.data ?? []) as unknown as PostTagRow[];
         const tagObjects = tagRows
           .map((t) => ({
             skill_id: typeof t.skill_id === "number" ? t.skill_id : -1,
-            name: typeof t.skill_id === "number" ? skillNameById.get(t.skill_id) ?? "" : "",
+            name:
+              typeof t.skill_id === "number"
+                ? (skillNameById.get(t.skill_id) ?? "")
+                : "",
           }))
           .filter((t) => t.skill_id > 0 && t.name.trim());
 
-        const likeCount = typeof postRow.like_count === "number" ? postRow.like_count : Number(postRow.like_count ?? 0);
+        const likeCount =
+          typeof postRow.like_count === "number"
+            ? postRow.like_count
+            : Number(postRow.like_count ?? 0);
         const commentCount =
-          typeof postRow.comment_count === "number" ? postRow.comment_count : Number(postRow.comment_count ?? 0);
+          typeof postRow.comment_count === "number"
+            ? postRow.comment_count
+            : Number(postRow.comment_count ?? 0);
 
         setDetail({
           postId,
@@ -221,10 +265,20 @@ export function CollabPostRoute({
           category,
           title: String(postRow.title ?? ""),
           description: String(postRow.description ?? ""),
-          createdAt: (typeof postRow.created_at === "string" || postRow.created_at === null) ? (postRow.created_at as string | null) : null,
+          createdAt:
+            typeof postRow.created_at === "string" ||
+            postRow.created_at === null
+              ? (postRow.created_at as string | null)
+              : null,
           authorId,
-          authorStudentId: typeof userInfo?.student_id === "string" ? userInfo.student_id : null,
-          authorName: typeof userInfo?.name === "string" && userInfo.name.trim() ? userInfo.name : "Unknown",
+          authorStudentId:
+            typeof userInfo?.student_id === "string"
+              ? userInfo.student_id
+              : null,
+          authorName:
+            typeof userInfo?.name === "string" && userInfo.name.trim()
+              ? userInfo.name
+              : "Unknown",
           authorDeptBatch: deptBatch,
           authorProfilePictureUrl: profile?.profile_picture_url ?? null,
           tags: tagObjects.map((t) => t.name),
@@ -275,7 +329,7 @@ export function CollabPostRoute({
         <p
           className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(
             detail.category,
-            "collab"
+            "collab",
           )}`}
         >
           {detail.category}
@@ -322,7 +376,9 @@ export function CollabPostRoute({
         ) : null}
       </div>
 
-      <h3 className="text-text-lm lg:font-extrabold lg:font-header">{detail.title}</h3>
+      <h3 className="text-text-lm lg:font-extrabold lg:font-header">
+        {detail.title}
+      </h3>
 
       {detail.tags.length > 0 ? (
         <div className="lg:flex lg:gap-2 lg:flex-wrap lg:mt-2">
@@ -348,12 +404,24 @@ export function CollabPostRoute({
         />
       </div>
 
-      <p className="mt-2 text-text-lm whitespace-pre-wrap">{detail.description}</p>
+      <p className="mt-2 text-text-lm whitespace-pre-wrap">
+        {detail.description}
+      </p>
+
+      {detail.postId && (detail.likeCount ?? 0) > 0 && (
+        <LikedByText postId={detail.postId} likeCount={detail.likeCount ?? 0} />
+      )}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
-          <LikeButton postId={detail.postId} initialLikeCount={detail.likeCount} />
-          <CommentButton postId={detail.postId} initialCommentCount={detail.commentCount} />
+          <LikeButton
+            postId={detail.postId}
+            initialLikeCount={detail.likeCount}
+          />
+          <CommentButton
+            postId={detail.postId}
+            initialCommentCount={detail.commentCount}
+          />
           <ShareButton />
         </div>
         <div>
