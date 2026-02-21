@@ -1,25 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Get these from your Supabase project settings -> API
-const supabaseUrl = 'https://jbwgefxvczlimjemgslt.supabase.co'
-const supabaseAnonKey = 'sb_publishable_Bxj3qsK6iictW40ISesQjw_NYAMLqam'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY as string
 
-// Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
 export async function callEdgeFunction(functionName: string, body: any) {
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseAnonKey}`
+        'Authorization': `Bearer ${supabaseKey}`
       },
       body: JSON.stringify(body)
-    });
-    
-    return await response.json();
+    })
+
+    return await response.json()
   } catch (error) {
-    console.error('Error calling edge function:', error);
-    return { error: 'Failed to call function' };
+    console.error('Error calling edge function:', error)
+    return { error: 'Failed to call function' }
   }
 }
