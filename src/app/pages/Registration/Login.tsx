@@ -10,6 +10,7 @@ import {
   sendOTPEmail,
 } from "./backend/otpService";
 import { LucideXCircle } from "lucide-react";
+import { useEnterToNextField } from "@/hooks/useEnterToNextField";
 
 export function Login() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [devOTP, setDevOTP] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const handleEnterToNext = useEnterToNextField();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +89,7 @@ export function Login() {
 
   return (
     <SignupLoginBox title="Login">
-      <form onSubmit={handleSubmit} className="lg:space-y-4 lg:max-w-xl">
+      <form onSubmit={handleSubmit} onKeyDown={handleEnterToNext} className="lg:space-y-4 lg:max-w-xl">
         {/* Error Message */}
         {error && (
           <div className="lg:mb-4 lg:px-3 lg:py-1 bg-accent-lm/15 lg:rounded-lg lg:flex lg:gap-1 lg:items-center">

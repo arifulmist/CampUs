@@ -7,6 +7,7 @@ import { InputField } from "../../../components/InputField";
 import { ButtonCTA } from "../../../components/ButtonCTA";
 import { supabase } from "@/supabase/supabaseClient";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { useEnterToNextField } from "@/hooks/useEnterToNextField";
 
 const LEVELS = ["1", "2", "3", "4"];
 
@@ -43,6 +44,7 @@ export function Signup() {
   const [deptOptions, setDeptOptions] = useState<DepartmentOption[]>([]);
   const [deptOptionsLoading, setDeptOptionsLoading] = useState(false);
   const [deptOptionsError, setDeptOptionsError] = useState<string | null>(null);
+  const handleEnterToNext = useEnterToNextField();
 
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -186,6 +188,22 @@ export function Signup() {
 
     if (name === "studentId") {
       setStudentIdValid(isValidStudentId(value));
+
+      // Auto-select department from digits at index 4-5 of the student ID
+      if (value.length >= 6) {
+        const extractedDeptId = value.substring(4, 6);
+        const matchingDept = deptOptions.find(
+          (d) => d.dept_id === extractedDeptId,
+        );
+        if (matchingDept) {
+          setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+            dept: matchingDept.dept_id,
+          }));
+          return; // already updated formData above
+        }
+      }
     }
 
     // Clear error when user starts typing
@@ -391,7 +409,7 @@ export function Signup() {
         </>
       )}
 
-      <form onSubmit={handleSubmit} className="">
+      <form onSubmit={handleSubmit} onKeyDown={handleEnterToNext} className="">
         {signupError && (
           <div className="lg:mb-4 lg:p-3 bg-red-50 lg:border border-red-200 lg:rounded-lg">
             <p className="text-sm text-red-700">{signupError}</p>
