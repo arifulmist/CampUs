@@ -282,7 +282,7 @@ export function TopNav() {
             src={isMsgOpen ? messageIconFilled : messageIcon}
             className="lg:size-6 cursor-pointer"
           />
-          
+
           {unreadMsgCount > 0 && !isMsgOpen && (
             <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-accent-lm text-primary-lm text-[10px] font-bold ring-2 ring-primary-lm">
               {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
