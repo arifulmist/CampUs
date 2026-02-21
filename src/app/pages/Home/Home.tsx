@@ -604,9 +604,9 @@ export function Home() {
           </div>
         ) : null}
 
-        {!relatedLoading && !hasSkillsOrInterests && authUid ? (
+        {/* {!relatedLoading && !hasSkillsOrInterests && authUid ? (
           <div className="text-text-lighter-lm">Add skills/interests in your profile to see relevant posts here.</div>
-        ) : null}
+        ) : null} */}
 
         {!relatedLoading
           ? relatedPosts.map((p) => {
