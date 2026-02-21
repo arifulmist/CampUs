@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router";
-import { SearchAnything } from "./SearchAnything";
+import { SearchAnything } from "../app/pages/Search/SearchAnything";
 export function BotNav() {
   return (
     <nav className="bg-primary-lm border-t-0 border-b border-stroke-grey lg:flex lg:items-center lg:justify-center lg:gap-2 lg:h-14">

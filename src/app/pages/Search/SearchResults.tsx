@@ -655,22 +655,29 @@ export default function SearchResults() {
       {!loading && tab === "people" && (
         <div className="mt-4 space-y-2">
           {people.length === 0 && <div>No people found</div>}
-          {people.map((u) => (
-            <div
-              key={u.auth_uid}
-              className="block"
-            >
-              <div className="lg:p-2 hover:bg-hover-lm transition lg:rounded-lg">
-                <UserInfo
-                  userName={u.name}
-                  userBatch={deptBatchLabel(u.department, u.batch)}
-                  userId={u.auth_uid}
-                  studentId={u.student_id ?? undefined}
-                />
+          {people.map((u) => {
+            const targetId = (u.student_id ?? "").trim() || u.auth_uid;
+
+            return (
+              <div key={u.auth_uid} className="block">
+                <button
+                  type="button"
+                  className="block w-full text-left cursor-pointer"
+                  onClick={() => navigate(`/profile/${encodeURIComponent(targetId)}`)}
+                >
+                  <div className="lg:p-2 hover:bg-hover-lm transition lg:rounded-lg w-full">
+                    <UserInfo
+                      userName={u.name}
+                      userBatch={deptBatchLabel(u.department, u.batch)}
+                      userId={u.auth_uid}
+                      studentId={u.student_id ?? undefined}
+                    />
+                  </div>
+                </button>
+                <hr className="border-stroke-grey lg:mt-2"></hr>
               </div>
-              <hr className="border-stroke-grey lg:mt-2"></hr>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

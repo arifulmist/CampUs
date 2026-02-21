@@ -15,11 +15,11 @@ import { useUserProfileContext } from "./components/UserProfileContext";
 import { Loading } from "../Fallback/Loading";
 
 function UserProfileMainColumn() {
-  const { viewedAuthUid } = useUserProfileContext();
+  const { viewedAuthUid, canEdit } = useUserProfileContext();
   const key = viewedAuthUid ?? "none";
 
   return (
-    <div className="flex flex-col lg:gap-5 lg:w-[70vw]">
+    <div className={`flex flex-col lg:gap-5 ${canEdit ? "lg:w-[70vw]" : "lg:w-full"}`}>
       <ProfileSection key={`profile-${key}`} />
       <SkillsSection key={`skills-${key}`} />
       <InterestsSection key={`interests-${key}`} />
@@ -34,7 +34,7 @@ function UserProfileSidebar({ interestedPosts }: { interestedPosts: InterestedIt
   return (
     <div className="flex flex-col lg:gap-5 lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
       {canEdit ? <UpcomingEvents /> : null}
-      <InterestedPosts items={interestedPosts} />
+      {canEdit ? <InterestedPosts items={interestedPosts} /> : null}
     </div>
   );
 }
@@ -279,7 +279,7 @@ export function UserProfile() {
 }
 
 function UserProfileBody({ interestedPosts }: { interestedPosts: InterestedItem[] }) {
-  const { profileLoading } = useUserProfileContext();
+  const { profileLoading, canEdit } = useUserProfileContext();
 
   if (profileLoading) {
     return (
@@ -290,7 +290,7 @@ function UserProfileBody({ interestedPosts }: { interestedPosts: InterestedItem[
   return (
     <div className="lg:my-10 lg:px-10 lg:w-full lg:h-full flex lg:gap-10 lg:justify-center lg:items-start">
       <UserProfileMainColumn />
-      <UserProfileSidebar interestedPosts={interestedPosts} />
+      {canEdit ? <UserProfileSidebar interestedPosts={interestedPosts} /> : null}
     </div>
   );
 }

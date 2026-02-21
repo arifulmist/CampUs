@@ -112,14 +112,14 @@ export function Login() {
         {/* Password Field */}
         <Password label="Password" value={password} onChange={setPassword} />
         {/* Forgot Password Link */}
-        <div className="lg:-mt-3">
+        {/* <div className="lg:-mt-3">
           <Link
             to="/forgot-password"
             className="text-sm text-accent-lm hover:underline cursor-pointer"
           >
             Forgot Password?
           </Link>
-        </div>
+        </div> */}
 
         {/* Action Buttons */}
         <div className="lg:flex lg:items-center lg:gap-4 lg:mt-10">
