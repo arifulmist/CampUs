@@ -3,7 +3,6 @@ import docIcon from "@/assets/images/docsImg.svg";
 import pdfIcon from "@/assets/images/pdfImage.svg";
 
 import { useOutletContext } from "react-router";
-import { supabase } from "@/supabase/supabaseClient";
 
 import {
   type Note,
@@ -205,7 +204,6 @@ function NoteItem({
       // Try to find /storage/v1/object/(public/)?<bucket>/path
       const parts = u.pathname.split("/storage/v1/object/");
       if (parts.length === 2) {
-        // parts[1] = maybe "public/notes/...." or "notes/..."
         let after = parts[1];
         // remove possible "public/"
         after = after.replace(/^public\//, "");
@@ -228,36 +226,12 @@ function NoteItem({
       toast.error("No file link available");
       return;
     }
-
-    // Try the public URL first
-    try {
-      const res = await fetch(fileLink, { method: "GET" });
-      if (res.ok) {
-        window.open(fileLink, "_blank", "noopener,noreferrer");
-        return;
-      }
-      // Not ok -> fallthrough to signed URL
-    } catch (err) {
-      // network/CORS/etc. -> try signed URL fallback
-    }
-
-    const objectPath = await extractObjectPath(fileLink);
-    if (!objectPath) {
-      toast.error("Failed to determine storage path for this file");
+    // Open the file URL synchronously so the browser treats it as a
+    // user-initiated navigation (avoids popup-blocking retries).
+    // If the browser blocks popups, inform the user.
+    const win = window.open(fileLink, "_blank", "noopener,noreferrer");
+    if (!win) {
       return;
-    }
-
-    try {
-      const { data, error } = await supabase.storage
-        .from("notes")
-        .createSignedUrl(objectPath, 60);
-      if (error) throw error;
-      const signedUrl = data.signedUrl ?? (data?.signedURL || data?.signed_url);
-      if (!signedUrl) throw new Error("Failed to obtain signed URL");
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
-    } catch (err: any) {
-      console.error("Signed URL error:", err);
-      toast.error(err?.message ?? "Unable to open file. Contact admin.");
     }
   }
 

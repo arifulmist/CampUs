@@ -732,7 +732,6 @@ export async function getCurrentUserBatch(): Promise<string> {
   return batchName;
 }
 
-// Get the current authenticated user's ID
 export async function getCurrentUserId(): Promise<string | null> {
   const {
     data: { user },
@@ -753,13 +752,48 @@ function formatDate(dateStr: string): string {
 
 function formatTime(timeStr: string): string {
   if (!timeStr) return "";
-  // Handle time string like "10:30:00" or "10:30:00+06"
-  const timePart = timeStr.split("+")[0].split("-")[0];
-  const [hours, minutes] = timePart.split(":");
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? "pm" : "am";
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes}${ampm}`;
+
+  // If the string contains an explicit timezone offset or Z, prefer parsing
+  // it as an ISO-like time so the resulting Date will be converted to the
+  // client's local timezone. Examples: "10:30:00+00", "10:30:00+06:00", "10:30:00Z".
+  const tzSuffixMatch = timeStr.match(/([Zz]|[+-]\d{2}(?::?\d{2})?)$/);
+  const timeOnlyMatch = timeStr.match(/(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)/);
+
+  if (tzSuffixMatch && timeOnlyMatch) {
+    let tz = tzSuffixMatch[1];
+    // Normalize offsets like +06 to +06:00 for Date parsing
+    if (/^[+-]\d{2}$/.test(tz)) tz = tz + ":00";
+    const iso = `1970-01-01T${timeOnlyMatch[1]}${tz}`;
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) {
+      const hh = d.getHours();
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      const ampm = hh >= 12 ? "pm" : "am";
+      const hour12 = hh % 12 || 12;
+      return `${hour12}:${mm}${ampm}`;
+    }
+  }
+
+  const simpleMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (simpleMatch) {
+    const hour = parseInt(simpleMatch[1], 10);
+    const minute = String(simpleMatch[2]).padStart(2, "0");
+    const ampm = hour >= 12 ? "pm" : "am";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute}${ampm}`;
+  }
+
+  // Final fallback: try Date parsing of the whole string and convert to local
+  const d = new Date(timeStr);
+  if (!isNaN(d.getTime())) {
+    const hh = d.getHours();
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hh >= 12 ? "pm" : "am";
+    const hour12 = hh % 12 || 12;
+    return `${hour12}:${mm}${ampm}`;
+  }
+
+  return timeStr;
 }
 
 function extractFileName(url: string): string | undefined {
