@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import searchIcon from "../assets/icons/search_icon.svg";
+import searchIcon from "@/assets/icons/search_icon.svg";
 
 export function SearchAnything() {
   const navigate = useNavigate();
