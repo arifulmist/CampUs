@@ -95,6 +95,14 @@ export default function SearchResults() {
     fetchData();
   }, [debouncedQ, tab]);
 
+  // Helper to build correct URL
+  const buildUrl = (p: any) => {
+    const type = p.type.toLowerCase();
+    if (type === "lostfound") return `/lost-and-found/${p.post_id}`;
+    if (type === "event") return `/events/${p.post_id}`;
+    return `/${type}/${p.post_id}`;
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold">Search Results for "{q}"</h1>
@@ -139,11 +147,7 @@ export default function SearchResults() {
         <div className="mt-4 space-y-4">
           {posts.length === 0 && <div>No posts found</div>}
           {posts.map((p) => {
-            // Build the correct URL based on type
-            const url =
-              p.type.toLowerCase() === "lostfound"
-                ? `/lost-and-found/${p.post_id}`
-                : `/${p.type.toLowerCase()}/${p.post_id}`;
+            const url = buildUrl(p);
 
             return (
               <button
