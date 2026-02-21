@@ -532,14 +532,17 @@ export function ChatHistory({
       if (createdConversationId && anySent) {
         onConversationCreated?.(createdConversationId);
       }
-
-      inputRef.current?.focus();
     } catch (error) {
       console.error("Failed to send message:", error);
       // Restore message if sending failed
       if (hasText) setNewMessage(messageBody);
     } finally {
       setSending(false);
+      // Ensure the input is focused after sending finishes and the
+      // disabled state (sending) is cleared. Use RAF so DOM updates settle.
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     }
   };
 
@@ -759,13 +762,13 @@ export function ChatHistory({
         </button>
         <form onSubmit={handleSendMessage} className="flex lg:gap-2 flex-1 items-center">
           <input
-          disabled={sending || editMode}
+            ref={inputRef}
             type="text"
             placeholder="Type here..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            disabled={sending}
+            disabled={sending || editMode}
             className="bg-secondary-lm border border-stroke-grey lg:rounded-md text-text-lm lg:px-2 lg:py-2 placeholder:text-text-lighter-lm/60 flex-1 focus:outline-none focus:border-accent-lm disabled:opacity-50 text-sm"
           />
           <button
@@ -1008,7 +1011,7 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
                 <p className="m-0 text-sm opacity-70">Loading image...</p>
               )
             ) : (
-              <p className="m-0 max-w-40 wrap-break-word text-sm">{message}</p>
+              <p className="m-0 max-w-40 wrap-break-word text-sm">{renderMessageWithLinks(message)}</p>
             )}
             <p className={`text-xs opacity-70 lg:mt-1 ${isCurrentUser ? "text-right" : "text-left"}`}>
               {formatTimeToLocale(timestamp, [], {
@@ -1038,7 +1041,7 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
               <p className="m-0 text-sm opacity-70">Loading image...</p>
             )
           ) : (
-            <p className="m-0 max-w-40 wrap-break-word text-sm">{message}</p>
+            <p className="m-0 max-w-40 wrap-break-word text-sm">{renderMessageWithLinks(message)}</p>
           )}
           <p className="m-0 text-xs opacity-70 lg:mt-1 text-left">
             {formatTimeToLocale(timestamp, [], {
@@ -1050,4 +1053,42 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
       )}
     </div>
   );
+}
+
+function renderMessageWithLinks(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (!part) return null;
+    if (urlRegex.test(part)) {
+      const href = part.startsWith("http") ? part : `https://${part}`;
+      return (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary-lm font-semibold underline wrap-break-word"
+        >
+          {part}
+        </a>
+      );
+    }
+
+    // Preserve newlines
+    if (part.includes("\n")) {
+      return part.split("\n").map((line, idx) => (
+        idx === 0 ? (
+          line
+        ) : (
+          <span key={`${i}-${idx}`}>
+            <br />
+            {line}
+          </span>
+        )
+      ));
+    }
+
+    return part;
+  });
 }
