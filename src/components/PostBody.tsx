@@ -12,6 +12,21 @@ function formatDateDisplay(dateString?: string | null) {
   }
 }
 
+function formatTimeDisplay(timeString?: string | null) {
+  if (!timeString) return "";
+  try {
+    const parts = String(timeString).split(":");
+    const h = parseInt(parts[0] ?? "0", 10) || 0;
+    const m = (parts[1] ?? "00").padStart(2, "0");
+    const suffix = h >= 12 ? "PM" : "AM";
+    let hour12 = h % 12;
+    if (hour12 === 0) hour12 = 12;
+    return `${hour12}:${m} ${suffix}`;
+  } catch {
+    return String(timeString);
+  }
+}
+
 function isSameDay(a?: string | null, b?: string | null) {
   if (!a || !b) return false;
   try {
@@ -46,6 +61,8 @@ interface PostContent {
   category?: string;
   deptBatch?: string;
   formattedDate?: string;
+  lostFoundDate?: string | null;
+  lostFoundTime?: string | null;
 }
 
 export function PostBody({
@@ -59,6 +76,8 @@ export function PostBody({
   tags,
   category,
   formattedDate,
+  lostFoundDate,
+  lostFoundTime,
   eventStartDate,
   eventEndDate,
   location,
@@ -85,6 +104,21 @@ export function PostBody({
           >
             {categoryLabel}
           </p>
+        </div>
+      )}
+
+      {(categorySet === "lostfound" && (lostFoundDate || lostFoundTime)) && (
+        <div>
+          {lostFoundDate ? (
+            <p className="text-accent-lm font-semibold text-md">
+              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateDisplay(lostFoundDate)}`}
+            </p>
+          ) : null}
+          {lostFoundTime ? (
+            <p className="text-text-lm font-semibold text-md mt-1">
+              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTimeDisplay(lostFoundTime)}`}
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -159,7 +193,7 @@ export function PostBody({
           <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={commentNavigateTo} />
           <ShareButton />
         </div>
-        <div>{postId ? <InterestedButton postId={postId} /> : null}</div>
+        <div>{postId && categorySet === "events" ? <InterestedButton postId={postId} /> : null}</div>
       </div>
     </div>
   );
