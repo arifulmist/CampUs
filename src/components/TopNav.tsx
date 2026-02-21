@@ -98,6 +98,17 @@ export function TopNav() {
     }
   }, [isNotifOpen]);
 
+  // Immediate refresh when the app marks notifications read.
+  // This avoids a race where the drawer closes before the DB update completes.
+  useEffect(() => {
+    const handler = () => {
+      refreshUnreadNotifs.current();
+    };
+
+    window.addEventListener("campus:notifications_changed", handler);
+    return () => window.removeEventListener("campus:notifications_changed", handler);
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 

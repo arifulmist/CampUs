@@ -104,19 +104,19 @@ export default function SearchResults() {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold">Search Results for "{q}"</h1>
+    <div className="p-10 w-full h-full bg-primary-lm lg:rounded-2xl lg:m-10">
+      <h1 className="text-xl font-semibold font-header text-text-lm">Search Results for "{q}"</h1>
 
       {/* Tabs */}
-      <div className="flex gap-4 mt-4 border-b">
+      <div className="flex mt-4 border-b border-b-stroke-grey">
         <button
-          className={`pb-2 ${tab === "people" ? "border-b-2 border-accent" : ""}`}
+          className={`lg:p-2 ${tab === "people" ? "border-b-2 border-accent-lm text-accent-lm bg-hover-lm" : "text-text-lighter-lm/80"}`}
           onClick={() => setTab("people")}
         >
           People
         </button>
         <button
-          className={`pb-2 ${tab === "posts" ? "border-b-2 border-accent" : ""}`}
+          className={`lg:p-2 ${tab === "posts" ? "border-b-2 border-accent-lm text-accent-lm bg-hover-lm" : "text-text-lighter-lm/80"}`}
           onClick={() => setTab("posts")}
         >
           Posts

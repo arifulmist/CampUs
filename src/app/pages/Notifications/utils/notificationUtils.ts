@@ -286,8 +286,14 @@ export async function getPostPathById(postId: string | number): Promise<string |
 }
 
 export function subscribeToNotifications(recipientId: string, onChange: () => void) {
+  // IMPORTANT: Channel names must be unique per subscriber.
+  // Otherwise, if two parts of the UI (e.g. TopNav + NotificationDrawer)
+  // subscribe using the same name, closing one can remove the shared channel
+  // and silently stop realtime updates for the other.
+  const channelName = `notifications:${recipientId}:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+
   const channel = supabase
-    .channel(`notifications-${recipientId}`)
+    .channel(channelName)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${recipientId}` },

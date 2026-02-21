@@ -630,6 +630,8 @@ export function NotificationDrawer({
 			onOpenChange(false);
 
 			await markNotificationsAsRead(markReadIds);
+			// Let TopNav (and any other listeners) refresh badge state immediately.
+			window.dispatchEvent(new CustomEvent("campus:notifications_changed"));
 
 			// Optimistic UI update
 			setRows((prev) =>
