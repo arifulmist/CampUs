@@ -109,7 +109,7 @@ export function PostBody({
               </div>
             ))}
             <div className="w-full h-full rounded-lg bg-stroke-grey flex items-center justify-center">
-              <p className="text-primary-lm font-semibold text-lg">+{remaining}</p>
+              <p className="text-text-lm font-semibold text-3xl">+{remaining}</p>
             </div>
           </div>
         </div>
