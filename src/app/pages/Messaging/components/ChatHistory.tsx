@@ -549,7 +549,7 @@ export function ChatHistory({
               className="p-2 rounded-md hover:bg-hover-lm transition duration-150"
               aria-label="Chat options"
             >
-              <LucideEllipsis className="h-7 w-7 text-accent-lm" />
+              <LucideEllipsis className="size-5 text-accent-lm" />
             </button>
 
             {menuOpen ? (

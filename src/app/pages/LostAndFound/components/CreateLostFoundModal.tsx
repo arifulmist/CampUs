@@ -165,7 +165,7 @@ export default function CreateLostFoundModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-text-lm font-semibold">Title</label>
+              <label className="text-text-lm text-md font-semibold">Title</label>
               <input
                 required
                 value={title}
@@ -175,7 +175,7 @@ export default function CreateLostFoundModal({
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-text-lm font-semibold">Description</label>
+              <label className="text-text-lm text-md font-semibold">Description</label>
               <textarea
                 required
                 value={description}
@@ -186,7 +186,7 @@ export default function CreateLostFoundModal({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-text-lm font-semibold">Date</label>
+                <label className="text-text-lm text-md font-semibold">Date</label>
                 <input
                   type="date"
                   value={date}
@@ -195,7 +195,7 @@ export default function CreateLostFoundModal({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-text-lm font-semibold">Time</label>
+                <label className="text-text-lm text-md font-semibold">Time</label>
                 <input
                   type="time"
                   value={time}
@@ -225,7 +225,7 @@ export default function CreateLostFoundModal({
                 type="button"
                 disabled={isPosting}
                 onClick={onClose}
-                className="bg-accent-lm text-primary-lm lg:px-4 lg:py-2 lg:rounded-lg hover:bg-hover-btn-lm transition duration-150 disabled:opacity-60"
+                className="bg-secondary-lm text-text-lm border border-stroke-grey lg:px-4 lg:py-2 lg:rounded-lg hover:bg-hover-lm transition duration-150 disabled:opacity-60"
               >
                 Cancel
               </button>

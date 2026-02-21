@@ -570,89 +570,62 @@ export function QAPageContent() {
 
   const filteredPosts = useMemo(() => posts, [posts]);
 
-  if (initialLoad && loading) {
-    if (!initialLoadTimeout) return <Loading />;
+  const postsRegion = (() => {
+    if (initialLoad && loading) {
+      if (!initialLoadTimeout) return <Loading />;
 
-    return (
-      <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
-        <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-4 w-full">
-          <p className="text-text-lm">QnA is taking longer than expected to load.</p>
-          <p className="text-text-lighter-lm text-sm">
-            Check the browser console for errors. If this keeps happening, it usually means the page never started the
-            Supabase request or it failed before the network layer.
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setInitialLoadTimeout(false);
-                setRefreshSeq((n) => n + 1);
-              }}
-              className="bg-accent-lm text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
-            >
-              Retry
-            </button>
+      return (
+        <div className="lg:flex lg:flex-col lg:gap-6 lg:w-full lg:animate-fade-in">
+          <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-4 w-full">
+            <p className="text-text-lm">QnA is taking longer than expected to load.</p>
+            <p className="text-text-lighter-lm text-sm">
+              Check the browser console for errors. If this keeps happening, it usually means the page never started the
+              Supabase request or it failed before the network layer.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setInitialLoadTimeout(false);
+                  setRefreshSeq((n) => n + 1);
+                }}
+                className="bg-accent-lm text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (loadError && posts.length === 0) {
-    return (
-      <div className="lg:flex lg:flex-col lg:gap-6 lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
-        <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-4 w-full">
-          <p className="text-text-lm">Couldn’t load QnA posts.</p>
-          <p className="text-text-lighter-lm text-sm" style={{ wordBreak: "break-word" }}>
-            {loadError}
-          </p>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setInitialLoadTimeout(false);
-                setLoadError(null);
-                setRefreshSeq((n) => n + 1);
-              }}
-              className="bg-accent-lm text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
-            >
-              Retry
-            </button>
+    if (loadError && posts.length === 0) {
+      return (
+        <div className="lg:flex lg:flex-col lg:gap-6 lg:w-full lg:animate-fade-in">
+          <div className="bg-primary-lm border border-stroke-grey lg:rounded-xl lg:p-10 flex flex-col gap-4 w-full">
+            <p className="text-text-lm">Couldn’t load QnA posts.</p>
+            <p className="text-text-lighter-lm text-sm" style={{ wordBreak: "break-word" }}>
+              {loadError}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setInitialLoadTimeout(false);
+                  setLoadError(null);
+                  setRefreshSeq((n) => n + 1);
+                }}
+                className="bg-accent-lm text-white px-4 py-2 rounded-lg hover:opacity-90 transition"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="min-h-screen w-screen lg:p-10 flex flex-col lg:gap-8">
-      <SearchAddPostBar value={searchQuery} onChange={setSearchQuery} onNewPostClick={() => setNewPostOpen(true)} />
-
-      <CreateQnAPostModal
-        open={newPostOpen}
-        onClose={() => setNewPostOpen(false)}
-        onCreated={() => setRefreshSeq((n) => n + 1)}
-      />
-
-      <div className="flex lg:gap-4">
-        <QnAPostCategory label="All" isSelected={activeCategory === "All"} onClick={() => setActiveCategory("All")} />
-        <QnAPostCategory
-          label="Questions"
-          isSelected={activeCategory === "Question"}
-          onClick={() => setActiveCategory("Question")}
-        />
-        <QnAPostCategory
-          label="Advice"
-          isSelected={activeCategory === "Advice"}
-          onClick={() => setActiveCategory("Advice")}
-        />
-        <QnAPostCategory
-          label="Resources"
-          isSelected={activeCategory === "Resource"}
-          onClick={() => setActiveCategory("Resource")}
-        />
-      </div>
-
+    return (
       <ul className="flex flex-col lg:gap-5">
         {filteredPosts.length === 0 ? (
           <div className="flex flex-col items-center lg:gap-4">
@@ -698,6 +671,39 @@ export function QAPageContent() {
 
         <div ref={sentinelRef} />
       </ul>
+    );
+  })();
+
+  return (
+    <div className="min-h-screen w-screen lg:p-10 flex flex-col lg:gap-8">
+      <SearchAddPostBar value={searchQuery} onChange={setSearchQuery} onNewPostClick={() => setNewPostOpen(true)} />
+
+      <CreateQnAPostModal
+        open={newPostOpen}
+        onClose={() => setNewPostOpen(false)}
+        onCreated={() => setRefreshSeq((n) => n + 1)}
+      />
+
+      <div className="flex lg:gap-4">
+        <QnAPostCategory label="All" isSelected={activeCategory === "All"} onClick={() => setActiveCategory("All")} />
+        <QnAPostCategory
+          label="Questions"
+          isSelected={activeCategory === "Question"}
+          onClick={() => setActiveCategory("Question")}
+        />
+        <QnAPostCategory
+          label="Advice"
+          isSelected={activeCategory === "Advice"}
+          onClick={() => setActiveCategory("Advice")}
+        />
+        <QnAPostCategory
+          label="Resources"
+          isSelected={activeCategory === "Resource"}
+          onClick={() => setActiveCategory("Resource")}
+        />
+      </div>
+
+      {postsRegion}
     </div>
   );
 }

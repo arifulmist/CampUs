@@ -305,10 +305,6 @@ export function CollabHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasMore, loadingMore, loading, page]);
 
-  if (initialLoad && loading) {
-    return <Loading />;
-  }
-
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
       {/* LEFT: Posts */}
@@ -324,9 +320,7 @@ export function CollabHub() {
 
           {/* Posts */}
           {loading ? (
-            <div className="lg:flex lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
-              <p className="text-text-lighter-lm text-lg">Loading…</p>
-            </div>
+            <Loading />
           ) : filteredPosts.length === 0 ? (
             <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
               <img src={postEmptyState} className="lg:size-50"></img>

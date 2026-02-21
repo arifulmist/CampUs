@@ -312,10 +312,6 @@ export function Events() {
 
   const filtered = useMemo(() => posts, [posts]);
 
-  if (initialLoad && loading) {
-    return <Loading />;
-  }
-
   // Handle modal create
   async function handleCreate() {
     await loadEvents({ reset: true });
@@ -336,7 +332,7 @@ export function Events() {
           <div className="lg:flex lg:items-center lg:justify-center">
             <div className="lg:w-[60vw] flex flex-col lg:gap-10">
               {loading ? (
-                <p>Loading events...</p>
+                <Loading />
               ) : filtered.length === 0 ? (
                 <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
                   <img src={postEmptyState} className="lg:size-50"></img>

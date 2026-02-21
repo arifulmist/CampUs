@@ -214,7 +214,7 @@ export function EditQnAPostModal({
               </button>
               <ButtonCTA
                 type="submit"
-                label={isPosting ? "Posting..." : "Post"}
+                label={isPosting ? "Saving..." : "Save"}
                 loading={isPosting}
                 disabled={isPosting}
               />

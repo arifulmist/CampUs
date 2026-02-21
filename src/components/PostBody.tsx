@@ -84,10 +84,13 @@ export function PostBody({
         </div>
       )}
 
+      {/* Title */}
+      <h3 className="text-text-lm lg:font-bold lg:font-header">{title}</h3>
+
       {(categorySet === "lostfound" && (lostFoundDate || lostFoundTime)) && (
         <div>
           {lostFoundDate ? (
-            <p className="text-accent-lm font-semibold text-md">
+            <p className="text-text-lm font-semibold text-md">
               {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateToLocale(lostFoundDate, "en-US", {
                 month: "short",
                 day: "numeric",
@@ -106,9 +109,6 @@ export function PostBody({
           ) : null}
         </div>
       )}
-
-      {/* Title */}
-      <h3 className="text-text-lm lg:font-extrabold lg:font-headgier">{title}</h3>
 
       {(eventStartDate || eventEndDate || location) && (
         <div>

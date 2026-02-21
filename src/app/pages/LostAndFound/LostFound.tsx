@@ -106,10 +106,6 @@ export function LostFound() {
     await loadPosts({ reset: true });
   }
 
-  if (initialLoad && loading) {
-    return <Loading />;
-  }
-
   return (
     <div className="lg:min-h-screen bg-background-lm">
       <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10">
@@ -125,7 +121,7 @@ export function LostFound() {
           <div className="lg:flex lg:items-center lg:justify-center">
             <div className="lg:w-[60vw] flex flex-col lg:gap-10">
               {loading ? (
-                <p>Loading posts...</p>
+                <Loading />
               ) : filtered.length === 0 ? (
                 <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
                   <img src={postEmptyState} className="lg:size-50" />
