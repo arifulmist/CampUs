@@ -10,6 +10,8 @@ import {
   createNote,
   uploadNoteFile,
   deleteNote,
+  computeFileHash,
+  checkDuplicateNote,
 } from "../backend/studyService";
 import { ButtonCTA } from "@/components/ButtonCTA";
 import { useState } from "react";
@@ -52,6 +54,19 @@ export function Notes() {
 
     setIsSubmitting(true);
     try {
+      // Compute file hash and check for duplicates before uploading
+      const fileHash = await computeFileHash(data.file);
+      const duplicate = await checkDuplicateNote(fileHash);
+
+      if (duplicate) {
+        toast.error(
+          `Duplicate file detected! "${duplicate.title}" (${duplicate.courseCode}) uploaded by ${duplicate.uploadedBy} has identical content.`,
+          { duration: 6000 },
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // Upload file first
       const fileUrl = await uploadNoteFile(data.file);
 
@@ -64,6 +79,7 @@ export function Notes() {
         course: data.course || "GEN",
         courseCode: data.courseCode || "100",
         fileUrl,
+        fileHash,
       });
 
       // Update local state

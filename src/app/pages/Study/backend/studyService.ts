@@ -8,6 +8,7 @@ export interface DBNote {
   course: string;
   course_code: string;
   file_url: string;
+  file_hash: string | null;
   author_id: string | null;
   upload_date: string;
   upload_time: string;
@@ -329,6 +330,7 @@ export async function createNote(data: {
   course: string;
   courseCode: string;
   fileUrl: string;
+  fileHash?: string;
 }): Promise<Note> {
   const {
     data: { user },
@@ -351,6 +353,7 @@ export async function createNote(data: {
       course: data.course.toUpperCase(),
       course_code: data.courseCode,
       file_url: data.fileUrl,
+      file_hash: data.fileHash ?? null,
       author_id: user.id,
     })
     .select(
@@ -477,6 +480,53 @@ export async function createResource(data: {
     title: resource.title,
     course: `${resource.course}-${resource.course_code}`,
     resourceLink: resource.resource_link,
+  };
+}
+
+// Compute SHA-256 hash of a File (runs entirely in the browser via SubtleCrypto)
+export async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Check whether a note with the given file hash already exists.
+// Returns the matching note metadata when a duplicate is found, or null otherwise.
+export async function checkDuplicateNote(
+  fileHash: string,
+): Promise<{
+  noteId: string;
+  title: string;
+  courseCode: string;
+  uploadedBy: string;
+} | null> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select(
+      "note_id, title, course, course_code, author_id, user_info ( name )",
+    )
+    .eq("file_hash", fileHash)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking duplicate note:", error);
+    return null; // fail-open so uploads are not blocked by transient errors
+  }
+
+  if (!data) return null;
+
+  const authorName =
+    (Array.isArray((data as any).user_info)
+      ? (data as any).user_info?.[0]?.name
+      : (data as any).user_info?.name) ?? "Unknown";
+
+  return {
+    noteId: data.note_id,
+    title: data.title,
+    courseCode: `${data.course}-${data.course_code}`,
+    uploadedBy: authorName,
   };
 }
 
