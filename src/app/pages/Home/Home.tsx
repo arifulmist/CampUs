@@ -34,7 +34,7 @@ export function Home() {
           comment_count,
           author_id(user_profile(profile_picture_url, bio))
         `)
-        .eq("type", "LostFound")
+        .eq("type", "lostfound")
         .order("created_at", { ascending: false });
 
       if (lfError) console.error("Lost & Found error:", lfError);
