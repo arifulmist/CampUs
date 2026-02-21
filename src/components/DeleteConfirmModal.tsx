@@ -23,12 +23,19 @@ export function DeleteConfirmModal({
     setIsDeleting(true);
     try {
       await onConfirm();
+      // Ensure modal is closed after a successful confirm. Some callers
+      // may not close the modal themselves (or may return early) so we
+      // proactively call onClose on success to guarantee the dialog resets.
+      onClose();
     } catch (err: unknown) {
       console.error("Failed to delete:", err);
       const msg = err instanceof Error ? err.message : JSON.stringify(err);
       toast.error("Failed to delete: " + msg);
       setIsDeleting(false);
       return;
+    } finally {
+      // Clear deleting flag in case the component remains mounted briefly.
+      setIsDeleting(false);
     }
   }
 
