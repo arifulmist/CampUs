@@ -18,6 +18,8 @@ import {
   deleteConversation,
   markMessagesAsRead,
   sendMessage,
+  updateMessage,
+  deleteMessage,
   subscribeToMessages,
   type Message,
 } from "../utils/messagingUtils";
@@ -73,6 +75,10 @@ export function ChatHistory({
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
   const [previewName, setPreviewName] = useState<string | null>(null);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [unsendOpen, setUnsendOpen] = useState(false);
+  const [unsendMessageId, setUnsendMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatBodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +139,30 @@ export function ChatHistory({
       setAttachedImagePreviewUrl(null);
     }
   };
+
+  const cancelEditing = () => {
+    setEditingMessageId(null);
+    setNewMessage("");
+    clearAttachment();
+  };
+
+  useEffect(() => {
+    if (!editingMessageId) return;
+
+    // Focus after the DOM updates.
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      const el = inputRef.current;
+      if (el) {
+        try {
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        } catch {
+          // ignore
+        }
+      }
+    });
+  }, [editingMessageId]);
 
   useEffect(() => {
     return () => {
@@ -391,7 +421,36 @@ export function ChatHistory({
 
     const hasText = !!newMessage.trim();
     const hasAttachment = !!attachedImage;
-    if ((!hasText && !hasAttachment) || sending) return;
+    if (sending) return;
+
+    // Edit mode: only allow text edits.
+    if (editingMessageId) {
+      if (!hasText) return;
+
+      setSending(true);
+      const messageBody = newMessage.trim();
+      setNewMessage("");
+
+      try {
+        const updated = await updateMessage(editingMessageId, messageBody);
+        if (!updated) {
+          setNewMessage(messageBody);
+          return;
+        }
+
+        setMessages((prev) => prev.map((m) => (m.id === updated.id ? { ...m, message_body: updated.message_body } : m)));
+        setEditingMessageId(null);
+      } catch (error) {
+        console.error("Failed to update message:", error);
+        setNewMessage(messageBody);
+      } finally {
+        setSending(false);
+      }
+
+      return;
+    }
+
+    if ((!hasText && !hasAttachment)) return;
 
     setSending(true);
     const messageBody = newMessage.trim();
@@ -494,6 +553,7 @@ export function ChatHistory({
   // Block render only while metadata is loading, or while fetching messages for an existing conversation.
   // For new chats (temp conversation id), show the UI with an empty state.
   const showFullScreenLoading = metaLoading || (!isTempConversation && loading && messages.length === 0);
+  const editMode = !!editingMessageId;
 
   if (showFullScreenLoading) {
     return (
@@ -508,9 +568,9 @@ export function ChatHistory({
 
   return (
     <>
-    <div className="flex flex-col flex-1 min-h-0 bg-primary-lm overflow-hidden">
+    <div className={`flex flex-col flex-1 min-h-0 bg-primary-lm overflow-hidden ${unsendOpen ? "opacity-50 pointer-events-none" : ""}`}>
       {/* Chat header */}
-      <div className="bg-primary-lm border-b border-b-stroke-grey lg:p-2 shrink-0">
+      <div className={`bg-primary-lm border-b border-b-stroke-grey lg:p-2 shrink-0 ${editMode ? "opacity-50 pointer-events-none" : ""}`}>
         {/* holds user details & online status */}
         <div className="flex justify-between items-center">
           {/* user details */}
@@ -592,7 +652,7 @@ export function ChatHistory({
             void loadOlderMessages();
           }
         }}
-        className="bg-secondary-lm flex-1 min-h-0 overflow-y-auto lg:p-3 lg:space-y-2 p-3 space-y-2"
+        className={`bg-secondary-lm flex-1 min-h-0 overflow-y-auto lg:p-3 lg:space-y-2 p-3 space-y-2 ${editMode ? "opacity-50 pointer-events-none" : ""}`}
       >
         {loadingOlder && (
           <div className="text-center text-text-lighter-lm text-sm">Loading older messages...</div>
@@ -610,11 +670,21 @@ export function ChatHistory({
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
+                messageId={message.id}
                 message={message.message_body}
                 isCurrentUser={message.sender_id === currentUserId}
                 userAvatar={userAvatar}
                 timestamp={message.created_at}
                 onOpenPreview={openPreview}
+                onEdit={() => {
+                  setEditingMessageId(message.id);
+                  clearAttachment();
+                  setNewMessage(message.message_body);
+                }}
+                onUnsend={() => {
+                  setUnsendMessageId(message.id);
+                  setUnsendOpen(true);
+                }}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -623,7 +693,23 @@ export function ChatHistory({
       </div>
 
       {/* Send message */}
-      <div className="bg-primary-lm border-t border-t-stroke-grey flex flex-col gap-2 lg:px-2 lg:py-2 px-2 py-2 shrink-0">
+      <div className="bg-primary-lm border-t border-t-stroke-grey lg:rounded-lg flex flex-col gap-2 lg:px-2 lg:py-2 shrink-0">
+        {editingMessageId ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between px-2 py-1">
+              <p className="m-0 text-text-lm">Editing message</p>
+              <button
+                type="button"
+                onClick={cancelEditing}
+                className="hover:bg-stroke-grey/80 bg-background-lm p-1 rounded-full transition cursor-pointer disabled:opacity-50"
+                aria-label="Cancel editing"
+              >
+                <LucideX className="text-text-lm size-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {attachedImage && attachedImagePreviewUrl && (
           <div className="flex items-center justify-between gap-2 bg-secondary-lm border border-stroke-grey rounded-md px-2 py-1">
             <div className="flex items-center gap-2 min-w-0">
@@ -667,13 +753,13 @@ export function ChatHistory({
           type="button"
           onClick={handlePickImage}
           disabled={sending}
-          className="hover:bg-hover-lm lg:p-1 p-1 lg:rounded rounded disabled:opacity-50"
+          className="hover:bg-hover-lm lg:p-1 p-1 lg:rounded-md cursor-pointer disabled:opacity-50"
         >
           <LucidePaperclip className="text-accent-lm lg:size-6" />
         </button>
         <form onSubmit={handleSendMessage} className="flex lg:gap-2 flex-1 items-center">
           <input
-            ref={inputRef}
+          disabled={sending || editMode}
             type="text"
             placeholder="Type here..."
             value={newMessage}
@@ -684,8 +770,8 @@ export function ChatHistory({
           />
           <button
             type="submit"
-            disabled={(!newMessage.trim() && !attachedImage) || sending}
-            className="hover:bg-hover-lm lg:p-1 lg:rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={editingMessageId ? !newMessage.trim() || sending : ((!newMessage.trim() && !attachedImage) || sending)}
+            className="hover:bg-hover-lm lg:p-1 lg:rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LucideSendHorizontal className="text-accent-lm lg:size-6" />
           </button>
@@ -709,6 +795,25 @@ export function ChatHistory({
         onBack();
       }}
     />
+
+    <DeleteConfirmModal
+      open={unsendOpen}
+      onClose={() => {
+        setUnsendOpen(false);
+        setUnsendMessageId(null);
+      }}
+      title="Unsend Message"
+      onConfirm={async () => {
+        const id = unsendMessageId;
+        if (!id) return;
+
+        await deleteMessage(id);
+        setMessages((prev) => prev.filter((m) => m.id !== id));
+        if (editingMessageId === id) setEditingMessageId(null);
+        setUnsendOpen(false);
+        setUnsendMessageId(null);
+      }}
+    />
     {previewOpen && previewSrc ? (
       <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
     ) : null}
@@ -717,14 +822,17 @@ export function ChatHistory({
 }
 
 interface ChatMessageProps {
+  messageId: string;
   message: string;
   isCurrentUser: boolean;
   userAvatar: string;
   timestamp: string;
   onOpenPreview?: (src: string, name?: string) => void;
+  onEdit?: () => void;
+  onUnsend?: () => void;
 }
 
-function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPreview }: ChatMessageProps) {
+function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPreview, onEdit, onUnsend }: ChatMessageProps) {
   const IMAGE_PREFIX = "__image__:";
   const imageData = (() => {
     if (!message.startsWith(IMAGE_PREFIX)) return null;
@@ -737,6 +845,24 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
   })();
 
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -808,53 +934,120 @@ function ChatMessage({ message, isCurrentUser, userAvatar, timestamp, onOpenPrev
   }, [imageData]);
 
   return (
-    <div className={`flex lg:gap-2 items-end ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      {!isCurrentUser && (
+    <div className={`flex items-end gap-2 ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+      {!isCurrentUser ? (
         <div className="lg:size-8 shrink-0 rounded-full overflow-hidden ring ring-stroke-grey">
-          <img
-            src={userAvatar}
-            className="object-cover w-full h-full"
-            alt="User avatar"
-          />
+          <img src={userAvatar} className="object-cover w-full h-full" alt="User avatar" />
         </div>
-      )}
-      <div
-        className={`w-fit h-fit lg:px-3 lg:py-2 lg:rounded-lg ${
-          isCurrentUser
-            ? "bg-message-user-lm text-primary-lm"
-            : "bg-message-other-lm text-text-lm"
-        }`}
-      >
-        {imageData ? (
-          resolvedImageUrl ? (
+      ) : null}
+
+      {isCurrentUser ? (
+        <div className="relative flex items-end gap-2" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+          <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => onOpenPreview?.(resolvedImageUrl, imageData.name)}
-              className="block"
-              title={imageData.name}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((v) => !v);
+              }}
+              className="p-1.5 rounded-full hover:bg-stroke-grey transition duration-150"
+              aria-label="Message options"
             >
-              <img
-                src={resolvedImageUrl}
-                alt={imageData.name}
-                className="max-w-55 max-h-55 rounded-md object-cover"
-              />
+              <LucideEllipsis className="size-4 text-text-lighter-lm" />
             </button>
-          ) : (
-            <p className="m-0 text-sm opacity-70">Loading image...</p>
-          )
-        ) : (
-          <p className="m-0 wrap-break-word text-sm">{message}</p>
-        )}
-            <p className={`m-0 text-xs opacity-70 lg:mt-1 ${
-              isCurrentUser
-              ? "text-right"
-              : "text-left"}`}>
+
+            {menuOpen ? (
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 bg-primary-lm border border-stroke-grey rounded-md overflow-hidden min-w-40 z-50">
+                <button
+                  type="button"
+                  disabled={!!imageData}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onEdit?.();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-text-lm hover:bg-hover-lm transition duration-150 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Edit Message
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onUnsend?.();
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-danger-lm hover:bg-hover-lm transition duration-150 text-left"
+                >
+                  Unsend Message
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <div
+            className={`w-fit h-fit lg:px-3 lg:py-2 lg:rounded-lg ${
+              isCurrentUser ? "bg-message-user-lm text-primary-lm" : "bg-message-other-lm text-text-lm"
+            }`}
+          >
+            {imageData ? (
+              resolvedImageUrl ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenPreview?.(resolvedImageUrl, imageData.name)}
+                  className="block max-w-40 max-h-40"
+                  title={imageData.name}
+                >
+                  <img
+                    src={resolvedImageUrl}
+                    alt={imageData.name}
+                    className="w-full h-full rounded-md object-cover"
+                  />
+                </button>
+              ) : (
+                <p className="m-0 text-sm opacity-70">Loading image...</p>
+              )
+            ) : (
+              <p className="m-0 max-w-40 wrap-break-word text-sm">{message}</p>
+            )}
+            <p className={`text-xs opacity-70 lg:mt-1 ${isCurrentUser ? "text-right" : "text-left"}`}>
               {formatTimeToLocale(timestamp, [], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-        </p>
-      </div>
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className={`max-w-40 max-h-40 w-fit h-fit lg:px-3 lg:py-2 lg:rounded-lg bg-message-other-lm text-text-lm`}>
+          {imageData ? (
+            resolvedImageUrl ? (
+              <button
+                type="button"
+                onClick={() => onOpenPreview?.(resolvedImageUrl, imageData.name)}
+                className="block w-full h-full"
+                title={imageData.name}
+              >
+                <img
+                  src={resolvedImageUrl}
+                  alt={imageData.name}
+                  className="max-w-40 max-h-40 w-full h-full rounded-md object-cover"
+                />
+              </button>
+            ) : (
+              <p className="m-0 text-sm opacity-70">Loading image...</p>
+            )
+          ) : (
+            <p className="m-0 max-w-40 wrap-break-word text-sm">{message}</p>
+          )}
+          <p className="m-0 text-xs opacity-70 lg:mt-1 text-left">
+            {formatTimeToLocale(timestamp, [], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
