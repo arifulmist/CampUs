@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 import type { Category } from "@/app/pages/CollabHub/components/Category";
@@ -9,6 +9,7 @@ import { createCollabPost } from "./backend/collab";
 import { CollabPostCard, type CollabPost } from "./components/CollabPostCard";
 
 import postEmptyState from "@/assets/images/noPost.svg";
+import { Loading } from "../Fallback/Loading";
 
 export function CollabHub() {
   const navigate = useNavigate();
@@ -16,6 +17,13 @@ export function CollabHub() {
   const [filter, setFilter] = useState<Category>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const PAGE_SIZE = 20;
 
   const categories: Category[] = ["all", "research", "competition", "project"];
 
@@ -24,29 +32,74 @@ export function CollabHub() {
     return posts.filter((p) => p.category === filter);
   }, [filter, posts]);
 
-  async function loadPosts() {
-    setLoading(true);
+  async function loadPosts({ reset }: { reset: boolean }) {
+    if (reset) {
+      setLoading(true);
+      setInitialLoad(true);
+      setHasMore(true);
+      setPage(0);
+      setPosts([]);
+    } else {
+      if (loadingMore || loading || !hasMore) return;
+      setLoadingMore(true);
+    }
+
+    const offset = (reset ? 0 : page) * PAGE_SIZE;
     try {
-      const [{ data: postRows, error: postsError }, { data: metaRows, error: metaError }] =
-        await Promise.all([
-          supabase
-            .from("all_posts")
-            .select(
-              "post_id,title,description,author_id,like_count,comment_count,created_at"
-            )
-            .eq("type", "collab")
-            .order("created_at", { ascending: false }),
-          supabase.from("collab_posts").select("post_id,category_id"),
-        ]);
+      // Prefer RPC (fewer round-trips). Fallback to existing multi-query merge if not deployed.
+      const rpcCategory = filter === "all" ? null : String(filter);
+      const rpcRes = await supabase.rpc("get_collab_feed_page", {
+        p_limit: PAGE_SIZE,
+        p_offset: offset,
+        p_category: rpcCategory,
+      });
+
+      if (!rpcRes.error && Array.isArray(rpcRes.data)) {
+        const rows = rpcRes.data as any[];
+        const mapped: CollabPost[] = rows.map((r) => {
+          const dept = typeof r.author_department === "string" ? r.author_department : "";
+          const batch = typeof r.author_batch === "string" ? r.author_batch : "";
+          const authorBatch = dept && batch ? `${dept}-${batch}` : dept || "";
+
+          return {
+            id: String(r.post_id),
+            category: (String(r.category) as Category) ?? "research",
+            title: String(r.title ?? ""),
+            content: String(r.description ?? ""),
+            authorAuthUid: typeof r.author_auth_uid === "string" ? r.author_auth_uid : undefined,
+            authorName: typeof r.author_name === "string" ? r.author_name : "Unknown",
+            authorBatch,
+            authorAvatarUrl: typeof r.author_avatar === "string" ? r.author_avatar : null,
+            tags: Array.isArray(r.tags) ? (r.tags.filter((t: any) => typeof t === "string") as string[]) : [],
+            likes: Number(r.like_count ?? 0),
+            comments: Number(r.comment_count ?? 0),
+            createdAt: typeof r.created_at === "string" ? r.created_at : null,
+          } satisfies CollabPost;
+        });
+
+        setPosts((prev) => (reset ? mapped : [...prev, ...mapped]));
+        setHasMore(mapped.length === PAGE_SIZE);
+        setPage((p) => (reset ? 1 : p + 1));
+        return;
+      }
+
+      // Fallback path (kept for environments where RPC isn't applied yet)
+      const { data: postRows, error: postsError } = await supabase
+        .from("all_posts")
+        .select("post_id,title,description,author_id,like_count,comment_count,created_at")
+        .eq("type", "collab")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
 
       if (postsError) throw postsError;
-      if (metaError) throw metaError;
 
-      // After fetching posts/meta, fetch related lookup tables. Use
-      // `post_tags` + `skills_lookup` for tags (post_tags stores skill IDs).
       const postIds = (postRows ?? []).filter(Boolean).map((r: any) => r.post_id);
+      const authorIds = Array.from(
+        new Set((postRows ?? []).map((r: any) => r?.author_id).filter((x: any) => typeof x === "string"))
+      ) as string[];
 
       const [
+        metaRes,
         categoriesRes,
         postTagsRes,
         skillsRes,
@@ -54,6 +107,9 @@ export function CollabHub() {
         profilesRes,
         departmentsRes,
       ] = await Promise.all([
+        postIds.length
+          ? supabase.from("collab_posts").select("post_id,category_id").in("post_id", postIds)
+          : Promise.resolve({ data: [], error: null } as any),
         supabase.from("collab_category").select("category_id,category"),
         postIds.length
           ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", postIds)
@@ -61,14 +117,19 @@ export function CollabHub() {
         postIds.length
           ? supabase.from("skills_lookup").select("id,skill")
           : Promise.resolve({ data: [], error: null } as unknown as { data: unknown[]; error: unknown }),
-        supabase
-          .from("user_info")
-          .select(
-            "auth_uid,name,batch,department,departments_lookup(department_name)"
-          ),
-        supabase.from("user_profile").select("auth_uid,profile_picture_url"),
+        authorIds.length
+          ? supabase
+              .from("user_info")
+              .select("auth_uid,name,batch,department,departments_lookup(department_name)")
+              .in("auth_uid", authorIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        authorIds.length
+          ? supabase.from("user_profile").select("auth_uid,profile_picture_url").in("auth_uid", authorIds)
+          : Promise.resolve({ data: [], error: null } as any),
         supabase.from("departments_lookup").select("dept_id,department_name"),
       ]);
+
+      if ((metaRes as any).error) throw (metaRes as any).error;
 
       if (categoriesRes.error) throw categoriesRes.error;
 
@@ -161,7 +222,7 @@ export function CollabHub() {
       }
 
       const metaByPostId = new Map<string, string>();
-      for (const row of (metaRows ?? []) as Array<Record<string, unknown>>) {
+      for (const row of ((metaRes as any).data ?? []) as Array<Record<string, unknown>>) {
         const postId = row.post_id;
         const categoryId = row.category_id;
         if (typeof postId === "string" && (typeof categoryId === "number" || typeof categoryId === "string")) {
@@ -205,18 +266,44 @@ export function CollabHub() {
         });
       }
 
-      setPosts(merged);
+      const next = merged;
+      const visible = filter === "all" ? next : next.filter((p) => p.category === filter);
+      setPosts((prev) => (reset ? visible : [...prev, ...visible]));
+      setHasMore(next.length === PAGE_SIZE);
+      setPage((p) => (reset ? 1 : p + 1));
     } catch (e) {
       console.error(e);
-      setPosts([]);
+      if (reset) setPosts([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      setInitialLoad(false);
     }
   }
 
   useEffect(() => {
-    loadPosts();
-  }, []);
+    void loadPosts({ reset: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    if (!hasMore) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        void loadPosts({ reset: false });
+      },
+      { root: null, rootMargin: "400px", threshold: 0 }
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMore, loadingMore, loading, page]);
 
   return (
     <div className="lg:flex lg:gap-10 lg:h-full lg:w-full lg:p-10 bg-background-lm lg:animate-slide-in">
@@ -233,9 +320,7 @@ export function CollabHub() {
 
           {/* Posts */}
           {loading ? (
-            <div className="lg:flex lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
-              <p className="text-text-lighter-lm text-lg">Loading…</p>
-            </div>
+            <Loading />
           ) : filteredPosts.length === 0 ? (
             <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
               <img src={postEmptyState} className="lg:size-50"></img>
@@ -254,6 +339,14 @@ export function CollabHub() {
               );
             })
           )}
+
+          {loadingMore ? (
+            <div className="lg:flex lg:items-center lg:justify-center lg:py-4">
+              <p className="text-text-lighter-lm">Loading more…</p>
+            </div>
+          ) : null}
+
+          <div ref={sentinelRef} />
         </div>
       </div>
 

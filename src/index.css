@@ -28,7 +28,7 @@ h1,h2,h3,h4,h5,h6
   --color-stroke-grey: oklch(84.212% 0.0001 271.152);
   --color-hover-lm: oklch(96.272% 0.0117 59.292);
   --color-hover-btn-lm: oklch(45.513% 0.16317 34.108);
-  --color-danger-lm: #b42318;
+  --color-danger-lm:  oklch(55.959% 0.22712 28.978);
   --color-message-user-lm: oklch(63.087% 0.18278 40.91);
   --color-message-other-lm: oklch(89.776% 0.02735 43.486);
   --color-online-indicator: oklch(65.025% 0.20094 145.619);
@@ -126,24 +126,6 @@ h1,h2,h3,h4,h5,h6
   h6
   {
     font-size: var(--text-md);
-  }
-}
-
-@layer utilities
-{
-  .text-danger-lm
-  {
-    color: var(--color-danger-lm);
-  }
-
-  .bg-danger-lm
-  {
-    background-color: var(--color-danger-lm);
-  }
-
-  .border-danger-lm
-  {
-    border-color: var(--color-danger-lm);
   }
 }
 

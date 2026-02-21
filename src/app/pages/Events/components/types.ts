@@ -1,4 +1,4 @@
-import type { EventPostType, Segment } from "../EventPost";
+import type { EventPostType, Segment } from "./EventPost";
 
 export type EventCategory =
   | "workshop"

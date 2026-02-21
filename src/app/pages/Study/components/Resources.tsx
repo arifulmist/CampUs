@@ -9,6 +9,7 @@ import { UserInfo } from "@/components/UserInfo";
 import { ResourceAddModal } from "./ResourcesAddModal";
 import { toast } from "react-hot-toast";
 import notesEmptyState from "@/assets/images/noNotes.svg";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 export function Resources() {
   const outlet = useOutletContext<{
@@ -169,6 +170,7 @@ function Resource({
   onDelete,
   isDeleting,
 }: ResourceProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const isOwner = currentUserId != null && authorId === currentUserId;
 
   return (
@@ -192,7 +194,7 @@ function Resource({
       </a>
       {isOwner && (
         <button
-          onClick={() => onDelete(id)}
+          onClick={() => setShowDeleteConfirm(true)}
           disabled={isDeleting}
           className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/80 backdrop-blur-sm border border-red-200 shadow-sm text-red-500 text-sm font-medium hover:bg-red-600 hover:text-white hover:border-red-600 hover:shadow-md active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
           aria-label="Delete resource"
@@ -239,6 +241,15 @@ function Resource({
           )}
         </button>
       )}
+      <DeleteConfirmModal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Resource"
+        onConfirm={async () => {
+          setShowDeleteConfirm(false);
+          await onDelete(id);
+        }}
+      />
     </div>
   );
 }

@@ -1,11 +1,6 @@
-// app/toaster.tsx
 import { Toaster } from "react-hot-toast";
-import { useEffect } from "react";
-import toast from "react-hot-toast";
 
 export function RootLayout({ children }: { children?: React.ReactNode }) {
-  // previously showed a toast on every page load; removed to avoid noise
-
   return (
     <>
       {children}
@@ -20,18 +15,19 @@ export function RootLayout({ children }: { children?: React.ReactNode }) {
             padding: "12px 16px",
             color: "var(--color-text-lm)",
             background: "var(--color-background-lm)",
-            boxShadow: "0 4px 12px var(--color-shadow-peach)",
+            boxShadow: "0 2px 8px var(--color-stroke-grey)",
+            margin: "4px"
           },
           success: {
             style: {
-              background: "var(--color-primary-lm)",
-              color: "var(colour-accent-lm)",
+              background: "oklch(60.821% 0.18774 145.657)",
+              color: "var(--color-primary-lm)",
             },
           },
           error: {
             style: {
-              background: "var(--color-stroke-peach)",
-              color: "black",
+              background: "oklch(41.233% 0.16921 29.223)",
+              color: "var(--color-primary-lm)"
             },
           },
         }}

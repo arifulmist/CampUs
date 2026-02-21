@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/supabase/supabaseClient";
 
 interface Category {
@@ -31,17 +31,27 @@ export default function CategorySelector({ category, onChange }: Props) {
 
   return (
     <div className="lg:flex lg:gap-6">
-      {categories.map(c => (
-        <label key={c.category_id} className="lg:flex lg:items-center lg:gap-2">
+      {categories.map((c) => (
+        <label key={c.category_id} className="flex items-center lg:gap-3 cursor-pointer">
           <input
             type="radio"
             name="category"
             value={c.category_id}
             checked={category === c.category_id}
             onChange={() => onChange(c.category_id)}
-            className="accent-accent-lm"
             required
+            className="sr-only"
           />
+
+          <span
+            aria-hidden
+            className={`flex items-center justify-center w-5 h-5 rounded-full transition-all border-[1.5px] ${
+              category === c.category_id ? "border-accent-lm" : "border-text-lighter-lm/60"
+            }`}
+          >
+            {category === c.category_id ? <span className="w-2.5 h-2.5 rounded-full bg-accent-lm" /> : null}
+          </span>
+
           <span className="text-text-lm font-medium">{c.category_name}</span>
         </label>
       ))}

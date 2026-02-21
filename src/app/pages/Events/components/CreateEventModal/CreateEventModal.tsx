@@ -96,7 +96,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
             };
 
       const segments_data = post.segments?.length
-        ? post.segments.map((seg) => ({
+        ? post.segments.map((seg: any) => ({
             segment_title: seg.name ?? "Untitled Segment",
             segment_description: seg.description ?? "",
             segment_location: seg.location ?? "",
@@ -173,7 +173,7 @@ export default function CreateEventModal({ open, onClose }: Props) {
             </h2>
             <button
               onClick={onClose}
-              className="text-text-lighter-lm text-2xl hover:text-gray-900"
+              className="cursor-pointer"
               aria-label="Close modal"
             >
               <img src={crossBtn}></img>
@@ -289,7 +289,18 @@ export default function CreateEventModal({ open, onClose }: Props) {
             />
             </div>
 
-            <div className="text-right lg:pt-4">
+            <div className="flex justify-end gap-3 lg:pt-4">
+              <button
+                type="button"
+                disabled={isPosting}
+                onClick={() => {
+                  form.resetForm();
+                  onClose();
+                }}
+                className="bg-secondary-lm text-text-lm border border-stroke-grey px-4 py-2 rounded-lg hover:bg-hover-lm transition duration-150 disabled:opacity-60"
+              >
+                Cancel
+              </button>
               <ButtonCTA
                 type="submit"
                 label={isPosting ? "Posting..." : "Post"}

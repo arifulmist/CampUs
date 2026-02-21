@@ -36,10 +36,12 @@ import {
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "@/components/PostButtons";
 import { UserInfo } from "@/components/UserInfo";
 import { getCategoryClass } from "@/utils/categoryColors";
+import { formatDateToLocale, formatRelativeTime, isSameDay } from "@/utils/datetime";
 import { EventSegment } from "./EventSegment";
 import { supabase } from "@/supabase/supabaseClient";
 import { EditEventModal } from "./EditEventModal";
 import { DeleteEventModal } from "./DeleteEventModal";
+import ImagePreview from "@/components/ImagePreview";
 
 type EventPostsRow = {
   post_id: string;
@@ -133,53 +135,23 @@ function toTimeInputValue(value: unknown): string {
   return value.length >= 5 ? value.slice(0, 5) : value;
 }
 
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
+function formatDateDisplay(dateString?: string | null) {
+  return formatDateToLocale(dateString, "en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
   });
 }
 
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateString);
-  }
-}
-
-function isSameDay(a?: string | null, b?: string | null) {
-  if (!a || !b) return false;
-  try {
-    const da = new Date(a);
-    const db = new Date(b);
-    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
-  } catch {
-    return a === b;
-  }
-}
 
 
-
-export function EventPostRoute({ postId }: { postId: string }) {
+export function EventPostRoute({
+  postId,
+  onInitialLoadDone,
+}: {
+  postId: string;
+  onInitialLoadDone?: () => void;
+}) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<EventDetail | null>(null);
@@ -189,9 +161,31 @@ export function EventPostRoute({ postId }: { postId: string }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
+
+  const openPreview = (src: string | null, name?: string) => {
+    if (!src) return;
+    setPreviewSrc(src);
+    setPreviewName(name ?? null);
+    setPreviewOpen(true);
+  };
+
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewSrc(null);
+    setPreviewName(null);
+  };
+
   
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const initialLoadNotifiedRef = useRef(false);
+
+  useEffect(() => {
+    initialLoadNotifiedRef.current = false;
+  }, [postId]);
 
   const isOwner = useMemo(() => {
     if (!detail?.authorId || !currentUserId) return false;
@@ -404,7 +398,13 @@ export function EventPostRoute({ postId }: { postId: string }) {
         toast.error("Failed to load event post");
         setDetail(null);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          if (!initialLoadNotifiedRef.current) {
+            initialLoadNotifiedRef.current = true;
+            onInitialLoadDone?.();
+          }
+        }
       }
     }
 
@@ -551,12 +551,18 @@ export function EventPostRoute({ postId }: { postId: string }) {
 
       {detail.imageUrl ? (
         <div className="lg:w-full lg:h-120 lg:overflow-hidden lg:mt-4">
-          <img
-            src={detail.imageUrl}
-            alt="event post"
-            className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
-          />
+          <button type="button" onClick={() => openPreview(detail.imageUrl, undefined)} className="w-full h-full block">
+            <img
+              src={detail.imageUrl}
+              alt="event post"
+              className="lg:object-contain lg:w-full lg:h-full lg:rounded-lg"
+            />
+          </button>
         </div>
+      ) : null}
+
+      {previewOpen && previewSrc ? (
+        <ImagePreview src={previewSrc} filename={previewName ?? undefined} onClose={closePreview} />
       ) : null}
 
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">

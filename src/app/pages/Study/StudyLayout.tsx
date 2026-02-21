@@ -9,6 +9,7 @@ import {
   type Note,
   type ResourceItem,
 } from "./backend/studyService";
+import { Loading } from "../Fallback/Loading";
 
 export function StudyLayout() {
   const { level, term } = useParams();
@@ -123,7 +124,7 @@ export function StudyLayout() {
   if (batchLoading) {
     return (
       <main className="lg:w-full lg:h-screen lg:flex lg:items-center lg:justify-center">
-        <p className="text-text-lighter-lm">Loading your department...</p>
+        <Loading />
       </main>
     );
   }

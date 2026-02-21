@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { formatDateToLocale } from "@/utils/datetime";
 
 import {
   fetchCommentsByPost,
@@ -340,9 +341,9 @@ export default function EventPostDetail({ post, onBack }: Props) {
                   <p className="text-sm text-text-lm lg:mt-2">{seg.description}</p>
                 )}
                 <div className="text-xs text-text-lighter-lm lg:mt-3">
-                  {seg.date && (
-                    <span className="lg:mr-4">
-                      {new Date(seg.date).toLocaleDateString(undefined, {
+                    {seg.date && (
+                      <span className="lg:mr-4">
+                        {formatDateToLocale(seg.date, undefined, {
                         day: "2-digit",
                         month: "long",
                         year: "numeric",

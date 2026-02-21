@@ -1,6 +1,25 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { EventPostRoute } from "./components/EventPostRoute";
-import { PostComments } from "@/components/PostComments";
+import { PostComments } from "@/components/PostComments.tsx";
+import { Loading } from "../Fallback/Loading";
+
+function EventPostDetailInner({ postId }: { postId: string }) {
+  const [postReady, setPostReady] = useState(false);
+  const [commentsReady, setCommentsReady] = useState(false);
+  const isReady = postReady && commentsReady;
+
+  return (
+    <div className="lg:flex lg:flex-col lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
+      {!isReady ? <Loading /> : null}
+
+      <div className={!isReady ? "hidden" : ""}>
+        <EventPostRoute postId={postId} onInitialLoadDone={() => setPostReady(true)} />
+        <PostComments postId={postId} onInitialLoadDone={() => setCommentsReady(true)} />
+      </div>
+    </div>
+  );
+}
 
 export function EventPostDetailRoute() {
   const { postId } = useParams();
@@ -15,12 +34,7 @@ export function EventPostDetailRoute() {
     );
   }
 
-  return (
-    <div className="lg:flex lg:flex-col lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
-      <EventPostRoute postId={postId} />
-      <PostComments postId={postId} />
-    </div>
-  );
+  return <EventPostDetailInner key={postId} postId={postId} />;
 }
 
 export default EventPostDetailRoute;

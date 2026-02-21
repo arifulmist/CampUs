@@ -1,6 +1,25 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { PostComments } from "@/components/PostComments";
+import { PostComments } from "@/components/PostComments.tsx";
 import { CollabPostRoute } from "./components/CollabPostRoute.tsx";
+import { Loading } from "../Fallback/Loading";
+
+function CollabPostDetailInner({ postId }: { postId: string }) {
+  const [postReady, setPostReady] = useState(false);
+  const [commentsReady, setCommentsReady] = useState(false);
+  const isReady = postReady && commentsReady;
+
+  return (
+    <div className="lg:flex lg:flex-col lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
+      {!isReady ? <Loading /> : null}
+
+      <div className={!isReady ? "hidden" : ""}>
+        <CollabPostRoute postId={postId} onInitialLoadDone={() => setPostReady(true)} />
+        <PostComments postId={postId} onInitialLoadDone={() => setCommentsReady(true)} />
+      </div>
+    </div>
+  );
+}
 
 export function CollabPostDetailRoute() {
   const { postId } = useParams();
@@ -15,12 +34,7 @@ export function CollabPostDetailRoute() {
     );
   }
 
-  return (
-    <div className="lg:flex lg:flex-col lg:h-full lg:w-full lg:p-10 lg:animate-fade-in">
-      <CollabPostRoute postId={postId} />
-      <PostComments postId={postId} />
-    </div>
-  );
+  return <CollabPostDetailInner key={postId} postId={postId} />;
 }
 
 export default CollabPostDetailRoute;

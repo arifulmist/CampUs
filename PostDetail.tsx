@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import type { Post, PostCategory } from "../QnAPageContent/types";
-import { categoryStyles } from "../QnAPageContent/types";
+import type { Post, PostCategory } from "../types";
+import { categoryStyles } from "../types";
 
 interface PostDetailProps {
   post: Post;

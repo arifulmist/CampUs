@@ -2,21 +2,15 @@ import React from "react";
 
 import type { Category } from "./Category.tsx";
 
-interface CategoryFilterProps {
-  categories: Category[];
-  selected: Category;
-  onChange: React.Dispatch<React.SetStateAction<Category>>;
-}
-
-
-interface CategoryFilterProps {
-  categories: Category[];
-  selected: Category;
-  onChange: React.Dispatch<React.SetStateAction<Category>>;
-}
-
-
-export function CategoryFilter({ categories, selected, onChange }: CategoryFilterProps) {
+export function CategoryFilter<T extends string = Category>({
+  categories,
+  selected,
+  onChange,
+}: {
+  categories: T[];
+  selected: T;
+  onChange: React.Dispatch<React.SetStateAction<T>>;
+}) {
   return (
     <div className="lg:flex lg:flex-col lg:gap-4 lg:w-80 lg:h-fit bg-primary-lm lg:p-4 lg:rounded-2xl border border-stroke-grey">
       <h6 className="lg:font-[Poppins] lg:font-semibold text-text-lm lg:mb-2">

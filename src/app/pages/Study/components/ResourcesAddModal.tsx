@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { InputField } from "@/components/InputField";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import warningIcon from "@/assets/icons/warning_icon.png";
@@ -54,18 +55,19 @@ export function ResourceAddModal({
     // Note: onClose is called by parent component after successful submission
   }
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div className="lg:fixed lg:inset-0 bg-[#cbcbcb95] lg:z-50" />
+  if (typeof document === "undefined") return null;
 
-      {/* Modal */}
-      <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center">
+  const portalContent = (
+    <>
+      {/* Backdrop (viewport-fixed, above nav/sidebars) */}
+      <div className="fixed inset-0 z-1000" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} />
+
+      {/* Modal (centered on viewport) */}
+      <div className="fixed inset-0 z-1001 flex items-center justify-center">
         <form
           onSubmit={handleSubmit}
-          className="bg-secondary-lm border-2 border-stroke-grey lg:rounded-xl lg:px-10 lg:py-8 lg:w-130 lg:relative lg:animate-slide-in"
+          className="bg-secondary-lm border-2 border-stroke-grey rounded-xl px-10 py-8 w-130 relative animate-slide-in"
         >
-          {/* Header */}
           <div className="lg:flex lg:justify-between lg:items-center">
             <h4 className="lg:font-header text-text-lm lg:font-medium">
               Add Resource
@@ -140,4 +142,14 @@ export function ResourceAddModal({
       </div>
     </>
   );
+
+  try {
+    return createPortal(portalContent, document.body);
+  } catch (err) {
+    // If portal fails for any reason, log and render inline as a fallback
+    // (prevents route errorElement from being shown)
+    // eslint-disable-next-line no-console
+    console.error("createPortal failed for ResourceAddModal:", err);
+    return portalContent;
+  }
 }

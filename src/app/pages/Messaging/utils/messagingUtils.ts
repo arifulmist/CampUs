@@ -36,6 +36,113 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
 
+/**
+ * Update a message body (only the sender can edit).
+ * Returns the updated message, or null on failure.
+ */
+export async function updateMessage(
+  messageId: string,
+  messageBody: string,
+): Promise<Message | null> {
+  try {
+    const id = messageId?.trim();
+    if (!id) throw new Error("Missing message id");
+
+    const body = messageBody.trim();
+    if (!body) throw new Error("Message cannot be empty");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("all_messages")
+      .update({ message_body: body })
+      .eq("id", id)
+      .eq("sender_id", user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return (data as unknown as Message) ?? null;
+  } catch (error) {
+    console.error("Error updating message:", error);
+    return null;
+  }
+}
+
+/**
+ * Delete a single message (only the sender can delete).
+ * Also updates conversation.last_message_id if the last message was deleted.
+ */
+export async function deleteMessage(messageId: string): Promise<void> {
+  const id = messageId?.trim();
+  if (!id) throw new Error("Missing message id");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Fetch message metadata so we can repair the conversation last_message_id if needed.
+  const { data: msg, error: msgFetchError } = await supabase
+    .from("all_messages")
+    .select("id,conversation_id")
+    .eq("id", id)
+    .eq("sender_id", user.id)
+    .maybeSingle();
+
+  if (msgFetchError) throw msgFetchError;
+  if (!msg) throw new Error("Message not found or not owned by user");
+
+  const conversationId = (msg as unknown as { conversation_id?: unknown })?.conversation_id;
+  if (typeof conversationId !== "string" || !conversationId.trim()) {
+    throw new Error("Invalid conversation id");
+  }
+
+  const { error: delError } = await supabase
+    .from("all_messages")
+    .delete()
+    .eq("id", id)
+    .eq("sender_id", user.id);
+
+  if (delError) throw delError;
+
+  // If we deleted the last message, fix conversation.last_message_id.
+  const { data: conv, error: convError } = await supabase
+    .from("conversations")
+    .select("last_message_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+
+  if (convError) throw convError;
+
+  const lastMessageId = (conv as unknown as { last_message_id?: unknown } | null)?.last_message_id;
+  if (lastMessageId === id) {
+    const { data: lastMsgRow, error: lastMsgError } = await supabase
+      .from("all_messages")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastMsgError) throw lastMsgError;
+    const newLastId = (lastMsgRow as unknown as { id?: unknown } | null)?.id;
+
+    const { error: updateConvError } = await supabase
+      .from("conversations")
+      .update({
+        last_message_id: typeof newLastId === "string" ? newLastId : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", conversationId);
+
+    if (updateConvError) throw updateConvError;
+  }
+}
+
 type GetMessagesPageRow = {
   id: string;
   conversation_id: string;
@@ -394,4 +501,31 @@ export function subscribeToConversations(
   return () => {
     supabase.removeChannel(messageChannel);
   };
+}
+
+/**
+ * Delete a conversation and its messages.
+ * Throws on failure so callers can show an error/toast.
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const id = conversationId?.trim();
+  if (!id) throw new Error("Missing conversation id");
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Delete messages first to avoid FK constraint issues if cascade isn't configured.
+  const { error: msgError } = await supabase
+    .from("all_messages")
+    .delete()
+    .eq("conversation_id", id);
+
+  if (msgError) throw msgError;
+
+  const { error: convError } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id);
+
+  if (convError) throw convError;
 }

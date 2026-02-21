@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEventHandler } from "react"
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 import heartIcon from "@/assets/icons/heart_icon.svg";
@@ -11,6 +12,107 @@ import filledBellIcon from "@/assets/icons/FILLEDbell_icon.svg";
 // import { ShareModal } from "./ShareModal";
 
 import { supabase } from "@/supabase/supabaseClient";
+
+const LIKES_CACHE_EVENT = "campus:likes_cache_changed";
+const INTEREST_CACHE_EVENT = "campus:interest_cache_changed";
+
+let cachedUserId: string | null | undefined = undefined;
+let cachedUserIdPromise: Promise<string | null> | null = null;
+
+async function getCachedUserId(): Promise<string | null> {
+  if (cachedUserId !== undefined) return cachedUserId;
+  if (cachedUserIdPromise) return cachedUserIdPromise;
+
+  cachedUserIdPromise = supabase.auth
+    .getUser()
+    .then((res) => {
+      cachedUserId = res.data.user?.id ?? null;
+      return cachedUserId;
+    })
+    .catch(() => {
+      cachedUserId = null;
+      return null;
+    })
+    .finally(() => {
+      cachedUserIdPromise = null;
+    });
+
+  return cachedUserIdPromise;
+}
+
+const likedByPostId = new Map<string, boolean>();
+const pendingLikePostIds = new Set<string>();
+let likeBatchTimer: number | null = null;
+
+function scheduleLikeBatchFetch() {
+  if (likeBatchTimer !== null) return;
+  likeBatchTimer = window.setTimeout(async () => {
+    likeBatchTimer = null;
+    const ids = Array.from(pendingLikePostIds);
+    pendingLikePostIds.clear();
+    if (!ids.length) return;
+
+    const userId = await getCachedUserId();
+    if (!userId) {
+      for (const id of ids) likedByPostId.set(id, false);
+      window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }));
+      return;
+    }
+
+    const { data } = await supabase
+      .from("post_likes")
+      .select("post_id")
+      .eq("user_id", userId)
+      .in("post_id", ids);
+
+    const likedIds = new Set((data ?? []).map((r: any) => String(r.post_id)));
+    for (const id of ids) likedByPostId.set(id, likedIds.has(id));
+    window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: ids } }));
+  }, 0);
+}
+
+function ensureLikeCached(postId: string) {
+  if (likedByPostId.has(postId)) return;
+  pendingLikePostIds.add(postId);
+  scheduleLikeBatchFetch();
+}
+
+const interestedByPostId = new Map<string, boolean>();
+const pendingInterestedPostIds = new Set<string>();
+let interestBatchTimer: number | null = null;
+
+function scheduleInterestedBatchFetch() {
+  if (interestBatchTimer !== null) return;
+  interestBatchTimer = window.setTimeout(async () => {
+    interestBatchTimer = null;
+    const ids = Array.from(pendingInterestedPostIds);
+    pendingInterestedPostIds.clear();
+    if (!ids.length) return;
+
+    const userId = await getCachedUserId();
+    if (!userId) {
+      for (const id of ids) interestedByPostId.set(id, false);
+      window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }));
+      return;
+    }
+
+    const { data } = await supabase
+      .from("user_interested_posts")
+      .select("post_id")
+      .eq("user_id", userId)
+      .in("post_id", ids);
+
+    const interestedIds = new Set((data ?? []).map((r: any) => String(r.post_id)));
+    for (const id of ids) interestedByPostId.set(id, interestedIds.has(id));
+    window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: ids } }));
+  }, 0);
+}
+
+function ensureInterestedCached(postId: string) {
+  if (interestedByPostId.has(postId)) return;
+  pendingInterestedPostIds.add(postId);
+  scheduleInterestedBatchFetch();
+}
 
 
 interface ButtonProps
@@ -30,7 +132,7 @@ function ButtonBase({icon, label, clickEvent}:ButtonProps)
         e.stopPropagation();
         clickEvent?.(e);
       }}
-      className="lg:flex lg:gap-2 items-center lg:px-3.5 lg:py-1.5 lg:font-semibold lg:text-[15px] text-accent-lm bg-primary-lm hover:bg-accent-lm/10 transition duration-200 border-2 border-stroke-peach lg:rounded-full cursor-pointer"
+      className="lg:flex lg:gap-2 items-center lg:px-3.5 lg:py-1.5 lg:font-semibold lg:text-[15px] text-accent-lm bg-primary-lm hover:bg-accent-lm/10 transition duration-200 border-[1.5px] border-stroke-peach lg:rounded-full cursor-pointer"
     >
       <img src={icon} className="lg:size-5"></img>
       {label}
@@ -54,41 +156,45 @@ export function LikeButton({
     let alive = true;
     if (!postId) return;
 
-    (async () => {
-      const [{ data, error }, authRes] = await Promise.all([
-        supabase
+    // 1) Get liked state from cache (batched), avoid one-query-per-post.
+    ensureLikeCached(postId);
+    const cachedLiked = likedByPostId.get(postId);
+    if (typeof cachedLiked === "boolean") {
+      setLikeState((prev) => ({ ...prev, isLiked: cachedLiked }));
+    }
+
+    // 2) Only fetch like_count if we weren't given an initial count.
+    if (typeof initialLikeCount !== "number") {
+      void (async () => {
+        const { data, error } = await supabase
           .from("all_posts")
           .select("like_count")
           .eq("post_id", postId)
-          .maybeSingle(),
-        supabase.auth.getUser(),
-      ]);
-
-      if (!alive) return;
-      if (error) return;
-
-      const countRaw = (data as unknown as { like_count?: unknown } | null)?.like_count;
-      const likeCount = typeof countRaw === "number" ? countRaw : Number(countRaw ?? 0);
-
-      const userId = authRes.data.user?.id ?? null;
-      let liked = false;
-      if (userId) {
-        const { data: likedRow } = await supabase
-          .from("post_likes")
-          .select("post_id")
-          .eq("post_id", postId)
-          .eq("user_id", userId)
           .maybeSingle();
-        liked = Boolean(likedRow);
-      }
 
-      setLikeState({ likeCount: Math.max(0, likeCount), isLiked: liked });
-    })();
+        if (!alive) return;
+        if (error) return;
+
+        const countRaw = (data as unknown as { like_count?: unknown } | null)?.like_count;
+        const likeCount = typeof countRaw === "number" ? countRaw : Number(countRaw ?? 0);
+        setLikeState((prev) => ({ ...prev, likeCount: Math.max(0, likeCount) }));
+      })();
+    }
+
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ postIds?: string[] }>;
+      if (!ce?.detail?.postIds?.includes(postId)) return;
+      const v = likedByPostId.get(postId);
+      if (typeof v !== "boolean") return;
+      setLikeState((prev) => ({ ...prev, isLiked: v }));
+    };
+    window.addEventListener(LIKES_CACHE_EVENT, handler as EventListener);
 
     return () => {
       alive = false;
+      window.removeEventListener(LIKES_CACHE_EVENT, handler as EventListener);
     };
-  }, [postId]);
+  }, [postId, initialLikeCount]);
 
   async function handleLikeState() {
     if (!postId) {
@@ -120,7 +226,10 @@ export function LikeButton({
 
     const row = data as unknown as { like_count?: unknown; liked?: unknown };
     const likeCount = typeof row.like_count === "number" ? row.like_count : Number(row.like_count ?? 0);
-    setLikeState({ likeCount: Math.max(0, likeCount), isLiked: Boolean(row.liked) });
+    const liked = Boolean(row.liked);
+    likedByPostId.set(postId, liked);
+    window.dispatchEvent(new CustomEvent(LIKES_CACHE_EVENT, { detail: { postIds: [postId] } }));
+    setLikeState({ likeCount: Math.max(0, likeCount), isLiked: liked });
   }
 
   return (
@@ -135,10 +244,14 @@ export function LikeButton({
 export function CommentButton({
   postId,
   initialCommentCount,
+  navigateTo,
 }: {
   postId?: string;
   initialCommentCount?: number;
+  navigateTo?: string;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [commentCount, setCommentCount] = useState(
     typeof initialCommentCount === "number" ? initialCommentCount : 0
   );
@@ -160,8 +273,11 @@ export function CommentButton({
 
   useEffect(() => {
     if (!postId) return;
-    void refreshCount(postId);
-  }, [postId]);
+    // Avoid one COUNT(*) per post when we already got the count from the feed query.
+    if (typeof initialCommentCount !== "number") {
+      void refreshCount(postId);
+    }
+  }, [postId, initialCommentCount]);
 
   useEffect(() => {
     if (!postId) return;
@@ -181,19 +297,68 @@ export function CommentButton({
     <ButtonBase
       icon={commentIcon}
       label={commentCount === 0 ? "Comment" : commentCount}
-    ></ButtonBase>
+      clickEvent={() => {
+        if (postId) {
+          // persistent marker in case PostComments mounts after this event
+          try {
+            (window as any).__campus_last_focus_comment = { postId, ts: Date.now() };
+          } catch {}
+          window.dispatchEvent(new CustomEvent("campus:focus_comment_input", { detail: { postId } }));
+
+          if (navigateTo && location.pathname !== navigateTo) {
+            navigate(navigateTo);
+          }
+        }
+      }}
+    />
   );
 }
 
-export function ShareButton()
-{
-  // const [isClicked, setIsClicked]=useState(false);
+export function ShareButton({ postId, categorySet }: { postId?: string; categorySet?: string }) {
+  async function handleShare() {
+    const base = window.location.origin;
+    const url = postId
+      ? categorySet === "events"
+        ? `${base}/events/${postId}`
+        : categorySet === "collab"
+        ? `${base}/collab/${postId}`
+        : categorySet === "lostfound"
+        ? `${base}/lost-and-found/${postId}`
+        : categorySet === "qna"
+        ? `${base}/qna/${postId}`
+        : `${base}/post/${postId}`
+      : window.location.href;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Linked copied!");
+        return;
+      }
+
+      // Fallback for older browsers
+      const el = document.createElement("textarea");
+      el.value = url;
+      el.setAttribute("readonly", "");
+      el.style.position = "absolute";
+      el.style.left = "-9999px";
+      document.body.appendChild(el);
+      el.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(el);
+      if (ok) {
+        toast.success("Linked copied!");
+      } else {
+        throw new Error("copy-failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to copy link");
+    }
+  }
 
   return (
-    <>
-      <ButtonBase icon={shareIcon} label={"Share"}></ButtonBase>
-      {/* {isClicked && <ShareModal/>} */}
-    </>
+    <ButtonBase icon={shareIcon} label={"Share"} clickEvent={() => void handleShare()}></ButtonBase>
   );
 }
 
@@ -210,41 +375,28 @@ export function InterestedButton({ postId }: { postId?: string }) {
       return;
     }
 
-    (async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!alive) return;
+    ensureInterestedCached(postId);
+    const cached = interestedByPostId.get(postId);
+    if (typeof cached === "boolean") {
+      setState({ isInterested: cached, loading: false });
+    } else {
+      // Wait for batch to populate
+      setState((s) => ({ ...s, loading: true }));
+    }
 
-        if (!user) {
-          setState({ isInterested: false, loading: false });
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("user_interested_posts")
-          .select("id")
-          .eq("post_id", postId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!alive) return;
-        if (error) {
-          console.error(error);
-          setState({ isInterested: false, loading: false });
-          return;
-        }
-
-        setState({ isInterested: Boolean(data), loading: false });
-      } catch (e) {
-        console.error(e);
-        if (alive) setState({ isInterested: false, loading: false });
-      }
-    })();
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ postIds?: string[] }>;
+      if (!ce?.detail?.postIds?.includes(postId)) return;
+      const v = interestedByPostId.get(postId);
+      if (typeof v !== "boolean") return;
+      if (!alive) return;
+      setState({ isInterested: v, loading: false });
+    };
+    window.addEventListener(INTEREST_CACHE_EVENT, handler as EventListener);
 
     return () => {
       alive = false;
+      window.removeEventListener(INTEREST_CACHE_EVENT, handler as EventListener);
     };
   }, [postId]);
 
@@ -296,6 +448,9 @@ export function InterestedButton({ postId }: { postId?: string }) {
         return;
       }
     }
+
+    interestedByPostId.set(postId, !prev.isInterested);
+    window.dispatchEvent(new CustomEvent(INTEREST_CACHE_EVENT, { detail: { postIds: [postId] } }));
 
     window.dispatchEvent(new CustomEvent(INTERESTED_EVENT_NAME));
     window.dispatchEvent(new CustomEvent(UPCOMING_EVENT_NAME));

@@ -3,42 +3,29 @@ import { useNavigate } from "react-router-dom";
 
 import { useUserProfileContext } from "./UserProfileContext";
 import { supabase } from "@/supabase/supabaseClient";
+import { formatRelativeTime } from "@/utils/datetime";
 
 import EventPost, { type EventPostType } from "../../Events/components/EventPost";
 import {
   CollabPostCard,
   type CollabPost,
 } from "../../CollabHub/components/CollabPostCard";
-import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard";
+import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnAPostCard";
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
+
+function asCollabCategory(value: unknown): CollabPost["category"] | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  if (v === "all" || v === "research" || v === "competition" || v === "project") {
+    return v as CollabPost["category"];
+  }
+  return null;
+}
 
 function postPath(type: string, postId: string) {
   const t = type.trim().toLowerCase();
   const base = t === "lostfound" ? "lost-and-found" : t;
   return `/${base}/${postId}`;
-}
-
-function formatRelativeTime(dateString?: string | null) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} hr ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 3) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
 }
 
 function splitDeptBatch(label: string): { dept: string; batch: string } {
@@ -272,7 +259,8 @@ export function UserPostsSection() {
             }
 
             const categoryId = metaByPostId.get(postId);
-            const category = categoryId ? categoryById.get(categoryId) : undefined;
+            const categoryRaw = categoryId ? categoryById.get(categoryId) : undefined;
+            const category = asCollabCategory(categoryRaw);
             if (!category) continue;
 
             map.set(postId, {
@@ -307,7 +295,7 @@ export function UserPostsSection() {
           const { data: rows, error } = await supabase
             .from("all_posts")
             .select("post_id,title,description,like_count,comment_count,created_at")
-            .eq("type", "qna")
+            .ilike("type", "qna")
             .in("post_id", idsByType.qna);
           if (error) throw error;
 

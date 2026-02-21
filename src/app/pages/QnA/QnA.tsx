@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import QAPageContent from "./QnAPageContent/QAPageContent";
+import { QAPageContent } from "./components/QAPageContent";
 
 export function QnA() {
-  return (
-    <Suspense fallback={null}>
-      <QAPageContent />
-    </Suspense>
-  );
+  return <QAPageContent />;
 }

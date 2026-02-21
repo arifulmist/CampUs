@@ -1,26 +1,18 @@
 import { UserInfo } from "./UserInfo";
 import { CommentButton, InterestedButton, LikeButton, ShareButton } from "./PostButtons";
 import { getCategoryClass } from "@/utils/categoryColors";
+import {
+  formatDateToLocale,
+  formatTime12hFromTimeString,
+  isSameDay,
+} from "@/utils/datetime";
 
-function formatDateDisplay(dateString?: string | null) {
-  if (!dateString) return "";
-  try {
-    const d = new Date(dateString);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateString);
-  }
-}
-
-function isSameDay(a?: string | null, b?: string | null) {
-  if (!a || !b) return false;
-  try {
-    const da = new Date(a);
-    const db = new Date(b);
-    return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
-  } catch {
-    return a === b;
-  }
+function formatEventDateDisplay(dateString?: string | null) {
+  return formatDateToLocale(dateString, "en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 interface PostContent {
@@ -46,6 +38,8 @@ interface PostContent {
   category?: string;
   deptBatch?: string;
   formattedDate?: string;
+  lostFoundDate?: string | null;
+  lostFoundTime?: string | null;
 }
 
 export function PostBody({
@@ -59,12 +53,23 @@ export function PostBody({
   tags,
   category,
   formattedDate,
+  lostFoundDate,
+  lostFoundTime,
   eventStartDate,
   eventEndDate,
   location,
 }: PostContent) {
   const categoryLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : "";
   const categoryClasses = category ? getCategoryClass(category, categorySet) : "";
+
+  const commentNavigateTo =
+    postId && categorySet === "events"
+      ? `/events/${postId}`
+      : postId && categorySet === "collab"
+        ? `/collab/${postId}`
+        : postId && categorySet === "lostfound"
+          ? `/lost-and-found/${postId}`
+          : undefined;
 
   return (
     <div className="lg:flex lg:flex-col lg:gap-3 bg-secondary-lm hover:bg-hover-lm lg:transition border border-stroke-grey hover:border-stroke-peach lg:p-8 lg:rounded-2xl lg:animate-slide-in -mt-5 mb-5">
@@ -80,19 +85,42 @@ export function PostBody({
       )}
 
       {/* Title */}
-      <h3 className="text-text-lm lg:font-extrabold lg:font-headgier">{title}</h3>
+      <h3 className="text-text-lm lg:font-bold lg:font-header">{title}</h3>
+
+      {(categorySet === "lostfound" && (lostFoundDate || lostFoundTime)) && (
+        <div>
+          {lostFoundDate ? (
+            <p className="text-text-lm font-semibold text-md">
+              {`${categoryLabel ? `Date ${categoryLabel}: ` : "Date: "}${formatDateToLocale(lostFoundDate, "en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`}
+            </p>
+          ) : null}
+          {lostFoundTime ? (
+            <p className="text-text-lm font-semibold text-md mt-1">
+              {`${categoryLabel ? `Time ${categoryLabel}: ` : "Time: "}${formatTime12hFromTimeString(lostFoundTime, {
+                spaceBeforePeriod: true,
+                periodCase: "upper",
+                convertOffsetToLocal: false,
+              })}`}
+            </p>
+          ) : null}
+        </div>
+      )}
 
       {(eventStartDate || eventEndDate || location) && (
         <div>
           {(eventStartDate || eventEndDate) && (
             <p className="text-accent-lm font-semibold text-md">
               {eventStartDate && eventEndDate && isSameDay(eventStartDate, eventEndDate)
-                ? formatDateDisplay(eventStartDate)
+                ? formatEventDateDisplay(eventStartDate)
                 : (
                     <>
-                      {eventStartDate ? formatDateDisplay(eventStartDate) : ""}
+                      {eventStartDate ? formatEventDateDisplay(eventStartDate) : ""}
                       {eventStartDate && eventEndDate ? " \u2014 " : ""}
-                      {eventEndDate ? formatDateDisplay(eventEndDate) : ""}
+                      {eventEndDate ? formatEventDateDisplay(eventEndDate) : ""}
                     </>
                   )}
             </p>
@@ -147,10 +175,10 @@ export function PostBody({
       <div className="lg:flex lg:items-center lg:justify-between lg:mt-3">
         <div className="lg:flex lg:gap-3 lg:justify-start">
           <LikeButton postId={postId} initialLikeCount={initialLikeCount} />
-          <CommentButton postId={postId} initialCommentCount={initialCommentCount} />
-          <ShareButton />
+          <CommentButton postId={postId} initialCommentCount={initialCommentCount} navigateTo={commentNavigateTo} />
+          <ShareButton postId={postId} categorySet={categorySet} />
         </div>
-        <div>{postId ? <InterestedButton postId={postId} /> : null}</div>
+        <div>{postId && categorySet === "events" ? <InterestedButton postId={postId} /> : null}</div>
       </div>
     </div>
   );

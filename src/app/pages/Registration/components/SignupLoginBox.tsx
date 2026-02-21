@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import signupIllustration from "@/assets/images/SignupImg.svg";
+import BGIllustration from "@/assets/images/RegPatternBG.svg";
 
 export function SignupLoginBox({
   children,
@@ -9,7 +10,7 @@ export function SignupLoginBox({
   title: string;
 }) {
   return (
-    <div className="lg:min-h-screen lg:flex lg:items-center lg:justify-center">      
+    <div className="lg:min-h-screen lg:flex lg:items-center lg:justify-center" style={{backgroundImage: `url(${BGIllustration})`, backgroundSize:"100%"}}>      
       <div className="lg:flex lg:flex-row lg:mx-10 lg:my-8 bg-secondary-lm lg:rounded-3xl lg:shadow-lg lg:shadow-stroke-grey lg:w-[85vw] lg:max-w-350 lg:h-165">
         
         {/* Left section */}

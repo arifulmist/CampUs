@@ -3,7 +3,6 @@ import docIcon from "@/assets/images/docsImg.svg";
 import pdfIcon from "@/assets/images/pdfImage.svg";
 
 import { useOutletContext } from "react-router";
-import { supabase } from "@/supabase/supabaseClient";
 
 import {
   type Note,
@@ -18,6 +17,7 @@ import { useState } from "react";
 import { NotesAddModal } from "./NotesAddModal";
 import { toast } from "react-hot-toast";
 import notesEmptyState from "@/assets/images/noNotes.svg";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 export function Notes() {
   const [openAddModal, setOpenAddModal] = useState(false);
@@ -60,9 +60,9 @@ export function Notes() {
 
       if (duplicate) {
         toast.error(
-          ` Duplicate file detected! upload the unique one or try another file .`,
+          ` Duplicate file detected! Upload a unique version or try another file.`,
           // `Duplicate file detected! "${duplicate.title}" (${duplicate.courseCode}) uploaded by ${duplicate.uploadedBy} has identical content.`,
-          { duration: 6000 },
+          { duration: 4000 },
         );
         setIsSubmitting(false);
         return;
@@ -180,6 +180,7 @@ function NoteItem({
   onDelete: (noteId: string) => void;
   isDeleting: boolean;
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const getExt = (s?: string) =>
     s ? s.split(/[?#]/)[0].split(".").pop()?.toLowerCase() : undefined;
   const extension = getExt(fileName) ?? getExt(fileLink);
@@ -203,7 +204,6 @@ function NoteItem({
       // Try to find /storage/v1/object/(public/)?<bucket>/path
       const parts = u.pathname.split("/storage/v1/object/");
       if (parts.length === 2) {
-        // parts[1] = maybe "public/notes/...." or "notes/..."
         let after = parts[1];
         // remove possible "public/"
         after = after.replace(/^public\//, "");
@@ -226,36 +226,12 @@ function NoteItem({
       toast.error("No file link available");
       return;
     }
-
-    // Try the public URL first
-    try {
-      const res = await fetch(fileLink, { method: "GET" });
-      if (res.ok) {
-        window.open(fileLink, "_blank", "noopener,noreferrer");
-        return;
-      }
-      // Not ok -> fallthrough to signed URL
-    } catch (err) {
-      // network/CORS/etc. -> try signed URL fallback
-    }
-
-    const objectPath = await extractObjectPath(fileLink);
-    if (!objectPath) {
-      toast.error("Failed to determine storage path for this file");
+    // Open the file URL synchronously so the browser treats it as a
+    // user-initiated navigation (avoids popup-blocking retries).
+    // If the browser blocks popups, inform the user.
+    const win = window.open(fileLink, "_blank", "noopener,noreferrer");
+    if (!win) {
       return;
-    }
-
-    try {
-      const { data, error } = await supabase.storage
-        .from("notes")
-        .createSignedUrl(objectPath, 60);
-      if (error) throw error;
-      const signedUrl = data.signedUrl ?? (data?.signedURL || data?.signed_url);
-      if (!signedUrl) throw new Error("Failed to obtain signed URL");
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
-    } catch (err: any) {
-      console.error("Signed URL error:", err);
-      toast.error(err?.message ?? "Unable to open file. Contact admin.");
     }
   }
 
@@ -291,7 +267,7 @@ function NoteItem({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(id);
+            setShowDeleteConfirm(true);
           }}
           disabled={isDeleting}
           className="absolute top-2 right-2 z-10 size-9 flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm border border-stroke-grey shadow-md text-red-500 hover:bg-red-600 hover:text-white hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
@@ -334,6 +310,15 @@ function NoteItem({
           )}
         </button>
       )}
+      <DeleteConfirmModal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Note"
+        onConfirm={async () => {
+          setShowDeleteConfirm(false);
+          await onDelete(id);
+        }}
+      />
     </div>
   );
 }

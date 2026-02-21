@@ -1,4 +1,5 @@
 import { supabase } from "@/supabase/supabaseClient";
+import { formatDateDMY, formatTime12hFromTimeString } from "@/utils/datetime";
 
 // Types matching the database schema
 export interface DBNote {
@@ -185,8 +186,12 @@ export async function fetchNotes(
       title: n.title,
       uploadedBy: joinedName ?? mappedName ?? "Unknown",
       courseCode: `${n.course}-${n.course_code}`,
-      uploadDate: formatDate(n.upload_date),
-      uploadTime: formatTime(n.upload_time),
+      uploadDate: formatDateDMY(n.upload_date),
+      uploadTime: formatTime12hFromTimeString(n.upload_time, {
+        spaceBeforePeriod: false,
+        periodCase: "lower",
+        convertOffsetToLocal: true,
+      }),
       fileLink: n.file_url,
       fileName: extractFileName(n.file_url),
       authorId: n.author_id,
@@ -384,8 +389,12 @@ export async function createNote(data: {
     title: note.title,
     uploadedBy: authorInfo?.name ?? "Unknown",
     courseCode: `${note.course}-${note.course_code}`,
-    uploadDate: formatDate(note.upload_date),
-    uploadTime: formatTime(note.upload_time),
+    uploadDate: formatDateDMY(note.upload_date),
+    uploadTime: formatTime12hFromTimeString(note.upload_time, {
+      spaceBeforePeriod: false,
+      periodCase: "lower",
+      convertOffsetToLocal: true,
+    }),
     fileLink: note.file_url,
     fileName: extractFileName(note.file_url),
     authorId: note.author_id,
@@ -732,34 +741,11 @@ export async function getCurrentUserBatch(): Promise<string> {
   return batchName;
 }
 
-// Get the current authenticated user's ID
 export async function getCurrentUserId(): Promise<string | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user?.id ?? null;
-}
-
-// Helper functions
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatTime(timeStr: string): string {
-  if (!timeStr) return "";
-  // Handle time string like "10:30:00" or "10:30:00+06"
-  const timePart = timeStr.split("+")[0].split("-")[0];
-  const [hours, minutes] = timePart.split(":");
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? "pm" : "am";
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes}${ampm}`;
 }
 
 function extractFileName(url: string): string | undefined {
