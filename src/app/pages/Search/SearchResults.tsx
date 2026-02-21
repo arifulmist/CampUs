@@ -138,26 +138,33 @@ export default function SearchResults() {
       {!loading && tab === "posts" && (
         <div className="mt-4 space-y-4">
           {posts.length === 0 && <div>No posts found</div>}
-          {posts.map((p) => (
-           <button
-                key={p.post_id}
-                onClick={() => navigate(`/${p.type.toLowerCase()}/${p.post_id}`)}
-                className="block p-3 border rounded hover:bg-hover text-left"
-                >
+          {posts.map((p) => {
+            // Build the correct URL based on type
+            const url =
+              p.type.toLowerCase() === "lostfound"
+                ? `/lost-and-found/${p.post_id}`
+                : `/${p.type.toLowerCase()}/${p.post_id}`;
 
-              <div
-                className="font-semibold"
-                dangerouslySetInnerHTML={{ __html: highlight(p.title, debouncedQ) }}
-              />
-              <div
-                className="text-sm text-gray-700"
-                dangerouslySetInnerHTML={{ __html: highlight(p.description, debouncedQ) }}
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                By {p.author_id} • {p.type}
-              </div>
-            </button>
-          ))}
+            return (
+              <button
+                key={p.post_id}
+                onClick={() => navigate(url)}
+                className="block p-3 border rounded hover:bg-hover text-left"
+              >
+                <div
+                  className="font-semibold"
+                  dangerouslySetInnerHTML={{ __html: highlight(p.title, debouncedQ) }}
+                />
+                <div
+                  className="text-sm text-gray-700"
+                  dangerouslySetInnerHTML={{ __html: highlight(p.description, debouncedQ) }}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  By {p.author_id} • {p.type}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
