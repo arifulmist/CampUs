@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 
 function TooltipProvider({
   delayDuration = 0,
@@ -38,8 +38,9 @@ function TooltipContent({
   className,
   sideOffset = 0,
   children,
+  showArrow = true,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> & { showArrow?: boolean }) {
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
@@ -52,7 +53,9 @@ function TooltipContent({
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-xs" />
+        {showArrow ? (
+          <TooltipPrimitive.Arrow className="bg-foreground fill-foreground lg:z-50 lg:size-2.5 lg:translate-y-[calc(-50%-2px)] lg:rotate-45 lg:rounded-xs" />
+        ) : null}
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

@@ -4,7 +4,7 @@ import * as React from "react";
 import { GripVerticalIcon } from "lucide-react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 
 const ResizablePanelGroupPrimitive = (ResizablePrimitive as any).PanelGroup;
 const ResizablePanelPrimitive = (ResizablePrimitive as any).Panel;
@@ -48,8 +48,8 @@ function ResizableHandle({
       {...props}
     >
       {withHandle && (
-        <div className="bg-border z-10 flex h-4 w-3 items-center justify-center rounded-xs border">
-          <GripVerticalIcon className="size-2.5" />
+        <div className="bg-border lg:z-10 lg:flex lg:h-4 lg:w-3 lg:items-center lg:justify-center lg:rounded-xs lg:border">
+          <GripVerticalIcon className="lg:size-2.5" />
         </div>
       )}
     </ResizablePanelResizeHandlePrimitive>

@@ -1,4 +1,4 @@
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (

@@ -1,0 +1,755 @@
+import { supabase } from "@/supabase/supabaseClient";
+import { formatDateDMY, formatTime12hFromTimeString } from "@/utils/datetime";
+
+// Types matching the database schema
+export interface DBNote {
+  note_id: string;
+  semester_id: string;
+  title: string;
+  course: string;
+  course_code: string;
+  file_url: string;
+  file_hash: string | null;
+  author_id: string | null;
+  upload_date: string;
+  upload_time: string;
+  // Joined from user_info
+  author?: {
+    auth_uid: string;
+    name: string;
+    batch: string;
+    profile_picture: string | null;
+  };
+}
+
+export interface DBResource {
+  resource_id: string;
+  semester_id: string;
+  author_id: string | null;
+  title: string;
+  course: string;
+  course_code: string;
+  resource_link: string;
+  upload_date: string;
+  upload_time: string;
+  // Joined from user_info
+  author?: {
+    auth_uid: string;
+    name: string;
+    batch: string;
+    profile_picture: string | null;
+  };
+}
+
+export interface DBSemester {
+  semester_id: string;
+  batch_id: string;
+  level: number;
+  term: number;
+}
+
+export interface DBBatch {
+  batch_id: string;
+  batch_name: string;
+}
+
+// Frontend-friendly types
+export interface Note {
+  id: string;
+  title: string;
+  uploadedBy: string;
+  courseCode: string;
+  uploadDate: string;
+  uploadTime: string;
+  fileLink: string;
+  fileName?: string;
+  authorId?: string;
+}
+
+export interface ResourceItem {
+  id: string;
+  authorId?: string | null;
+  user: {
+    name: string;
+    batch: string;
+    imgURL: string | null;
+  };
+  title: string;
+  course: string;
+  resourceLink: string;
+}
+
+// Get or create batch by name
+export async function getOrCreateBatch(batchName: string): Promise<string> {
+  // Try to find existing batch
+  const { data: existing } = await supabase
+    .from("student_batch")
+    .select("batch_id")
+    .eq("batch_name", batchName)
+    .single();
+
+  if (existing) return existing.batch_id;
+
+  // Create new batch if not found
+  const { data: newBatch, error: createError } = await supabase
+    .from("student_batch")
+    .insert({ batch_name: batchName })
+    .select("batch_id")
+    .single();
+
+  if (createError) throw createError;
+  return newBatch.batch_id;
+}
+
+// Get or create semester
+export async function getOrCreateSemester(
+  batchName: string,
+  level: number,
+  term: number,
+): Promise<string> {
+  const batchId = await getOrCreateBatch(batchName);
+
+  // Try to find existing semester
+  const { data: existing } = await supabase
+    .from("semesters")
+    .select("semester_id")
+    .eq("batch_id", batchId)
+    .eq("level", level)
+    .eq("term", term)
+    .single();
+
+  if (existing) return existing.semester_id;
+
+  // Create new semester if not found
+  const { data: newSemester, error: createError } = await supabase
+    .from("semesters")
+    .insert({ batch_id: batchId, level, term })
+    .select("semester_id")
+    .single();
+
+  if (createError) throw createError;
+  return newSemester.semester_id;
+}
+
+// Fetch notes for a specific level/term
+export async function fetchNotes(
+  batchName: string,
+  level: number,
+  term: number,
+): Promise<Note[]> {
+  // First get the semester_id
+  const batchId = await getOrCreateBatch(batchName);
+
+  const { data: semester } = await supabase
+    .from("semesters")
+    .select("semester_id")
+    .eq("batch_id", batchId)
+    .eq("level", level)
+    .eq("term", term)
+    .single();
+
+  if (!semester) return [];
+
+  // Fetch notes; include joined `user_info` (if available) to get author name directly
+  const { data: notes, error } = await supabase
+    .from("notes")
+    .select(
+      `note_id, title, course, course_code, file_url, upload_date, upload_time, author_id, user_info ( auth_uid, name )`,
+    )
+    .eq("semester_id", semester.semester_id)
+    .order("upload_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching notes:", error);
+    return [];
+  }
+
+  if (!notes || notes.length === 0) return [];
+
+  // Batch-fetch author info for all unique author_ids (only names missing from join)
+  const authorIds = [
+    ...new Set(notes.map((n: any) => n.author_id).filter(Boolean)),
+  ];
+  const authorMap = await fetchAuthorMap(authorIds);
+
+  // Transform to frontend format. Prefer joined `user_info.name` when present,
+  // otherwise fall back to authorMap lookup and finally "Unknown".
+  const result = [];
+  for (const n of notes) {
+    const joinedName =
+      (Array.isArray((n as any).user_info)
+        ? (n as any).user_info?.[0]?.name
+        : (n as any).user_info?.name) ?? null;
+    const mappedName = authorMap[n.author_id]?.name ?? null;
+    result.push({
+      id: n.note_id,
+      title: n.title,
+      uploadedBy: joinedName ?? mappedName ?? "Unknown",
+      courseCode: `${n.course}-${n.course_code}`,
+      uploadDate: formatDateDMY(n.upload_date),
+      uploadTime: formatTime12hFromTimeString(n.upload_time, {
+        spaceBeforePeriod: false,
+        periodCase: "lower",
+        convertOffsetToLocal: true,
+      }),
+      fileLink: n.file_url,
+      fileName: extractFileName(n.file_url),
+      authorId: n.author_id,
+    });
+  }
+
+  return result;
+}
+
+// Fetch resources for a specific level/term
+export async function fetchResources(
+  batchName: string,
+  level: number,
+  term: number,
+): Promise<ResourceItem[]> {
+  // First get the semester_id
+  const batchId = await getOrCreateBatch(batchName);
+
+  const { data: semester } = await supabase
+    .from("semesters")
+    .select("semester_id")
+    .eq("batch_id", batchId)
+    .eq("level", level)
+    .eq("term", term)
+    .single();
+
+  if (!semester) return [];
+
+  // Try fetching resources with a join to `user_info` (preferred).
+  // If the join fails (some DBs / row-level settings), fall back to a plain select
+  // and batch-fetch authors separately so the UI still receives data.
+  let resources: any[] | null = null;
+  try {
+    const { data, error } = await supabase
+      .from("resources")
+      .select(
+        `resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id, user_info ( auth_uid, name, batch, department, departments_lookup ( department_name ) )`,
+      )
+      .eq("semester_id", semester.semester_id)
+      .order("upload_date", { ascending: false });
+
+    if (error) throw error;
+    resources = data as any[];
+  } catch (e: any) {
+    console.error(
+      "Joined resource query failed, falling back:",
+      e?.message ?? e,
+    );
+    // Fallback: fetch without join
+    const { data, error } = await supabase
+      .from("resources")
+      .select(
+        "resource_id, title, course, course_code, resource_link, upload_date, upload_time, author_id",
+      )
+      .eq("semester_id", semester.semester_id)
+      .order("upload_date", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching resources (fallback):", error);
+      return [];
+    }
+    resources = data as any[];
+  }
+
+  if (!resources || resources.length === 0) return [];
+
+  // Batch-fetch author info for all unique author_ids (used by fallback and to fill missing joined fields)
+  const authorIds = [
+    ...new Set(resources.map((r: any) => r.author_id).filter(Boolean)),
+  ];
+  const authorMap = await fetchAuthorMap(authorIds);
+
+  // Transform to frontend format, preferring joined `user_info` fields when available
+  return resources.map((r: any) => ({
+    id: r.resource_id,
+    authorId: r.author_id,
+    user: {
+      name:
+        (() => {
+          const joined = Array.isArray(r.user_info)
+            ? r.user_info?.[0]?.name
+            : r.user_info?.name;
+          return typeof joined === "string" && joined.trim() ? joined : null;
+        })() ??
+        (typeof authorMap[r.author_id]?.name === "string" &&
+        authorMap[r.author_id]?.name.trim()
+          ? authorMap[r.author_id]?.name
+          : null) ??
+        "Unknown",
+      batch: (() => {
+        const ui = Array.isArray(r.user_info) ? r.user_info?.[0] : r.user_info;
+        const joinedDeptLookup = ui?.departments_lookup as
+          | Record<string, unknown>
+          | null
+          | undefined;
+        const joinedDeptName = joinedDeptLookup?.department_name;
+        const joinedDeptFallback = ui?.department;
+
+        const mappedDeptName = authorMap[r.author_id]?.departmentName;
+        const mappedDeptFallback = authorMap[r.author_id]?.department;
+
+        const deptName =
+          (typeof joinedDeptName === "string" && joinedDeptName.trim()
+            ? joinedDeptName
+            : null) ??
+          (typeof mappedDeptName === "string" && mappedDeptName.trim()
+            ? mappedDeptName
+            : null) ??
+          (typeof joinedDeptFallback === "string" && joinedDeptFallback.trim()
+            ? joinedDeptFallback
+            : null) ??
+          (typeof mappedDeptFallback === "string" && mappedDeptFallback.trim()
+            ? mappedDeptFallback
+            : null) ??
+          "";
+
+        const batchValue =
+          ui?.batch ?? null ?? authorMap[r.author_id]?.batch ?? null;
+
+        if (deptName && batchValue !== null && batchValue !== undefined) {
+          return `${deptName}-${batchValue}`;
+        }
+        if (batchValue !== null && batchValue !== undefined)
+          return String(batchValue);
+        return "";
+      })(),
+      imgURL: null,
+    },
+    title: r.title,
+    course: `${r.course}-${r.course_code}`,
+    resourceLink: r.resource_link,
+  }));
+}
+
+// Create a new note
+export async function createNote(data: {
+  batchName: string;
+  level: number;
+  term: number;
+  title: string;
+  course: string;
+  courseCode: string;
+  fileUrl: string;
+  fileHash?: string;
+}): Promise<Note> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to upload notes");
+
+  const semesterId = await getOrCreateSemester(
+    data.batchName,
+    data.level,
+    data.term,
+  );
+
+  const { data: note, error } = await supabase
+    .from("notes")
+    .insert({
+      semester_id: semesterId,
+      title: data.title,
+      course: data.course.toUpperCase(),
+      course_code: data.courseCode,
+      file_url: data.fileUrl,
+      file_hash: data.fileHash ?? null,
+      author_id: user.id,
+    })
+    .select(
+      `
+      note_id,
+      title,
+      course,
+      course_code,
+      file_url,
+      upload_date,
+      upload_time,
+      author_id
+    `,
+    )
+    .single();
+
+  if (error) throw error;
+
+  // Get author info
+  const { data: authorInfo } = await supabase
+    .from("user_info")
+    .select("name")
+    .eq("auth_uid", user.id)
+    .single();
+
+  return {
+    id: note.note_id,
+    title: note.title,
+    uploadedBy: authorInfo?.name ?? "Unknown",
+    courseCode: `${note.course}-${note.course_code}`,
+    uploadDate: formatDateDMY(note.upload_date),
+    uploadTime: formatTime12hFromTimeString(note.upload_time, {
+      spaceBeforePeriod: false,
+      periodCase: "lower",
+      convertOffsetToLocal: true,
+    }),
+    fileLink: note.file_url,
+    fileName: extractFileName(note.file_url),
+    authorId: note.author_id,
+  };
+}
+
+// Create a new resource
+export async function createResource(data: {
+  batchName: string;
+  level: number;
+  term: number;
+  title: string;
+  course: string;
+  courseCode: string;
+  resourceLink: string;
+}): Promise<ResourceItem> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to upload resources");
+
+  const semesterId = await getOrCreateSemester(
+    data.batchName,
+    data.level,
+    data.term,
+  );
+
+  const { data: resource, error } = await supabase
+    .from("resources")
+    .insert({
+      semester_id: semesterId,
+      title: data.title,
+      course: data.course.toUpperCase(),
+      course_code: data.courseCode,
+      resource_link: data.resourceLink,
+      author_id: user.id,
+    })
+    .select(
+      `
+      resource_id,
+      title,
+      course,
+      course_code,
+      resource_link,
+      upload_date,
+      upload_time,
+      author_id
+    `,
+    )
+    .single();
+
+  if (error) throw error;
+
+  // Get author info
+  const { data: authorInfo } = await supabase
+    .from("user_info")
+    .select("name, batch, department, departments_lookup(department_name)")
+    .eq("auth_uid", user.id)
+    .single();
+
+  const deptLookup = (authorInfo as any)?.departments_lookup as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const deptName =
+    (typeof deptLookup?.department_name === "string" &&
+    deptLookup.department_name.trim()
+      ? deptLookup.department_name
+      : null) ??
+    (typeof (authorInfo as any)?.department === "string"
+      ? (authorInfo as any).department
+      : "");
+
+  const batchValue = (authorInfo as any)?.batch ?? null;
+  const displayBatch =
+    deptName && batchValue !== null && batchValue !== undefined
+      ? `${deptName}-${batchValue}`
+      : batchValue !== null && batchValue !== undefined
+        ? String(batchValue)
+        : "";
+
+  return {
+    id: resource.resource_id,
+    authorId: resource.author_id,
+    user: {
+      name: authorInfo?.name ?? "Unknown",
+      batch: displayBatch,
+      imgURL: null,
+    },
+    title: resource.title,
+    course: `${resource.course}-${resource.course_code}`,
+    resourceLink: resource.resource_link,
+  };
+}
+
+// Compute SHA-256 hash of a File (runs entirely in the browser via SubtleCrypto)
+export async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Check whether a note with the given file hash already exists.
+// Returns the matching note metadata when a duplicate is found, or null otherwise.
+export async function checkDuplicateNote(
+  fileHash: string,
+): Promise<{
+  noteId: string;
+  title: string;
+  courseCode: string;
+  uploadedBy: string;
+} | null> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select(
+      "note_id, title, course, course_code, author_id, user_info ( name )",
+    )
+    .eq("file_hash", fileHash)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error checking duplicate note:", error);
+    return null; // fail-open so uploads are not blocked by transient errors
+  }
+
+  if (!data) return null;
+
+  const authorName =
+    (Array.isArray((data as any).user_info)
+      ? (data as any).user_info?.[0]?.name
+      : (data as any).user_info?.name) ?? "Unknown";
+
+  return {
+    noteId: data.note_id,
+    title: data.title,
+    courseCode: `${data.course}-${data.course_code}`,
+    uploadedBy: authorName,
+  };
+}
+
+// Upload file to Supabase Storage
+export async function uploadNoteFile(file: File): Promise<string> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to upload files");
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+  const { error } = await supabase.storage.from("notes").upload(fileName, file);
+
+  if (error) {
+    // Provide a clearer message for missing bucket to help debugging
+    if (String(error.message).toLowerCase().includes("bucket not found")) {
+      throw new Error(
+        'Storage bucket "notes" not found. Create a bucket named "notes" in your Supabase project (Storage → Buckets) or update the code to use the correct bucket name.',
+      );
+    }
+    throw error;
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from("notes")
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
+}
+
+// Fetch author info for a list of author IDs in one query
+async function fetchAuthorMap(
+  authorIds: string[],
+): Promise<
+  Record<
+    string,
+    { name: string; batch: any; department: any; departmentName: string | null }
+  >
+> {
+  if (authorIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("user_info")
+    .select(
+      "auth_uid, name, batch, department, departments_lookup(department_name)",
+    )
+    .in("auth_uid", authorIds);
+
+  if (error) {
+    console.error("Error fetching authors:", error);
+    return {};
+  }
+
+  const map: Record<
+    string,
+    { name: string; batch: any; department: any; departmentName: string | null }
+  > = {};
+  for (const author of data || []) {
+    const deptLookup = (author as any).departments_lookup as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const deptName =
+      typeof deptLookup?.department_name === "string" &&
+      deptLookup.department_name.trim()
+        ? deptLookup.department_name
+        : null;
+    map[author.auth_uid] = {
+      name: author.name ?? "Unknown",
+      batch: author.batch,
+      department: (author as any).department ?? null,
+      departmentName: deptName,
+    };
+  }
+  return map;
+}
+
+// Delete a note (owner-only)
+export async function deleteNote(noteId: string): Promise<void> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to delete notes");
+
+  // Verify ownership before deleting
+  const { data: note, error: fetchError } = await supabase
+    .from("notes")
+    .select("note_id, author_id, file_url")
+    .eq("note_id", noteId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!note) throw new Error("Note not found");
+  if (note.author_id !== user.id) {
+    throw new Error("You can only delete your own notes");
+  }
+
+  // Delete the file from storage if it exists
+  if (note.file_url) {
+    try {
+      const url = new URL(note.file_url);
+      const parts = url.pathname.split("/storage/v1/object/");
+      if (parts.length === 2) {
+        let objectPath = parts[1].replace(/^public\//, "");
+        if (objectPath.startsWith("notes/"))
+          objectPath = objectPath.slice("notes/".length);
+        await supabase.storage.from("notes").remove([objectPath]);
+      }
+    } catch {
+      // If storage cleanup fails, still proceed with DB deletion
+      console.warn("Could not remove file from storage");
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("notes")
+    .delete()
+    .eq("note_id", noteId);
+
+  if (deleteError) throw deleteError;
+}
+
+// Delete a resource (owner-only)
+export async function deleteResource(resourceId: string): Promise<void> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in to delete resources");
+
+  // Verify ownership before deleting
+  const { data: resource, error: fetchError } = await supabase
+    .from("resources")
+    .select("resource_id, author_id")
+    .eq("resource_id", resourceId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!resource) throw new Error("Resource not found");
+  if (resource.author_id !== user.id) {
+    throw new Error("You can only delete your own resources");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("resources")
+    .delete()
+    .eq("resource_id", resourceId);
+
+  if (deleteError) throw deleteError;
+}
+
+// Get the current authenticated user's batch (department) from user_info
+// Returns the full batch name like "CSE-23" by combining department_name + batch number
+export async function getCurrentUserBatch(): Promise<string> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!user) throw new Error("You must be logged in");
+
+  const { data: userInfo, error } = await supabase
+    .from("user_info")
+    .select("batch, department, departments_lookup(department_name)")
+    .eq("auth_uid", user.id)
+    .single();
+
+  if (error) throw error;
+  if (userInfo?.batch == null) throw new Error("User batch not found");
+
+  // Extract department name from the joined departments_lookup
+  const deptLookup = (userInfo as any)?.departments_lookup as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const deptName =
+    typeof deptLookup?.department_name === "string" &&
+    deptLookup.department_name.trim()
+      ? deptLookup.department_name
+      : typeof (userInfo as any)?.department === "string" &&
+          (userInfo as any).department.trim()
+        ? (userInfo as any).department
+        : null;
+
+  if (!deptName) {
+    console.error("getCurrentUserBatch: could not resolve department name.", {
+      rawDepartment: (userInfo as any)?.department,
+      deptLookup,
+    });
+    throw new Error("User department not found. Please update your profile.");
+  }
+
+  const batchName = `${deptName}-${userInfo.batch}`;
+  console.log("getCurrentUserBatch resolved:", batchName);
+  return batchName;
+}
+
+export async function getCurrentUserId(): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+function extractFileName(url: string): string | undefined {
+  if (!url) return undefined;
+  const parts = url.split("/");
+  return parts[parts.length - 1]?.split("?")[0];
+}

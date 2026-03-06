@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import signupIllustration from "@/assets/images/SignupImg.svg";
+import BGIllustration from "@/assets/images/RegPatternBG.svg";
 
 export function SignupLoginBox({
   children,
@@ -9,23 +10,23 @@ export function SignupLoginBox({
   title: string;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center">      
-      <div className="flex flex-row mx-10 my-8 bg-secondary-lm rounded-3xl shadow-lg shadow-stroke-grey w-[85vw] max-w-350 h-165">
+    <div className="lg:min-h-screen lg:flex lg:items-center lg:justify-center" style={{backgroundImage: `url(${BGIllustration})`, backgroundSize:"100%"}}>      
+      <div className="lg:flex lg:flex-row lg:mx-10 lg:my-8 bg-secondary-lm lg:rounded-3xl lg:shadow-lg lg:shadow-stroke-grey lg:w-[85vw] lg:max-w-350 lg:h-165">
         
         {/* Left section */}
-        <div className="px-12 py-8 flex flex-col justify-center gap-3 w-1/2 overflow-y-auto">
-          <p className="text-text-lm text-xl font-[Poppins] font-medium">
+        <div className="lg:px-12 lg:py-8 lg:flex lg:flex-col lg:justify-center lg:gap-3 lg:w-1/2 lg:overflow-y-auto">
+          <p className="text-text-lm text-xl lg:font-[Poppins] lg:font-medium">
             {title}
           </p>
           {children}
         </div>
 
         {/* Right section */}
-        <div className="overflow-hidden w-1/2 rounded-3xl">
+        <div className="lg:overflow-hidden lg:w-1/2 lg:rounded-3xl">
           <img
             src={signupIllustration}
             alt="Signup Illustration"
-            className="object-cover w-full h-full"
+            className="lg:object-cover lg:w-full lg:h-full"
           />
         </div>
 

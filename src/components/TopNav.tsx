@@ -1,123 +1,490 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import Logo from "../assets/logo-light.svg";
 
 import placeholderDP from "../assets/images/placeholderUser.png";
 import messageIcon from "../assets/icons/message_icon.svg";
+import messageIconFilled from "../assets/icons/FILLEDmessage_icon.svg";
 import bellIcon from "../assets/icons/bell_icon.svg";
-import moonIcon from "../assets/icons/moon_icon.svg";
+import filledBellIcon from "../assets/icons/FILLEDbell_icon.svg";
 import userIcon from "../assets/icons/user_icon.svg";
 import signoutIcon from "../assets/icons/logout_icon.svg";
 
 import { UserInfo } from "./UserInfo";
 import { useEffect, useRef, useState } from "react";
-import NotificationsDrawer from "./NotificationsDrawer";
-import MessageDrawer from "@/app/pages/Messaging/components/MessageDrawer";
+import { NotificationDrawer } from "@/app/pages/Notifications/NotificationDrawer";
+import { MessageDrawer } from "@/app/pages/Messaging/MessageDrawer";
 import {
-  getActiveUserId,
-  getThreads,
-} from "@/app/pages/Messaging/backend/chatStore";
+  getConversations,
+  subscribeToConversations,
+} from "@/app/pages/Messaging/utils/messagingUtils";
 import {
-  subscribe as notiSubscribe,
-  getUnreadCount,
-  markAllRead,
-} from "../mockData/notifications";
+  getUnreadNotificationsCount,
+  ensurePostRecommendationNotifications,
+  subscribeToNotifications,
+} from "@/app/pages/Notifications/utils/notificationUtils";
+import { supabase } from "@/supabase/supabaseClient";
 
-//Arbitrary placeholder values till db is connected
-const userName: string = "Alvi Binte Zamil";
-const userBatch: string = "CSE-23";
+type UserProfileRow = {
+  name: string | null;
+  batch: number | null;
+  department: string | null;
+  student_id: string | null;
+  departments_lookup?: {
+    department_name: string | null;
+  } | null;
+};
+
+type UserProfileExtrasRow = {
+  profile_picture_url: string | null;
+};
 
 export function TopNav() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [isMsgOpen, setIsMsgOpen] = useState(false);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [authUid, setAuthUid] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("Loading...");
+  const [userBatch, setUserBatch] = useState<string>("");
+  const [userProfilePicUrl, setUserProfilePicUrl] = useState<string | null>(
+    null,
+  );
   const [msgTarget, setMsgTarget] = useState<{
     id: string | null;
     name?: string;
   } | null>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement | null>(null);
+  const messageButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const seededRecommendationsForRef = useRef<string | null>(null);
+
+  // Track unread notification count for badge indicator
+  const refreshUnreadNotifs = useRef<() => void>(() => {});
 
   useEffect(() => {
-    // initialize badge and subscribe to changes
-    setHasUnread(getUnreadCount() > 0);
-    const unsub = notiSubscribe(() => {
-      setHasUnread(getUnreadCount() > 0);
+    let cancelled = false;
+
+    async function checkUnread() {
+      if (!authUid) return;
+      try {
+        const count = await getUnreadNotificationsCount(authUid);
+        if (cancelled) return;
+        setUnreadNotifCount(count);
+      } catch {
+        // fail silently
+      }
+    }
+
+    refreshUnreadNotifs.current = checkUnread;
+    checkUnread();
+
+    if (!authUid) return;
+    const unsubscribe = subscribeToNotifications(authUid, () => {
+      checkUnread();
     });
-    return () => unsub();
-  }, []);
 
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [authUid]);
+
+  // Refresh the count when the drawer closes (user may have read notifications)
   useEffect(() => {
-    if (isNotifOpen) {
-      // mark as read when drawer opens
-      markAllRead();
+    if (!isNotifOpen) {
+      refreshUnreadNotifs.current();
     }
   }, [isNotifOpen]);
 
+  // Immediate refresh when the app marks notifications read.
+  // This avoids a race where the drawer closes before the DB update completes.
+  useEffect(() => {
+    const handler = () => {
+      refreshUnreadNotifs.current();
+    };
+
+    window.addEventListener("campus:notifications_changed", handler);
+    return () => window.removeEventListener("campus:notifications_changed", handler);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadProfile() {
+      const { data: userData } = await supabase.auth.getUser();
+      const authUid = userData.user?.id;
+
+      setAuthUid(authUid ?? null);
+
+      if (!mounted) return;
+
+      if (!authUid) {
+        setUserName("Guest");
+        setUserBatch("");
+        setUserProfilePicUrl(null);
+        return;
+      }
+
+      const [infoRes, profileRes] = await Promise.all([
+        supabase
+          .from("user_info")
+          .select(
+            "name,batch,department,student_id,departments_lookup(department_name)",
+          )
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+        supabase
+          .from("user_profile")
+          .select("profile_picture_url")
+          .eq("auth_uid", authUid)
+          .maybeSingle(),
+      ]);
+
+      if (!mounted) return;
+
+      if (infoRes.error || profileRes.error) {
+        console.error(
+          "Failed to load user profile:",
+          infoRes.error || profileRes.error,
+        );
+        setUserName("User");
+        setUserBatch("");
+        setUserProfilePicUrl(null);
+        return;
+      }
+
+      const profile = infoRes.data as unknown as UserProfileRow | null;
+      const profileExtras =
+        profileRes.data as unknown as UserProfileExtrasRow | null;
+
+      const displayName = profile?.name?.trim() || "User";
+      const deptName =
+        profile?.departments_lookup?.department_name ||
+        profile?.department ||
+        "";
+      const batchValue = profile?.batch ?? null;
+      const displayBatch =
+        deptName && batchValue ? `${deptName}-${batchValue}` : "";
+
+      setUserName(displayName);
+      setUserBatch(displayBatch);
+      setUserProfilePicUrl(profileExtras?.profile_picture_url ?? null);
+    }
+
+    loadProfile();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      loadProfile();
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Seed post recommendation notifications (client-side), once per user.
+  useEffect(() => {
+    if (!authUid) return;
+    if (seededRecommendationsForRef.current === authUid) return;
+    seededRecommendationsForRef.current = authUid;
+
+    (async () => {
+      try {
+        const inserted = await ensurePostRecommendationNotifications(authUid);
+        if (inserted > 0) {
+          refreshUnreadNotifs.current();
+        }
+      } catch {
+        // ignore – recommendations are best-effort
+      }
+    })();
+  }, [authUid]);
+
+  // Keep recommendations fresh when new tags are added to posts.
+  useEffect(() => {
+    if (!authUid) return;
+    const uid = authUid;
+    let cancelled = false;
+    let timeout: number | null = null;
+
+    async function runSeed() {
+      try {
+        const inserted = await ensurePostRecommendationNotifications(uid, {
+          lookbackDays: 14,
+          maxRecentPosts: 80,
+          maxCandidatePosts: 40,
+          maxInsert: 5,
+        });
+        if (!cancelled && inserted > 0) {
+          refreshUnreadNotifs.current();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    function queueSeed() {
+      if (timeout) return;
+      timeout = window.setTimeout(async () => {
+        timeout = null;
+        if (cancelled) return;
+        await runSeed();
+      }, 500);
+    }
+
+    const channel = supabase
+      .channel(`topnav-recommendations-${uid}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_tags" },
+        () => queueSeed(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      if (timeout) {
+        window.clearTimeout(timeout);
+        timeout = null;
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [authUid]);
+
+  useEffect(() => {
+    if (!authUid) return;
+
+    const channel = supabase
+      .channel(`topnav-user-profile-${authUid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_profile",
+          filter: `auth_uid=eq.${authUid}`,
+        },
+        (payload) => {
+          const rec = payload.new as unknown as
+            | Record<string, unknown>
+            | null
+            | undefined;
+          const nextUrl = rec?.profile_picture_url;
+          if (typeof nextUrl === "string" || nextUrl === null) {
+            setUserProfilePicUrl(nextUrl);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authUid]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ authUid?: string; url?: string | null }>;
+      const nextAuthUid = ce.detail?.authUid;
+      if (!nextAuthUid || (authUid && nextAuthUid !== authUid)) return;
+      setUserProfilePicUrl(ce.detail?.url ?? null);
+    };
+
+    window.addEventListener("campus:profilePictureUpdated", handler);
+    return () =>
+      window.removeEventListener("campus:profilePictureUpdated", handler);
+  }, [authUid]);
+
+  // Track unread message count for the badge indicator
+  const refreshUnreadCount = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkUnread() {
+      try {
+        const convs = await getConversations();
+        if (cancelled) return;
+        const total = convs.reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
+        setUnreadMsgCount(total);
+      } catch {
+        // fail silently – don't block the navbar
+      }
+    }
+
+    refreshUnreadCount.current = checkUnread;
+
+    // Initial check
+    checkUnread();
+
+    // Re-check whenever a new message arrives via realtime
+    const unsubscribe = subscribeToConversations(() => {
+      checkUnread();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  // Refresh the count when the message drawer closes (user may have read messages)
+  useEffect(() => {
+    if (!isMsgOpen) {
+      refreshUnreadCount.current();
+    }
+  }, [isMsgOpen]);
+
+  // Listen for global message open events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ userId: string; userName?: string }>;
+      const { userId, userName } = ce.detail;
+      if (userId) {
+        setMsgTarget({ id: userId, name: userName });
+        setIsMsgOpen(true);
+      }
+    };
+
+    const clearHandler = () => {
+      setMsgTarget(null);
+    };
+
+    window.addEventListener("campus:openMessage", handler);
+    window.addEventListener("campus:clearMessage", clearHandler);
+    return () => {
+      window.removeEventListener("campus:openMessage", handler);
+      window.removeEventListener("campus:clearMessage", clearHandler);
+    };
+  }, []);
+
   return (
-    <nav className="bg-primary-lm border border-stroke-grey flex justify-between px-10 py-3">
+    <nav className="bg-primary-lm lg:border border-stroke-grey lg:flex lg:justify-between lg:px-10 lg:py-3">
       <Link to="/home">
-        <img src={Logo} className="scale-90"></img>
+        <img src={Logo} className="lg:scale-90"></img>
       </Link>
-      <div className="flex items-center gap-6">
+      <div className="lg:flex lg:items-center lg:gap-6">
         {/* <button>
-          <img src={moonIcon} className="size-6 cursor-pointer"></img>
+          <img src={moonIcon} className="lg:size-6 cursor-pointer"></img>
         </button> */}
 
-        <button onClick={() => setIsNotifOpen(true)} className="relative">
-          <img src={bellIcon} className="size-8 cursor-pointer" />
-          {hasUnread && (
-            <span className="absolute -top-0.5 -right-0.5 inline-block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-primary-lm" />
+        <button
+          ref={notificationButtonRef}
+          onClick={() => setIsNotifOpen((prev) => !prev)}
+          className="lg:relative"
+        >
+          <img
+            src={isNotifOpen ? filledBellIcon : bellIcon}
+            className="lg:size-8 cursor-pointer"
+          />
+
+          {unreadNotifCount > 0 && !isNotifOpen && (
+            <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-accent-lm text-primary-lm text-[10px] font-bold ring-2 ring-primary-lm">
+              {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+            </span>
           )}
         </button>
 
         <button
+          ref={messageButtonRef}
+          className="lg:relative"
           onClick={() => {
-            // Always open inbox list first
-            setMsgTarget({ id: null });
-            setIsMsgOpen(true);
+            setIsMsgOpen((prev) => !prev);
           }}
         >
-          <img src={messageIcon} className="size-6 cursor-pointer" />
+          <img
+            src={isMsgOpen ? messageIconFilled : messageIcon}
+            className="lg:size-6 cursor-pointer"
+          />
+
+          {unreadMsgCount > 0 && !isMsgOpen && (
+            <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-accent-lm text-primary-lm text-[10px] font-bold ring-2 ring-primary-lm">
+              {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
+            </span>
+          )}
         </button>
 
         <button
           onClick={() => setIsOpen((prev) => !prev)}
-          className="rounded-full border-[1.5px] border-accent-lm cursor-pointer"
+          className="lg:rounded-full border-[1.5px] border-accent-lm cursor-pointer"
         >
-          <img src={placeholderDP} className="rounded-full size-8" />
+          <img
+            src={userProfilePicUrl ?? placeholderDP}
+            className="lg:rounded-full lg:size-8 object-cover"
+            alt="Profile"
+          />
         </button>
 
-        {isOpen && <UserClickModal isOpen={isOpen} onClose={()=>setIsOpen(false)}></UserClickModal>}
+        {isOpen && (
+          <UserClickModal
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            userName={userName}
+            userBatch={userBatch}
+            userImg={userProfilePicUrl ?? placeholderDP}
+            onSignOut={async () => {
+              try {
+                await supabase.auth.signOut();
+              } finally {
+                localStorage.removeItem("user");
+                localStorage.removeItem("isAuthenticated");
+                localStorage.removeItem("studentId");
+                setIsOpen(false);
+                setIsNotifOpen(false);
+                setIsMsgOpen(false);
+                setUserProfilePicUrl(null);
+                navigate("/login", { replace: true });
+              }
+            }}
+          />
+        )}
       </div>
-      <NotificationsDrawer open={isNotifOpen} onOpenChange={setIsNotifOpen} />
-      {isMsgOpen && (
-        <MessageDrawer
-          open={isMsgOpen}
-          onOpenChange={setIsMsgOpen}
-          userId={msgTarget?.id || (undefined as any)}
-          userName={msgTarget?.name || ""}
-          avatarSrc={undefined}
-        />
-      )}
+
+      <NotificationDrawer
+        open={isNotifOpen}
+        onOpenChange={setIsNotifOpen}
+        notificationButtonRef={notificationButtonRef}
+      />
+
+      <MessageDrawer
+        open={isMsgOpen}
+        onOpenChange={setIsMsgOpen}
+        messageButtonRef={messageButtonRef}
+        initialUserId={msgTarget?.id}
+        initialUserName={msgTarget?.name}
+      />
     </nav>
   );
 }
 
-function UserClickModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()=>void }) {
-    const modalRef = useRef<HTMLDivElement>(null);
+function UserClickModal({
+  isOpen,
+  onClose,
+  userName,
+  userBatch,
+  userImg,
+  onSignOut,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  userName: string;
+  userBatch: string;
+  userImg: string;
+  onSignOut: () => void | Promise<void>;
+}) {
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(e.target as Node)
-      ) {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         onClose();
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
   return (
@@ -128,12 +495,12 @@ function UserClickModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()=>voi
       }`}
     >
       <UserInfo
-        userImg={placeholderDP}
+        userImg={userImg}
         userName={userName}
         userBatch={userBatch}
         disableClick={true}
       ></UserInfo>
-      <hr className="mt-2 border-stroke-grey"></hr>
+      <hr className="lg:mt-2 border-stroke-grey"></hr>
       <ModalButtons
         icon={userIcon}
         label="Profile"
@@ -143,7 +510,7 @@ function UserClickModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()=>voi
       <ModalButtons
         icon={signoutIcon}
         label="Sign Out"
-        linkto={"/login"}
+        onClick={onSignOut}
       ></ModalButtons>
     </div>
   );
@@ -153,17 +520,23 @@ function ModalButtons({
   icon,
   label,
   linkto,
+  onClick,
 }: {
   icon: string;
   label: string;
-  linkto: string;
+  linkto?: string;
+  onClick?: () => void | Promise<void>;
 }) {
-  return (
-    <Link to={linkto}>
-      <button className="flex items-center gap-2 w-full my-1 px-2 py-2 hover:bg-hover-lm hover:rounded-lg">
-        <img src={icon}></img>
-        <p className="text-accent-lm">{label}</p>
-      </button>
-    </Link>
+  const btn = (
+    <button
+      type="button"
+      onClick={onClick}
+      className="lg:flex lg:items-center lg:gap-2 lg:w-full lg:my-1 lg:px-2 lg:py-2 hover:bg-hover-lm hover:rounded-lg"
+    >
+      <img src={icon}></img>
+      <p className="text-accent-lm">{label}</p>
+    </button>
   );
+
+  return linkto ? <Link to={linkto}>{btn}</Link> : btn;
 }

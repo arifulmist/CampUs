@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-import { cn } from '@/mockData/utils'
+import { cn } from '@/utils/shadcn_utils'
 
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (

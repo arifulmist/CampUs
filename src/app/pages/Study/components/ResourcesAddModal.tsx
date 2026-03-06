@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { InputField } from "@/components/InputField";
-import { ButtonCTA } from "@/components/ButtonCTA";
 import crossBtn from "@/assets/icons/cross_btn.svg";
 import warningIcon from "@/assets/icons/warning_icon.png";
 
@@ -12,9 +12,14 @@ interface ResourceAddModalProps {
     courseCode: string;
     resourceLink: string;
   }) => void;
+  isSubmitting?: boolean;
 }
 
-export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
+export function ResourceAddModal({
+  onClose,
+  onPost,
+  isSubmitting = false,
+}: ResourceAddModalProps) {
   const [title, setTitle] = useState("");
   const [course, setCourse] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -38,7 +43,6 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
     setCourseCode(value);
   }
 
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -48,37 +52,36 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
       courseCode,
       resourceLink,
     });
-
-    onClose();
+    // Note: onClose is called by parent component after successful submission
   }
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-[#cbcbcb95] z-50" />
+  if (typeof document === "undefined") return null;
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const portalContent = (
+    <>
+      {/* Backdrop (viewport-fixed, above nav/sidebars) */}
+      <div className="fixed inset-0 z-1000" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} />
+
+      {/* Modal (centered on viewport) */}
+      <div className="fixed inset-0 z-1001 flex items-center justify-center">
         <form
           onSubmit={handleSubmit}
           className="bg-secondary-lm border-2 border-stroke-grey rounded-xl px-10 py-8 w-130 relative animate-slide-in"
         >
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <h4 className="font-header text-text-lm font-medium">
+          <div className="lg:flex lg:justify-between lg:items-center">
+            <h4 className="lg:font-header text-text-lm lg:font-medium">
               Add Resource
             </h4>
-            <button
-              type="button"
-              onClick={onClose}
-              className="cursor-pointer"
-            >
+            <button type="button" onClick={onClose} className="cursor-pointer">
               <img src={crossBtn} alt="Close modal" />
             </button>
           </div>
 
           {/* Fields */}
-          <div className="mt-4 flex flex-col gap-4" onFocusCapture={() => setCourseCodeError("")}>
+          <div
+            className="lg:mt-4 lg:flex lg:flex-col lg:gap-4"
+            onFocusCapture={() => setCourseCodeError("")}
+          >
             <InputField
               label="Title"
               name="title"
@@ -87,7 +90,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
               changeHandler={(e) => setTitle(e.target.value)}
             />
 
-            <div className="flex justify-between">
+            <div className="lg:flex lg:justify-between">
               <InputField
                 label="Course"
                 name="course"
@@ -97,7 +100,7 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
                 changeHandler={(e) => setCourse(e.target.value)}
               />
 
-              <div className="relative">
+              <div className="lg:relative">
                 <InputField
                   label="Course Code"
                   name="coursecode"
@@ -107,8 +110,8 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
                   changeHandler={handleCourseCodeChange}
                 />
                 {courseCodeError && (
-                  <span className=" flex items-start gap-x-0.5 absolute left-0 top-full mt-1 text-accent-lm text-sm bg-primary-lm px-2 py-0.5 rounded shadow-lg z-10 border border-stroke-grey">
-                    <img src={warningIcon} className="size-4"></img>
+                  <span className="lg:flex lg:items-start lg:gap-x-0.5 lg:absolute lg:left-0 lg:top-full lg:mt-1 text-accent-lm text-sm bg-primary-lm lg:px-2 lg:py-0.5 lg:rounded lg:shadow-lg lg:z-10 lg:border border-stroke-grey">
+                    <img src={warningIcon} className="lg:size-4"></img>
                     {courseCodeError}
                   </span>
                 )}
@@ -125,15 +128,28 @@ export function ResourceAddModal({ onClose, onPost }: ResourceAddModalProps) {
             />
 
             {/* Submit */}
-            <div className="flex justify-end mt-4">
-              <ButtonCTA
-                label="Post"
+            <div className="lg:flex lg:justify-end lg:mt-4">
+              <button
                 type="submit"
-              />
+                disabled={!resourceLink || isSubmitting}
+                className="lg:px-6 lg:py-2 lg:rounded-lg bg-accent-lm text-primary-lm hover:bg-hover-btn-lm lg:transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Posting..." : "Post"}
+              </button>
             </div>
           </div>
         </form>
       </div>
     </>
   );
+
+  try {
+    return createPortal(portalContent, document.body);
+  } catch (err) {
+    // If portal fails for any reason, log and render inline as a fallback
+    // (prevents route errorElement from being shown)
+    // eslint-disable-next-line no-console
+    console.error("createPortal failed for ResourceAddModal:", err);
+    return portalContent;
+  }
 }

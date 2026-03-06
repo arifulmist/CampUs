@@ -1,71 +1,80 @@
-import { Link } from "react-router-dom";
-import { ButtonCTA } from "@/components/ButtonCTA";
 import type { InterestedItem } from "../backend/interestedStore";
+import { Link } from "react-router-dom";
+
+function postPath(type: string, postId: string) {
+  const t = type.trim().toLowerCase();
+  const base =
+    t === "event" || t === "events"
+      ? "events"
+      : t === "lostfound" || t === "lost_and_found" || t === "lost-and-found"
+        ? "lost-and-found"
+        : t === "collab" || t === "collabhub" || t === "research" || t === "competition" || t === "project"
+          ? "collab"
+          : t;
+  return `/${base}/${postId}`;
+}
 
 export function InterestedPosts({ items }: { items: InterestedItem[] }) {
   return (
-    <section className="rounded-2xl border border-stroke-grey bg-primary-lm shadow-sm p-7 min-h-50 flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-text-lm">Interested Posts</h2>
+    <div className="lg:flex lg:flex-col lg:justify-between lg:w-full lg:h-fit lg:max-h-60 bg-primary-lm border border-stroke-grey lg:rounded-2xl lg:overflow-hidden">
+      <div className="lg:p-3 border border-t-0 border-l-0 border-r-0 border-b-stroke-grey">
+        <h6 className="lg:font-[Poppins] lg:font-semibold text-text-lm">Interested Posts</h6>
       </div>
 
       {items.length === 0 ? (
-        <>
-          <p className="text-sm text-text-lighter-lm">
-            No interested posts yet.
-          </p>
-          <div className="flex justify-end pt-3 mt-auto">
-            <Link to="/collab">
-              <ButtonCTA label={"Add More"} />
-            </Link>
-          </div>
-        </>
+        <div className="lg:p-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
+          <p className="text-text-lighter-lm text-md">No interested posts yet.</p>
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {items
-            .slice()
-            .sort((a, b) => b.createdAt - a.createdAt)
-            .map((item) => (
-              <div
-                key={item.id}
-                className="rounded-xl border border-stroke-grey bg-secondary-lm px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-text-lm">
-                      {item.title}
-                    </div>
-                    <div className="text-xs text-text-lighter-lm">
-                      {item.category}
-                      {item.userName ? ` • by ${item.userName}` : ""}
-                    </div>
-                    {item.tags && item.tags.length > 0 && (
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        {item.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="font-bold bg-[#C23D00] text-[#FFFFFF] px-2 py-0.5 rounded-full text-xs"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+        <div className="lg:p-4 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:flex lg:flex-col lg:justify-start">
+          <div className="lg:flex lg:flex-col">
+            {items
+              .slice()
+              .sort((a, b) => b.createdAt - a.createdAt)
+              .map((item, index) => (
+                <Link
+                  key={item.id}
+                  to={postPath(item.routeType ?? item.category, item.id)}
+                  className="block"
+                >
+                  <div className="lg:flex lg:flex-col lg:py-2 lg:px-3 hover:bg-secondary-lm hover:w-full hover:rounded-lg">
+                    <div className="lg:flex lg:items-start lg:justify-between lg:gap-4">
+                      <div className="min-w-0">
+                        <p className="lg:font-medium text-md text-text-lm truncate">{item.title}</p>
+                        <p className="text-sm text-text-lighter-lm">
+                          {item.category}
+                          {item.userName ? ` • by ${item.userName}` : ""}
+                        </p>
+
+                        {item.tags && item.tags.length > 0 && (
+                          <div className="lg:mt-2 lg:flex lg:gap-2 lg:flex-wrap">
+                            {item.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="border border-stroke-peach text-accent-lm lg:px-2 lg:py-0.5 lg:rounded-full text-xs"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    {index !== items.length - 1 && <hr className="lg:mt-4 border-stroke-grey"></hr>}
                   </div>
-                  <div className="text-xs text-text-lighter-lm">
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          <div className="flex justify-end pt-3 mt-auto">
-            <Link to="/collab">
-              <ButtonCTA label={"Add More"} />
-            </Link>
+                </Link>
+              ))}
           </div>
         </div>
       )}
-    </section>
+
+      {/* <div className="lg:flex lg:justify-end lg:p-3 lg:w-full">
+        <Link to="/collab">
+          <ButtonCTA label={"Add More"} />
+        </Link>
+      </div> */}
+
+    </div>
   );
 }
 

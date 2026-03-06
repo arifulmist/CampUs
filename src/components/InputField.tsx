@@ -18,11 +18,11 @@ interface InputProps
 export function InputField({label, placeholder, value, type, name, changeHandler, rightSlot, required=true}:InputProps)
 {
 	return (
-	<div className="flex flex-col relative">
-		<label htmlFor={name} className="block text-text-lm text-md font-medium my-0">
+	<div className="lg:flex lg:flex-col lg:relative">
+		<label htmlFor={name} className="lg:block text-text-lm text-md lg:font-medium lg:my-0">
 			{label}
 		</label>
-		<div className="relative">
+		<div className="lg:relative">
 			<input 
 				name={name}
 				id={name} 
@@ -31,10 +31,10 @@ export function InputField({label, placeholder, value, type, name, changeHandler
 				value={value} 
 				onChange={changeHandler} 
 				required={required}
-				className="bg-primary-lm border border-stroke-grey rounded-lg w-full h-10 text-base text-text-lighter-lm font-normal px-3 focus:outline-accent-lm" />
+				className="bg-primary-lm lg:border border-stroke-grey lg:rounded-lg lg:w-full lg:h-10 text-base text-text-lighter-lm lg:font-normal lg:px-3 focus:outline-accent-lm" />
 
 			{rightSlot &&
-			<div className="absolute right-12 top-0 h-full flex items-center">
+			<div className="lg:absolute lg:right-12 lg:top-0 lg:h-full lg:flex lg:items-center">
 				{rightSlot}
 			</div>	
 				}

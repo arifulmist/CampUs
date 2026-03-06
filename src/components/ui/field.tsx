@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
@@ -170,10 +170,10 @@ function FieldSeparator({
       )}
       {...props}
     >
-      <Separator className="absolute inset-0 top-1/2" />
+      <Separator className="lg:absolute lg:inset-0 lg:top-1/2" />
       {children && (
         <span
-          className="bg-background text-muted-foreground relative mx-auto block w-fit px-2"
+          className="bg-background text-muted-foreground lg:relative lg:mx-auto lg:block lg:w-fit lg:px-2"
           data-slot="field-separator-content"
         >
           {children}
@@ -205,7 +205,7 @@ function FieldError({
     }
 
     return (
-      <ul className="ml-4 flex list-disc flex-col gap-1">
+      <ul className="lg:ml-4 lg:flex lg:list-disc lg:flex-col lg:gap-1">
         {errors.map(
           (error, index) =>
             error?.message && <li key={index}>{error.message}</li>

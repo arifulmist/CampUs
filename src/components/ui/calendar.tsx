@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 function Calendar({
@@ -159,7 +159,7 @@ function Calendar({
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
-              <div className="flex size-(--cell-size) items-center justify-center text-center">
+              <div className="lg:flex lg:size-(--cell-size) lg:items-center lg:justify-center text-center">
                 {children}
               </div>
             </td>

@@ -1,32 +1,75 @@
 import { NavLink, Outlet, useParams, useLocation } from "react-router";
 import { Sidebar } from "./components/Sidebar";
-import { getNotes, getResources, type Note, type ResourceItem } from "@/mockData/studyMock";
 import { useMemo, useState, useEffect } from "react";
-import { placeholderUser } from "@/mockData/placeholderUser";
+import {
+  fetchNotes,
+  fetchResources,
+  getCurrentUserBatch,
+  getCurrentUserId,
+  type Note,
+  type ResourceItem,
+} from "./backend/studyService";
+import { Loading } from "../Fallback/Loading";
 
 export function StudyLayout() {
   const { level, term } = useParams();
-  const batch = placeholderUser.batch;
+  const [batch, setBatch] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [batchLoading, setBatchLoading] = useState(true);
+
+  // Fetch the current user's batch (department) and user ID on mount
+  useEffect(() => {
+    setBatchLoading(true);
+    Promise.all([getCurrentUserBatch(), getCurrentUserId()])
+      .then(([userBatch, userId]) => {
+        setBatch(userBatch);
+        setCurrentUserId(userId);
+      })
+      .catch((err) => {
+        console.error("Error fetching user batch:", err);
+        setBatch("");
+      })
+      .finally(() => setBatchLoading(false));
+  }, []);
 
   const notesPath = `/study/${level}/${term}/notes`;
   const resourcesPath = `/study/${level}/${term}/resources`;
-  
-  const [notes, setNotes] = useState<Note[]>(() => getNotes(level, term));
-  const [resources, setResources] = useState<ResourceItem[]>(() => getResources(level, term));
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [resources, setResources] = useState<ResourceItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const location = useLocation();
   const viewingResources = location.pathname.includes("/resources");
 
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [selectedUploader, setSelectedUploader] = useState<string | null>(null);
 
+  // Fetch data from backend when level/term changes
   useEffect(() => {
-    // Reset filters when navigating to a different level/term
+    if (!batch) return; // wait until batch is loaded
+
     setSelectedCourse(null);
     setSelectedUploader(null);
-    // reload base data for new level/term
-    setNotes(getNotes(level, term));
-    setResources(getResources(level, term));
-  }, [level, term]);
+    setLoading(true);
+
+    const levelNum = parseInt(level || "1", 10);
+    const termNum = parseInt(term || "1", 10);
+
+    Promise.all([
+      fetchNotes(batch, levelNum, termNum),
+      fetchResources(batch, levelNum, termNum),
+    ])
+      .then(([notesData, resourcesData]) => {
+        setNotes(notesData);
+        setResources(resourcesData);
+      })
+      .catch((err) => {
+        console.error("Error fetching study data:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [level, term, batch]);
 
   const courses = useMemo(() => {
     return viewingResources
@@ -42,8 +85,12 @@ export function StudyLayout() {
 
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
-      const courseMatch = selectedCourse ? n.courseCode === selectedCourse : true;
-      const uploaderMatch = selectedUploader ? n.uploadedBy === selectedUploader : true;
+      const courseMatch = selectedCourse
+        ? n.courseCode === selectedCourse
+        : true;
+      const uploaderMatch = selectedUploader
+        ? n.uploadedBy === selectedUploader
+        : true;
       return courseMatch && uploaderMatch;
     });
   }, [notes, selectedCourse, selectedUploader]);
@@ -51,7 +98,9 @@ export function StudyLayout() {
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
       const courseMatch = selectedCourse ? r.course === selectedCourse : true;
-      const uploaderMatch = selectedUploader ? r.user.name === selectedUploader : true;
+      const uploaderMatch = selectedUploader
+        ? r.user.name === selectedUploader
+        : true;
       return courseMatch && uploaderMatch;
     });
   }, [resources, selectedCourse, selectedUploader]);
@@ -63,17 +112,43 @@ export function StudyLayout() {
   function addResource(r: ResourceItem) {
     setResources((prev) => [r, ...prev]);
   }
-  
-  return(
-    <main className="w-full h-screen flex ">
+
+  function removeNote(noteId: string) {
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+  }
+
+  function removeResource(resourceId: string) {
+    setResources((prev) => prev.filter((r) => r.id !== resourceId));
+  }
+
+  if (batchLoading) {
+    return (
+      <main className="lg:w-full lg:h-screen lg:flex lg:items-center lg:justify-center">
+        <Loading />
+      </main>
+    );
+  }
+
+  if (!batch) {
+    return (
+      <main className="lg:w-full lg:h-screen lg:flex lg:items-center lg:justify-center">
+        <p className="text-text-lighter-lm">
+          Unable to determine your department. Please update your profile.
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="lg:w-full lg:h-screen lg:flex">
       <Sidebar batch={batch} />
-      <div className="w-full h-full flex flex-col ml-[20vw] px-10 animate-slide-in">
-        <div className="flex w-full gap-5 justify-center mt-6">
+      <div className="lg:w-full lg:h-full lg:flex lg:flex-col lg:ml-[20vw] lg:px-10 lg:animate-slide-in">
+        <div className="lg:flex lg:w-full lg:gap-5 lg:justify-center lg:mt-6">
           <TabLink linktxt="Notes" dest={notesPath} />
           <TabLink linktxt="Resources" dest={resourcesPath} />
         </div>
-        <div className="mt-6 flex flex-row gap-x-4">
-          <p className="text-accent-lm font-medium">Filter by</p>
+        <div className="lg:mt-6 lg:flex lg:flex-row lg:gap-x-4">
+          <p className="text-accent-lm lg:font-medium">Filter by</p>
           {(() => {
             return (
               <>
@@ -81,8 +156,12 @@ export function StudyLayout() {
                   name="course"
                   id="course"
                   value={selectedCourse ?? "Course"}
-                  onChange={(e) => setSelectedCourse(e.target.value === "Course" ? null : e.target.value)}
-                  className="bg-primary-lm border border-stroke-grey rounded-sm px-2 py-0.5 text-stroke-peach focus:border focus:border-stroke-peach"
+                  onChange={(e) =>
+                    setSelectedCourse(
+                      e.target.value === "Course" ? null : e.target.value,
+                    )
+                  }
+                  className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach focus:border focus:border-stroke-peach"
                 >
                   <option value={"Course"} disabled>
                     Course
@@ -98,8 +177,12 @@ export function StudyLayout() {
                   name="uploadedby"
                   id="uploadedby"
                   value={selectedUploader ?? "Uploaded by"}
-                  onChange={(e) => setSelectedUploader(e.target.value === "Uploaded by" ? null : e.target.value)}
-                  className="bg-primary-lm border border-stroke-grey rounded-sm px-2 py-0.5 text-stroke-peach"
+                  onChange={(e) =>
+                    setSelectedUploader(
+                      e.target.value === "Uploaded by" ? null : e.target.value,
+                    )
+                  }
+                  className="bg-primary-lm lg:border border-stroke-grey lg:rounded-sm lg:px-2 lg:py-0.5 text-stroke-peach"
                 >
                   <option value={"Uploaded by"} disabled>
                     Uploaded by
@@ -115,7 +198,7 @@ export function StudyLayout() {
                     setSelectedCourse(null);
                     setSelectedUploader(null);
                   }}
-                  className="ml-2 px-3 py-1 rounded bg-secondary-lm text-accent-lm border border-stroke-grey cursor-pointer hover:bg-stroke-grey transition"
+                  className="lg:ml-2 lg:px-3 lg:py-1 lg:rounded bg-secondary-lm text-accent-lm lg:border border-stroke-grey cursor-pointer hover:bg-stroke-grey lg:transition"
                 >
                   Reset
                 </button>
@@ -123,33 +206,43 @@ export function StudyLayout() {
             );
           })()}
         </div>
-        <div className="flex flex-col items-center">
-          <Outlet context={{
-            filteredNotes,
-            filteredResources,
-            baseNotes: notes,
-            baseResources: resources,
-            viewingResources,
-            addNote,
-            addResource,
-          }} />
+        <div className="lg:flex lg:flex-col lg:items-center">
+          <Outlet
+            context={{
+              filteredNotes,
+              filteredResources,
+              baseNotes: notes,
+              baseResources: resources,
+              viewingResources,
+              addNote,
+              addResource,
+              removeNote,
+              removeResource,
+              loading,
+              batch,
+              currentUserId,
+              level: parseInt(level || "1", 10),
+              term: parseInt(term || "1", 10),
+            }}
+          />
         </div>
       </div>
     </main>
   );
 }
 
-function TabLink({ linktxt, dest }: { linktxt: string; dest: string }) 
-{
+function TabLink({ linktxt, dest }: { linktxt: string; dest: string }) {
   return (
     <NavLink
       to={dest}
-      className={({ isActive }) => [
-        "px-3 py-2 rounded-md font-medium text-center h-fit w-fit",
-        isActive
-          ? "bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition"
-          : "bg-primary-lm text-accent-lm border border-stroke-grey hover:bg-hover-lm transition",
-      ].join(" ")}
+      className={({ isActive }) =>
+        [
+          "px-3 py-2 rounded-md font-medium text-center h-fit w-fit",
+          isActive
+            ? "bg-accent-lm text-primary-lm hover:bg-hover-btn-lm transition"
+            : "bg-primary-lm text-accent-lm border border-stroke-grey hover:bg-hover-lm transition",
+        ].join(" ")
+      }
     >
       {linktxt}
     </NavLink>

@@ -4,7 +4,7 @@ import * as React from "react";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
 
-import { cn } from "@/mockData/utils";
+import { cn } from "@/utils/shadcn_utils";
 
 function ContextMenu({
   ...props
@@ -72,7 +72,7 @@ function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <ChevronRightIcon className="ml-auto" />
+      <ChevronRightIcon className="lg:ml-auto" />
     </ContextMenuPrimitive.SubTrigger>
   );
 }
@@ -150,9 +150,9 @@ function ContextMenuCheckboxItem({
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="lg:pointer-events-none lg:absolute lg:left-2 lg:flex lg:size-3.5 lg:items-center lg:justify-center">
         <ContextMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
+          <CheckIcon className="lg:size-4" />
         </ContextMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -174,9 +174,9 @@ function ContextMenuRadioItem({
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="lg:pointer-events-none lg:absolute lg:left-2 lg:flex lg:size-3.5 lg:items-center lg:justify-center">
         <ContextMenuPrimitive.ItemIndicator>
-          <CircleIcon className="size-2 fill-current" />
+          <CircleIcon className="lg:size-2 fill-current" />
         </ContextMenuPrimitive.ItemIndicator>
       </span>
       {children}

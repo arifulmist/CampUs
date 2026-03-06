@@ -6,7 +6,7 @@ import useEmblaCarousel, {
 } from 'embla-carousel-react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 
-import { cn } from '@/mockData/utils'
+import { cn } from '@/utils/shadcn_utils'
 import { Button } from '@/components/ui/button'
 
 type CarouselApi = UseEmblaCarouselType[1]
@@ -138,7 +138,7 @@ function CarouselContent({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className="lg:overflow-hidden"
       data-slot="carousel-content"
     >
       <div
@@ -196,7 +196,7 @@ function CarouselPrevious({
       {...props}
     >
       <ArrowLeft />
-      <span className="sr-only">Previous slide</span>
+      <span className="lg:sr-only">Previous slide</span>
     </Button>
   )
 }
@@ -226,7 +226,7 @@ function CarouselNext({
       {...props}
     >
       <ArrowRight />
-      <span className="sr-only">Next slide</span>
+      <span className="lg:sr-only">Next slide</span>
     </Button>
   )
 }
