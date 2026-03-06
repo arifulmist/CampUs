@@ -7,7 +7,7 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: "https://campus-rosy.vercel.app/" }));
 app.use(express.json());
 
 // Configure the transporter using Gmail (or another SMTP service)
