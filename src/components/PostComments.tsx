@@ -482,7 +482,7 @@ export function PostComments({
   }
 
   return (
-    <div className="lg:mt-6 lg:flex lg:flex-col lg:gap-4 bg-primary-lm lg:p-6 border border-stroke-grey rounded-xl">
+    <div className="lg:mt-15 lg:flex lg:flex-col lg:gap-4 bg-primary-lm lg:p-6 border border-stroke-grey rounded-xl">
       <DeleteCommentModal
         open={deleteOpen}
         isDeleting={deleting}

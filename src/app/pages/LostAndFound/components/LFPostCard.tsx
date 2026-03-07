@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { UserInfo } from "@/components/UserInfo";
-import { Heart, MessageCircle, MoreVertical, Share2 } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import { getCategoryClass } from "@/utils/categoryColors";
+
+import { CommentButton, LikeButton, ShareButton } from "@/components/PostButtons";
+import { LikedByText } from "@/components/LikedByText";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,9 +24,8 @@ export type LFPost = {
   authorAuthUid?: string;
   description: string;
   imageUrl?: string;
-  reactions: number;
-  comments: number;
-  shares: number;
+  likeCount: number;
+  commentCount: number;
   timestamp: string;
 };
 
@@ -33,19 +35,15 @@ export type LFPost = {
  */
 export function LFPostCard({
   post,
-  onOpenComments,
+  commentNavigateTo,
   onEdit,
   onRemove,
-  isLiked,
-  onToggleLike,
   showPostTypeLabel,
 }: {
   post: LFPost;
-  onOpenComments: () => void;
+  commentNavigateTo?: string;
   onEdit: () => void;
   onRemove: () => void;
-  isLiked: boolean;
-  onToggleLike: () => void;
   showPostTypeLabel?: boolean;
 }) {
   const categoryLabel = (() => {
@@ -173,39 +171,24 @@ export function LFPostCard({
         <img
           src={post.imageUrl}
           alt="Lost item"
-          className="lg:w-full lg:rounded-lg lg:border border-stroke-grey lg:mb-4"
+          className="lg:size-40 lg:rounded-lg lg:border border-stroke-grey lg:mb-4"
         />
       )}
 
+      {post.id && (post.likeCount ?? 0) > 0 && (
+        <div className="lg:mb-2">
+          <LikedByText postId={post.id} likeCount={post.likeCount ?? 0} />
+        </div>
+      )}
+
       <div className="lg:mt-4 lg:flex lg:items-center lg:gap-3">
-        <button
-          onClick={onToggleLike}
-          className={
-            "flex items-center gap-1.5 px-3 py-1 rounded-full border " +
-            (isLiked
-              ? "border-stroke-peach bg-accent-lm text-primary-lm"
-              : "border-stroke-peach bg-secondary-lm text-accent-lm")
-          }
-        >
-          <Heart
-            className="lg:h-4 lg:w-4"
-            fill={isLiked ? "currentColor" : "none"}
-          />
-          <span className="text-sm lg:font-bold">{post.reactions}</span>
-        </button>
-
-        <button
-          className="lg:flex lg:items-center lg:gap-1.5 lg:px-3 lg:py-1 lg:rounded-full lg:border border-stroke-peach bg-secondary-lm text-accent-lm"
-          onClick={onOpenComments}
-        >
-          <MessageCircle className="lg:h-4 lg:w-4" />
-          <span className="text-sm lg:font-bold">{post.comments}</span>
-        </button>
-
-        <button className="lg:flex lg:items-center lg:gap-1.5 lg:px-3 lg:py-1 lg:rounded-full lg:border border-stroke-peach bg-secondary-lm text-accent-lm">
-          <Share2 className="lg:h-4 lg:w-4" />
-          <span className="text-sm lg:font-bold">{post.shares}</span>
-        </button>
+        <LikeButton postId={post.id} initialLikeCount={post.likeCount} />
+        <CommentButton
+          postId={post.id}
+          initialCommentCount={post.commentCount}
+          navigateTo={commentNavigateTo}
+        />
+        <ShareButton postId={post.id} categorySet={"lostfound"} />
       </div>
     </div>
   );

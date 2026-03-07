@@ -248,16 +248,13 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
           const postObj = row.all_posts as Record<string, unknown> | null | undefined;
           const postId = postObj?.post_id;
           const type = postObj?.type;
-          const title = postObj?.title;
-          const description = postObj?.description;
+          const titleRaw = postObj?.title;
+          const descriptionRaw = postObj?.description;
           const createdAtRaw = postObj?.created_at;
 
-          if (
-            typeof postId === "string" &&
-            typeof type === "string" &&
-            typeof title === "string" &&
-            typeof description === "string"
-          ) {
+          if (typeof postId === "string" && typeof type === "string") {
+            const title = typeof titleRaw === "string" && titleRaw.trim().length ? titleRaw : "Untitled";
+            const description = typeof descriptionRaw === "string" ? descriptionRaw : "";
             const createdAt = typeof createdAtRaw === "string" ? Date.parse(createdAtRaw) : 0;
             loadedPosts.push({
               postId,

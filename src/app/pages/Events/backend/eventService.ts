@@ -38,11 +38,6 @@ export async function createEvent(event: EventPost) {
     category_id: event.category_id,
   });
   if (eventError) throw eventError;
-   const { error: userError } = await supabase.from("user_posts").insert({ 
-    post_id: postId,
-     auth_uid: event.author_id, 
-   });
-     if (userError) throw userError;
     
   // 3. Insert segments
   if (event.segments.length) {
@@ -158,9 +153,6 @@ export async function deleteEvent(postId: string) {
 
   const { error: tagError } = await supabase.from("post_tags").delete().eq("post_id", postId);
   if (tagError) throw tagError;
-
-  const { error: userPostError } = await supabase.from("user_posts").delete().eq("post_id", postId);
-  if (userPostError) throw userPostError;
 
   const { error: eventError } = await supabase.from("event_posts").delete().eq("post_id", postId);
   if (eventError) throw eventError;

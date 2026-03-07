@@ -53,13 +53,7 @@ export async function createCollabPost(payload: {
   });
   if (collabError) throw collabError;
 
-  // 4) Insert into user_posts (used by profile pages)
-  const { error: userPostError } = await supabase
-    .from("user_posts")
-    .insert({ post_id: postId, auth_uid: payload.author_id });
-  if (userPostError) throw userPostError;
-
-  // 5) Insert tags into post_tags
+  // 4) Insert tags into post_tags
   if (payload.tags.length) {
     const { error: tagError } = await supabase.from("post_tags").insert(
       payload.tags.map((t) => ({
@@ -141,12 +135,6 @@ export async function deleteCollabPost(postId: string) {
     .delete()
     .eq("post_id", postId);
   if (tagError) throw tagError;
-
-  const { error: userPostError } = await supabase
-    .from("user_posts")
-    .delete()
-    .eq("post_id", postId);
-  if (userPostError) throw userPostError;
 
   const { error: collabError } = await supabase
     .from("collab_posts")
