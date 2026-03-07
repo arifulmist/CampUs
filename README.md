@@ -1,27 +1,34 @@
 # CampUs
-An online collaborative hub and forum for students and teachers.
+An online collaborative hub and forum for students.
 
-## Viewing Other Users' Profiles (Supabase RLS)
+## Features
+- An intuitive Registration process that supports both OCR scanning for ID cards as well as manual input.
+- 2 Factor Authentication via email for Login.
+- A Home Feed that displays posts relevant to the user based on their interests as well as the most popular posts.
+- An Event Announcement Portal for announcing competitions, seminars, workshops and courses.
+- A Collaboration Hub for collaborating with others for research, competition and project purposes.
+- A Lost and Found portal.
+- A QnA forum where students can seek advice, ask questions or post helpful resources.
+- A Study portal for sharing academic notes and resources.
+- A fully customisable User Profile.
+- A real-time one-on-one Messaging System
+- A real-time Notifications system that supports 6 types of notifications.
 
-If `/profile/<student_id>` loads a profile but shows no skills/interests/posts, it’s usually because Supabase Row Level Security (RLS) is restricting `SELECT` queries to only your own rows.
+### How to use
+Run the project with the following command:
+```
+npm run dev
+```
+Then in another terminal, run the email server to recieve OTP during the login process:
+```
+npm run email-server
+```
+Keep both terminals open when in use.
 
-This repo includes a migration that enables **read-only** `SELECT` access for authenticated users on the profile-related tables:
+The project will be hosted in the near future.
 
-- [src/supabase/migrations/allow_profile_view_select.sql](src/supabase/migrations/allow_profile_view_select.sql)
-
-## Comment Edit/Delete (Supabase RLS)
-
-If comment edits/deletes appear to work in the UI but don’t persist, Supabase RLS may be blocking `UPDATE`/`DELETE` on `public.comments`.
-
-This repo includes a migration that allows authenticated users to update/delete **only their own** comments:
-
-- [src/supabase/migrations/allow_comment_owner_update_delete.sql](src/supabase/migrations/allow_comment_owner_update_delete.sql)
-
-Apply it to your Supabase project using your usual workflow (for example, via the Supabase SQL Editor or Supabase CLI).
-
-
-
-to run this project :
-->npm run dev 
-to run email server :
-->npm run email-server
+## Tech Stack
+- ReactJS + Vite
+- Tailwind CSS
+- Node.js
+- Supabase
