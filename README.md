@@ -14,7 +14,7 @@ An online collaborative hub and forum for students.
 - A real-time one-on-one Messaging System
 - A real-time Notifications system that supports 6 types of notifications.
 
-### How to use
+## How to use
 Run the project with the following command:
 ```
 npm run dev
@@ -30,5 +30,6 @@ The project will be hosted in the near future.
 ## Tech Stack
 - ReactJS + Vite
 - Tailwind CSS
+- TypeScript
 - Node.js
 - Supabase
