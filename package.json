@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "email-server": "node email-server.js"
+    "email-server": "node email-server.js",
+    "backfill:user-posts": "node tools/backfill-user-posts.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

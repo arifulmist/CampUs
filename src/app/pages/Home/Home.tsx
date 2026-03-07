@@ -121,11 +121,8 @@ function asQnaCategory(value: unknown): QnaFeedPost["category"] {
 
 export function Home() {
   const navigate = useNavigate();
-
-  const [authUid, setAuthUid] = useState<string | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BasePostResult[]>([]);
   const [popularPosts, setPopularPosts] = useState<BasePostResult[]>([]);
-  const [hasSkillsOrInterests, setHasSkillsOrInterests] = useState<boolean>(false);
 
   const [relatedLoading, setRelatedLoading] = useState<boolean>(true);
   const [popularLoading, setPopularLoading] = useState<boolean>(true);
@@ -447,9 +444,8 @@ export function Home() {
         authorAuthUid: authorId,
         description: base.description,
         imageUrl: lfImgByPostId.get(postId) ?? undefined,
-        reactions: typeof base.like_count === "number" ? base.like_count : 0,
-        comments: typeof base.comment_count === "number" ? base.comment_count : 0,
-        shares: 0,
+        likeCount: Number(base.like_count ?? 0),
+        commentCount: Number(base.comment_count ?? 0),
         timestamp: formatRelativeTime(base.created_at ?? null),
       });
     }
@@ -472,7 +468,6 @@ export function Home() {
         if (!mounted) return;
         if (userError) console.error("Error fetching user:", userError);
         const uid = userData?.user?.id ?? null;
-        setAuthUid(uid);
 
         // Always show Lost & Found posts
         const { data: lfRows, error: lfErr } = await supabase
@@ -504,8 +499,6 @@ export function Home() {
             .filter((x): x is number => typeof x === "number");
           const combinedIds = Array.from(new Set([...skillIds, ...interestIds]));
 
-          setHasSkillsOrInterests(combinedIds.length > 0);
-
           if (combinedIds.length > 0) {
             const { data: tagRows, error: tagErr } = await supabase
               .from("post_tags")
@@ -533,8 +526,6 @@ export function Home() {
               tagMatchedPosts = (baseRows ?? []) as BasePostResult[];
             }
           }
-        } else {
-          setHasSkillsOrInterests(false);
         }
 
         // Merge Lost&Found + tag matched; de-dupe; sort by created_at desc
@@ -665,11 +656,7 @@ export function Home() {
                     key={p.post_id}
                     post={post}
                     showPostTypeLabel
-                    isLiked={false}
-                    onToggleLike={() => {
-                      /* Home feed is read-only */
-                    }}
-                    onOpenComments={() => navigate(buildUrl(p))}
+                    commentNavigateTo={buildUrl(p)}
                     onEdit={() => navigate(buildUrl(p))}
                     onRemove={() => {
                       /* Home feed is read-only */
@@ -751,11 +738,7 @@ export function Home() {
                     key={p.post_id}
                     post={post}
                     showPostTypeLabel
-                    isLiked={false}
-                    onToggleLike={() => {
-                      /* Home feed is read-only */
-                    }}
-                    onOpenComments={() => navigate(buildUrl(p))}
+                    commentNavigateTo={buildUrl(p)}
                     onEdit={() => navigate(buildUrl(p))}
                     onRemove={() => {
                       /* Home feed is read-only */
@@ -769,7 +752,7 @@ export function Home() {
           : null}
       </div>
 
-      <div className="lg:w-[20vw]">
+      <div className="lg:w-[20vw] lg:sticky lg:top-40 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
         <UpcomingEvents />
       </div>
     </div>
