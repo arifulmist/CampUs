@@ -197,29 +197,6 @@ function NoteItem({
   else if (extension === "doc" || extension === "docx") previewImage = docIcon;
   else if (extension === "pdf") previewImage = pdfIcon;
 
-  async function extractObjectPath(url?: string) {
-    if (!url) return null;
-    try {
-      const u = new URL(url);
-      // Try to find /storage/v1/object/(public/)?<bucket>/path
-      const parts = u.pathname.split("/storage/v1/object/");
-      if (parts.length === 2) {
-        let after = parts[1];
-        // remove possible "public/"
-        after = after.replace(/^public\//, "");
-        // if the path includes the bucket name (e.g. "notes/..."), remove it so
-        // createSignedUrl receives the object path relative to the bucket root
-        if (after.startsWith("notes/")) return after.slice("notes/".length);
-        return after;
-      }
-    } catch (e) {
-      // fallback: try to locate /notes/ in the URL
-      const idx = url.indexOf("/notes/");
-      if (idx !== -1) return url.substring(idx + "/notes/".length);
-    }
-    return null;
-  }
-
   async function openFile(e: React.MouseEvent) {
     e.preventDefault();
     if (!fileLink) {

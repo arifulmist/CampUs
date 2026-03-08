@@ -5,10 +5,21 @@ import { formatRelativeTime } from "@/utils/datetime";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import EventPost, { type EventPostType } from "@/app/pages/Events/components/EventPost";
-import { CollabPostCard, type CollabPost } from "@/app/pages/CollabHub/components/CollabPostCard";
-import { QnaPostCard, type QnaFeedPost } from "@/app/pages/QnA/components/QnaPostCard";
-import { LFPostCard, type LFPost } from "@/app/pages/LostAndFound/components/LFPostCard";
+import EventPost, {
+  type EventPostType,
+} from "@/app/pages/Events/components/EventPost";
+import {
+  CollabPostCard,
+  type CollabPost,
+} from "@/app/pages/CollabHub/components/CollabPostCard";
+import {
+  QnaPostCard,
+  type QnaFeedPost,
+} from "@/app/pages/QnA/components/QnaPostCard";
+import {
+  LFPostCard,
+  type LFPost,
+} from "@/app/pages/LostAndFound/components/LFPostCard";
 
 type BasePostResult = {
   post_id: string;
@@ -86,15 +97,23 @@ type PostIdOnlyRow = {
   post_id: string | null;
 };
 
-function normalizePostType(type: string): "event" | "collab" | "qna" | "lostfound" | string {
-  const t = String(type ?? "").trim().toLowerCase();
+function normalizePostType(
+  type: string,
+): "event" | "collab" | "qna" | "lostfound" | string {
+  const t = String(type ?? "")
+    .trim()
+    .toLowerCase();
   if (t === "events" || t === "event") return "event";
-  if (t === "lost-and-found" || t === "lostfound" || t === "lost_and_found") return "lostfound";
+  if (t === "lost-and-found" || t === "lostfound" || t === "lost_and_found")
+    return "lostfound";
   if (t === "collabhub" || t === "collab") return "collab";
   return t;
 }
 
-function deptBatchLabel(dept?: string | null, batch?: string | number | null): string {
+function deptBatchLabel(
+  dept?: string | null,
+  batch?: string | number | null,
+): string {
   const d = typeof dept === "string" ? dept.trim() : "";
   const b = batch == null ? "" : String(batch).trim();
   if (d && b) return `${d}-${b}`;
@@ -104,7 +123,12 @@ function deptBatchLabel(dept?: string | null, batch?: string | number | null): s
 function asCollabCategory(value: unknown): CollabPost["category"] | null {
   if (typeof value !== "string") return null;
   const v = value.trim().toLowerCase();
-  if (v === "all" || v === "research" || v === "competition" || v === "project") {
+  if (
+    v === "all" ||
+    v === "research" ||
+    v === "competition" ||
+    v === "project"
+  ) {
     return v as CollabPost["category"];
   }
   return null;
@@ -127,10 +151,16 @@ export function Home() {
   const [relatedLoading, setRelatedLoading] = useState<boolean>(true);
   const [popularLoading, setPopularLoading] = useState<boolean>(true);
 
-  const [eventById, setEventById] = useState<Map<string, EventPostType>>(new Map());
-  const [collabById, setCollabById] = useState<Map<string, CollabPost>>(new Map());
+  const [eventById, setEventById] = useState<Map<string, EventPostType>>(
+    new Map(),
+  );
+  const [collabById, setCollabById] = useState<Map<string, CollabPost>>(
+    new Map(),
+  );
   const [qnaById, setQnaById] = useState<Map<string, QnaFeedPost>>(new Map());
-  const [lostFoundById, setLostFoundById] = useState<Map<string, LFPost>>(new Map());
+  const [lostFoundById, setLostFoundById] = useState<Map<string, LFPost>>(
+    new Map(),
+  );
 
   const hydratePostCards = async (basePosts: BasePostResult[]) => {
     const byType = {
@@ -144,8 +174,10 @@ export function Home() {
       new Set(
         basePosts
           .map((p) => p.author_id)
-          .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-      )
+          .filter(
+            (x): x is string => typeof x === "string" && x.trim().length > 0,
+          ),
+      ),
     );
 
     for (const p of basePosts) {
@@ -158,11 +190,23 @@ export function Home() {
 
     const [usersRes, profilesRes] = await Promise.all([
       authorIdsForBatch.length
-        ? supabase.from("user_info").select("auth_uid,name,department,batch").in("auth_uid", authorIdsForBatch)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: AuthorRow[]; error: null }),
+        ? supabase
+            .from("user_info")
+            .select("auth_uid,name,department,batch")
+            .in("auth_uid", authorIdsForBatch)
+        : Promise.resolve({ data: [], error: null } as unknown as {
+            data: AuthorRow[];
+            error: null;
+          }),
       authorIdsForBatch.length
-        ? supabase.from("user_profile").select("auth_uid,profile_picture_url").in("auth_uid", authorIdsForBatch)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: ProfileRow[]; error: null }),
+        ? supabase
+            .from("user_profile")
+            .select("auth_uid,profile_picture_url")
+            .in("auth_uid", authorIdsForBatch)
+        : Promise.resolve({ data: [], error: null } as unknown as {
+            data: ProfileRow[];
+            error: null;
+          }),
     ]);
 
     if (usersRes.error) throw usersRes.error;
@@ -174,9 +218,12 @@ export function Home() {
     for (const row of (usersRes.data ?? []) as AuthorRow[]) {
       const id = row.auth_uid;
       if (typeof id !== "string") continue;
-      if (typeof row.name === "string" && row.name.trim()) authorNameById.set(id, row.name);
-      if (typeof row.department === "string" && row.department.trim()) authorDeptById.set(id, row.department);
-      if (row.batch != null && String(row.batch).trim()) authorBatchById.set(id, String(row.batch));
+      if (typeof row.name === "string" && row.name.trim())
+        authorNameById.set(id, row.name);
+      if (typeof row.department === "string" && row.department.trim())
+        authorDeptById.set(id, row.department);
+      if (row.batch != null && String(row.batch).trim())
+        authorBatchById.set(id, String(row.batch));
     }
 
     const authorAvatarById = new Map<string, string>();
@@ -191,7 +238,8 @@ export function Home() {
     // Resolve department ids to names (ensures dept_name-batch display)
     const deptIds = new Set<string>();
     for (const dept of authorDeptById.values()) {
-      if (dept && /^[0-9]+$/.test(String(dept).trim())) deptIds.add(String(dept).trim());
+      if (dept && /^[0-9]+$/.test(String(dept).trim()))
+        deptIds.add(String(dept).trim());
     }
     if (deptIds.size > 0) {
       const { data: deptRows, error: deptErr } = await supabase
@@ -203,13 +251,17 @@ export function Home() {
         for (const r of deptRows as Array<Record<string, unknown>>) {
           const id = r.dept_id;
           const name = r.department_name;
-          if ((typeof id === "number" || typeof id === "string") && typeof name === "string") {
+          if (
+            (typeof id === "number" || typeof id === "string") &&
+            typeof name === "string"
+          ) {
             nameById.set(String(id), name);
           }
         }
         for (const [authId, deptVal] of Array.from(authorDeptById.entries())) {
           const key = String(deptVal ?? "").trim();
-          if (key && nameById.has(key)) authorDeptById.set(authId, nameById.get(key)!);
+          if (key && nameById.has(key))
+            authorDeptById.set(authId, nameById.get(key)!);
         }
       }
     }
@@ -222,13 +274,28 @@ export function Home() {
     const [skillsRes, eventTagsRes, collabTagsRes] = await Promise.all([
       needsSkills
         ? supabase.from("skills_lookup").select("id,skill")
-        : Promise.resolve({ data: [], error: null } as unknown as { data: SkillRow[]; error: null }),
+        : Promise.resolve({ data: [], error: null } as unknown as {
+            data: SkillRow[];
+            error: null;
+          }),
       byType.event.length
-        ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", byType.event)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: PostTagRow[]; error: null }),
+        ? supabase
+            .from("post_tags")
+            .select("post_id,skill_id")
+            .in("post_id", byType.event)
+        : Promise.resolve({ data: [], error: null } as unknown as {
+            data: PostTagRow[];
+            error: null;
+          }),
       byType.collab.length
-        ? supabase.from("post_tags").select("post_id,skill_id").in("post_id", byType.collab)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: PostTagRow[]; error: null }),
+        ? supabase
+            .from("post_tags")
+            .select("post_id,skill_id")
+            .in("post_id", byType.collab)
+        : Promise.resolve({ data: [], error: null } as unknown as {
+            data: PostTagRow[];
+            error: null;
+          }),
     ]);
 
     if (skillsRes.error) throw skillsRes.error;
@@ -237,12 +304,19 @@ export function Home() {
 
     const skillById = new Map<number, string>();
     for (const row of (skillsRes.data ?? []) as SkillRow[]) {
-      if (typeof row.id === "number" && typeof row.skill === "string" && row.skill.trim()) {
+      if (
+        typeof row.id === "number" &&
+        typeof row.skill === "string" &&
+        row.skill.trim()
+      ) {
         skillById.set(row.id, row.skill);
       }
     }
 
-    const eventTagsByPostId = new Map<string, { skill_id: number; name: string }[]>();
+    const eventTagsByPostId = new Map<
+      string,
+      { skill_id: number; name: string }[]
+    >();
     for (const row of (eventTagsRes.data ?? []) as PostTagRow[]) {
       const postId = row.post_id;
       const skillId = row.skill_id;
@@ -265,26 +339,53 @@ export function Home() {
       collabTagsByPostId.set(postId, arr);
     }
 
-    const [eventsRes, collabMetaRes, collabCatsRes, qnaRes, lfRes] = await Promise.all([
-      byType.event.length
-        ? supabase
-            .from("event_posts")
-            .select("post_id,location,event_start_date,event_end_date,img_url,events_category(category_name)")
-            .in("post_id", byType.event)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: EventMetaRow[]; error: null }),
-      byType.collab.length
-        ? supabase.from("collab_posts").select("post_id,category_id").in("post_id", byType.collab)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: CollabMetaRow[]; error: null }),
-      byType.collab.length
-        ? supabase.from("collab_category").select("category_id,category")
-        : Promise.resolve({ data: [], error: null } as unknown as { data: CollabCategoryRow[]; error: null }),
-      byType.qna.length
-        ? supabase.from("qna_posts").select("post_id,img_url,qna_category(category_name)").in("post_id", byType.qna)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: QnaMetaRow[]; error: null }),
-      byType.lostfound.length
-        ? supabase.from("lost_and_found_posts").select("post_id,img_url,category").in("post_id", byType.lostfound)
-        : Promise.resolve({ data: [], error: null } as unknown as { data: LostFoundMetaRow[]; error: null }),
-    ]);
+    const [eventsRes, collabMetaRes, collabCatsRes, qnaRes, lfRes] =
+      await Promise.all([
+        byType.event.length
+          ? supabase
+              .from("event_posts")
+              .select(
+                "post_id,location,event_start_date,event_end_date,img_url,events_category(category_name)",
+              )
+              .in("post_id", byType.event)
+          : Promise.resolve({ data: [], error: null } as unknown as {
+              data: EventMetaRow[];
+              error: null;
+            }),
+        byType.collab.length
+          ? supabase
+              .from("collab_posts")
+              .select("post_id,category_id")
+              .in("post_id", byType.collab)
+          : Promise.resolve({ data: [], error: null } as unknown as {
+              data: CollabMetaRow[];
+              error: null;
+            }),
+        byType.collab.length
+          ? supabase.from("collab_category").select("category_id,category")
+          : Promise.resolve({ data: [], error: null } as unknown as {
+              data: CollabCategoryRow[];
+              error: null;
+            }),
+        byType.qna.length
+          ? supabase
+              .from("qna_posts")
+              .select("post_id,img_url,qna_category(category_name)")
+              .in("post_id", byType.qna)
+          : Promise.resolve({ data: [], error: null } as unknown as {
+              data: QnaMetaRow[];
+              error: null;
+            }),
+        byType.lostfound.length
+          ? supabase
+              .from("lost_and_found_posts")
+              .select("post_id,img_url,category")
+              .in("post_id", byType.lostfound)
+          : Promise.resolve({ data: [], error: null } as unknown as {
+              data: LostFoundMetaRow[];
+              error: null;
+            }),
+      ]);
 
     if (eventsRes.error) throw eventsRes.error;
     if (collabMetaRes.error) throw collabMetaRes.error;
@@ -296,7 +397,11 @@ export function Home() {
     for (const row of (collabCatsRes.data ?? []) as CollabCategoryRow[]) {
       const id = row.category_id;
       const cat = row.category;
-      if ((typeof id === "number" || typeof id === "string") && typeof cat === "string" && cat.trim()) {
+      if (
+        (typeof id === "number" || typeof id === "string") &&
+        typeof cat === "string" &&
+        cat.trim()
+      ) {
         collabCategoryById.set(String(id), cat);
       }
     }
@@ -305,7 +410,10 @@ export function Home() {
     for (const row of (collabMetaRes.data ?? []) as CollabMetaRow[]) {
       const postId = row.post_id;
       const categoryId = row.category_id;
-      if (typeof postId === "string" && (typeof categoryId === "number" || typeof categoryId === "string")) {
+      if (
+        typeof postId === "string" &&
+        (typeof categoryId === "number" || typeof categoryId === "string")
+      ) {
         collabCategoryIdByPostId.set(postId, String(categoryId));
       }
     }
@@ -315,17 +423,33 @@ export function Home() {
     for (const row of (lfRes.data ?? []) as LostFoundMetaRow[]) {
       const postId = row.post_id;
       if (typeof postId !== "string") continue;
-      lfImgByPostId.set(postId, typeof row.img_url === "string" && row.img_url.trim() ? row.img_url : null);
-      lfCategoryByPostId.set(postId, typeof row.category === "string" && row.category.trim() ? row.category : null);
+      lfImgByPostId.set(
+        postId,
+        typeof row.img_url === "string" && row.img_url.trim()
+          ? row.img_url
+          : null,
+      );
+      lfCategoryByPostId.set(
+        postId,
+        typeof row.category === "string" && row.category.trim()
+          ? row.category
+          : null,
+      );
     }
 
-    const qnaByPostId = new Map<string, { category: QnaFeedPost["category"]; imgUrl: string | null }>();
+    const qnaByPostId = new Map<
+      string,
+      { category: QnaFeedPost["category"]; imgUrl: string | null }
+    >();
     for (const row of (qnaRes.data ?? []) as QnaMetaRow[]) {
       const postId = row.post_id;
       if (typeof postId !== "string") continue;
       qnaByPostId.set(postId, {
         category: asQnaCategory(row.qna_category?.category_name ?? null),
-        imgUrl: typeof row.img_url === "string" && row.img_url.trim() ? row.img_url : null,
+        imgUrl:
+          typeof row.img_url === "string" && row.img_url.trim()
+            ? row.img_url
+            : null,
       });
     }
 
@@ -340,7 +464,10 @@ export function Home() {
       const author = authorNameById.get(authorId) ?? "Unknown";
       const dept = authorDeptById.get(authorId) ?? "";
       const batch = authorBatchById.get(authorId) ?? "";
-      const catName = typeof row.events_category?.category_name === "string" ? row.events_category.category_name : "Events";
+      const catName =
+        typeof row.events_category?.category_name === "string"
+          ? row.events_category.category_name
+          : "Events";
 
       eventsMap.set(postId, {
         id: postId,
@@ -360,7 +487,8 @@ export function Home() {
         segments: [],
         tags: eventTagsByPostId.get(postId) ?? [],
         likes: typeof base.like_count === "number" ? base.like_count : 0,
-        comments: typeof base.comment_count === "number" ? base.comment_count : 0,
+        comments:
+          typeof base.comment_count === "number" ? base.comment_count : 0,
         shares: 0,
         createdAt: base.created_at ?? undefined,
         profilePictureUrl: authorAvatarById.get(authorId),
@@ -374,10 +502,15 @@ export function Home() {
 
       const authorId = base.author_id;
       const authorName = authorNameById.get(authorId) ?? "Unknown";
-      const authorBatch = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId));
+      const authorBatch = deptBatchLabel(
+        authorDeptById.get(authorId),
+        authorBatchById.get(authorId),
+      );
 
       const categoryId = collabCategoryIdByPostId.get(postId);
-      const categoryRaw = categoryId ? collabCategoryById.get(categoryId) : null;
+      const categoryRaw = categoryId
+        ? collabCategoryById.get(categoryId)
+        : null;
       const category = asCollabCategory(categoryRaw);
       if (!category) continue;
 
@@ -392,7 +525,8 @@ export function Home() {
         authorAvatarUrl: authorAvatarById.get(authorId) ?? null,
         tags: collabTagsByPostId.get(postId) ?? [],
         likes: typeof base.like_count === "number" ? base.like_count : 0,
-        comments: typeof base.comment_count === "number" ? base.comment_count : 0,
+        comments:
+          typeof base.comment_count === "number" ? base.comment_count : 0,
         createdAt: base.created_at ?? null,
       });
     }
@@ -404,7 +538,11 @@ export function Home() {
 
       const authorId = base.author_id;
       const author = authorNameById.get(authorId) ?? "Unknown";
-      const authorCourse = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId)) || "—";
+      const authorCourse =
+        deptBatchLabel(
+          authorDeptById.get(authorId),
+          authorBatchById.get(authorId),
+        ) || "—";
       const qnaMeta = qnaByPostId.get(postId);
 
       qnaMap.set(postId, {
@@ -418,7 +556,8 @@ export function Home() {
         category: qnaMeta?.category ?? "Question",
         tags: [],
         reactions: typeof base.like_count === "number" ? base.like_count : 0,
-        comments: typeof base.comment_count === "number" ? base.comment_count : 0,
+        comments:
+          typeof base.comment_count === "number" ? base.comment_count : 0,
         shares: 0,
         timestamp: formatRelativeTime(base.created_at ?? null),
         imageUrl: qnaMeta?.imgUrl ?? null,
@@ -432,7 +571,11 @@ export function Home() {
 
       const authorId = base.author_id;
       const author = authorNameById.get(authorId) ?? "Unknown";
-      const authorCourse = deptBatchLabel(authorDeptById.get(authorId), authorBatchById.get(authorId)) || "—";
+      const authorCourse =
+        deptBatchLabel(
+          authorDeptById.get(authorId),
+          authorBatchById.get(authorId),
+        ) || "—";
 
       lostFoundMap.set(postId, {
         id: postId,
@@ -464,7 +607,8 @@ export function Home() {
       setPopularLoading(true);
 
       try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
         if (!mounted) return;
         if (userError) console.error("Error fetching user:", userError);
         const uid = userData?.user?.id ?? null;
@@ -472,7 +616,9 @@ export function Home() {
         // Always show Lost & Found posts
         const { data: lfRows, error: lfErr } = await supabase
           .from("all_posts")
-          .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+          .select(
+            "post_id,type,title,description,author_id,created_at,like_count,comment_count",
+          )
           .in("type", ["lostfound", "lost_and_found", "lost-and-found"])
           .order("created_at", { ascending: false })
           .range(0, 9999);
@@ -485,11 +631,16 @@ export function Home() {
         if (uid) {
           const [skillsRes, interestsRes] = await Promise.all([
             supabase.from("user_skills").select("skill_id").eq("auth_uid", uid),
-            supabase.from("user_interests").select("interest_id").eq("auth_uid", uid),
+            supabase
+              .from("user_interests")
+              .select("interest_id")
+              .eq("auth_uid", uid),
           ]);
 
-          if (skillsRes.error) console.error("user_skills fetch error:", skillsRes.error);
-          if (interestsRes.error) console.error("user_interests fetch error:", interestsRes.error);
+          if (skillsRes.error)
+            console.error("user_skills fetch error:", skillsRes.error);
+          if (interestsRes.error)
+            console.error("user_interests fetch error:", interestsRes.error);
 
           const skillIds = ((skillsRes.data ?? []) as UserSkillRow[])
             .map((s) => s.skill_id)
@@ -497,7 +648,9 @@ export function Home() {
           const interestIds = ((interestsRes.data ?? []) as UserInterestRow[])
             .map((i) => i.interest_id)
             .filter((x): x is number => typeof x === "number");
-          const combinedIds = Array.from(new Set([...skillIds, ...interestIds]));
+          const combinedIds = Array.from(
+            new Set([...skillIds, ...interestIds]),
+          );
 
           if (combinedIds.length > 0) {
             const { data: tagRows, error: tagErr } = await supabase
@@ -511,18 +664,24 @@ export function Home() {
               new Set(
                 ((tagRows ?? []) as PostIdOnlyRow[])
                   .map((r) => r.post_id)
-                  .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-              )
+                  .filter(
+                    (x): x is string =>
+                      typeof x === "string" && x.trim().length > 0,
+                  ),
+              ),
             );
 
             if (postIds.length > 0) {
               const { data: baseRows, error: baseErr } = await supabase
                 .from("all_posts")
-                .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+                .select(
+                  "post_id,type,title,description,author_id,created_at,like_count,comment_count",
+                )
                 .in("post_id", postIds)
                 .order("created_at", { ascending: false })
                 .limit(20);
-              if (baseErr) console.error("Relevant all_posts fetch error:", baseErr);
+              if (baseErr)
+                console.error("Relevant all_posts fetch error:", baseErr);
               tagMatchedPosts = (baseRows ?? []) as BasePostResult[];
             }
           }
@@ -543,7 +702,9 @@ export function Home() {
         // Most Popular: highest likes
         const { data: popularRows, error: popError } = await supabase
           .from("all_posts")
-          .select("post_id,type,title,description,author_id,created_at,like_count,comment_count")
+          .select(
+            "post_id,type,title,description,author_id,created_at,like_count,comment_count",
+          )
           .order("like_count", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(3);
@@ -554,7 +715,10 @@ export function Home() {
         setPopularPosts((popularRows ?? []) as BasePostResult[]);
 
         const unionById = new Map<string, BasePostResult>();
-        for (const p of [...finalRelated, ...((popularRows ?? []) as BasePostResult[])]) {
+        for (const p of [
+          ...finalRelated,
+          ...((popularRows ?? []) as BasePostResult[]),
+        ]) {
           if (!p?.post_id) continue;
           unionById.set(p.post_id, p);
         }

@@ -1,13 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { SignupLoginBox } from "./components/SignupLoginBox";
-import { verifyOTP, generateOTP, storeOTP, sendOTPEmail } from "./backend/otpService";
+import {
+  verifyOTP,
+  generateOTP,
+  storeOTP,
+  sendOTPEmail,
+} from "./backend/otpService";
 
 export function Login2FA() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [values, setValues] = useState(Array(6).fill(""));
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
@@ -35,7 +40,7 @@ export function Login2FA() {
       setCanResend(true);
       return;
     }
-    
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -45,7 +50,7 @@ export function Login2FA() {
         return prev - 1;
       });
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, [timeLeft]);
 
@@ -59,20 +64,20 @@ export function Login2FA() {
   // Handle OTP input changes
   function handleChange(index: number, value: string) {
     if (!/^[0-9]?$/.test(value)) return;
-    
+
     const newValues = [...values];
     newValues[index] = value;
     setValues(newValues);
-    
+
     if (error) setError("");
-    
+
     // Move to next input if value entered
     if (value && index < 5) {
       inputs.current[index + 1]?.focus();
     }
-    
+
     // Auto-submit if all digits entered
-    if (newValues.every(v => v !== "") && index === 5) {
+    if (newValues.every((v) => v !== "") && index === 5) {
       handleSubmitAuto();
     }
   }
@@ -88,23 +93,23 @@ export function Login2FA() {
   function handlePaste(e: React.ClipboardEvent) {
     e.preventDefault();
     const paste = e.clipboardData.getData("text").trim();
-    
+
     if (/^\d{6}$/.test(paste)) {
       const newValues = paste.split("");
       setValues(newValues);
-      
+
       // Fill all inputs
       newValues.forEach((val, i) => {
         if (inputs.current[i]) {
           inputs.current[i]!.value = val;
         }
       });
-      
+
       // Focus last input
       if (inputs.current[5]) {
         inputs.current[5].focus();
       }
-      
+
       // Auto-submit
       setTimeout(() => handleSubmitAuto(), 100);
     }
@@ -114,7 +119,7 @@ export function Login2FA() {
   async function handleSubmitAuto() {
     const code = values.join("");
     if (code.length !== 6) return;
-    
+
     await verifyOTPCode(code);
   }
 
@@ -122,12 +127,12 @@ export function Login2FA() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const code = values.join("");
-    
+
     if (code.length !== 6) {
       setError("Please enter a 6-digit code");
       return;
     }
-    
+
     await verifyOTPCode(code);
   }
 
@@ -139,22 +144,25 @@ export function Login2FA() {
 
     try {
       const verification = await verifyOTP(code);
-      
+
       if (verification.success && verification.userData) {
         setSuccess("✅ Verification successful! Redirecting...");
-        
+
         // Store user session
-        localStorage.setItem('user', JSON.stringify(verification.userData));
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('studentId', String(verification.userData.student_id));
-        
+        localStorage.setItem("user", JSON.stringify(verification.userData));
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem(
+          "studentId",
+          String(verification.userData.student_id),
+        );
+
         // Redirect to home
         setTimeout(() => {
           navigate("/home");
         }, 1500);
       } else {
         setError(verification.message);
-        
+
         // Clear inputs on error
         setValues(Array(6).fill(""));
         inputs.current[0]?.focus();
@@ -170,10 +178,10 @@ export function Login2FA() {
   // Handle resend OTP
   async function handleResend() {
     if (!canResend) return;
-    
+
     setLoading(true);
     setError("");
-    
+
     try {
       if (!userId || !userEmail) {
         setError("Missing user details. Please login again.");
@@ -250,7 +258,9 @@ export function Login2FA() {
           <div className="lg:p-3 bg-stroke-grey lg:border border-s-text-lm lg:rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Development Mode:</strong> OTP is:{" "}
-              <span className="lg:font-mono lg:font-bold text-lg">{devOTP}</span>
+              <span className="lg:font-mono lg:font-bold text-lg">
+                {devOTP}
+              </span>
             </p>
             <p className="text-xs border-s-text-lm lg:mt-1">
               This would be sent to {userEmail}
@@ -269,7 +279,9 @@ export function Login2FA() {
             </div>
           ) : (
             <div className="lg:inline-flex lg:items-center lg:gap-2 lg:px-4 lg:py-2 bg-red-50 lg:rounded-lg">
-              <span className="text-accent-lm lg:font-medium">Code expired</span>
+              <span className="text-accent-lm lg:font-medium">
+                Code expired
+              </span>
             </div>
           )}
         </div>
@@ -277,11 +289,16 @@ export function Login2FA() {
         {/* OTP Input Form */}
         <form onSubmit={handleSubmit}>
           {/* OTP Input Boxes */}
-          <div className="lg:flex lg:justify-center lg:gap-2 lg:mb-6" onPaste={handlePaste}>
+          <div
+            className="lg:flex lg:justify-center lg:gap-2 lg:mb-6"
+            onPaste={handlePaste}
+          >
             {values.map((val, i) => (
               <input
                 key={i}
-                ref={(el) => { inputs.current[i] = el; }}
+                ref={(el) => {
+                  inputs.current[i] = el;
+                }}
                 value={val}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
@@ -315,7 +332,7 @@ export function Login2FA() {
                 Verifying...
               </>
             ) : (
-              'Verify & Continue'
+              "Verify & Continue"
             )}
           </button>
         </form>
@@ -335,9 +352,10 @@ export function Login2FA() {
             onClick={handleResend}
             disabled={!canResend || loading}
             className={`text-base font-light transition flex items-center gap-1
-              ${canResend 
-                ? "text-accent-lm hover:text-hover-btn-lm cursor-pointer" 
-                : "text-text-lighter-lm cursor-not-allowed"
+              ${
+                canResend
+                  ? "text-accent-lm hover:text-hover-btn-lm cursor-pointer"
+                  : "text-text-lighter-lm cursor-not-allowed"
               }`}
           >
             {loading ? (
@@ -346,7 +364,7 @@ export function Login2FA() {
                 Resending...
               </>
             ) : (
-              'Resend Code'
+              "Resend Code"
             )}
           </button>
         </div>
