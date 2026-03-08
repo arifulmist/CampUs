@@ -308,8 +308,7 @@ export async function fetchResources(
             : null) ??
           "";
 
-        const batchValue =
-          ui?.batch ?? null ?? authorMap[r.author_id]?.batch ?? null;
+        const batchValue = ui?.batch ?? authorMap[r.author_id]?.batch ?? null;
 
         if (deptName && batchValue !== null && batchValue !== undefined) {
           return `${deptName}-${batchValue}`;
@@ -502,9 +501,7 @@ export async function computeFileHash(file: File): Promise<string> {
 
 // Check whether a note with the given file hash already exists.
 // Returns the matching note metadata when a duplicate is found, or null otherwise.
-export async function checkDuplicateNote(
-  fileHash: string,
-): Promise<{
+export async function checkDuplicateNote(fileHash: string): Promise<{
   noteId: string;
   title: string;
   courseCode: string;

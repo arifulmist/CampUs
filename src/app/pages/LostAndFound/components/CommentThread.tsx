@@ -1,5 +1,5 @@
 // src/app/pages/LostAndFound/components/CommentThread.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,10 @@ export default function CommentThread({
   const [sort, setSort] = useState<"best" | "latest">("latest");
   const [comments, setComments] = useState<Comment[]>([]);
   const [topCommentText, setTopCommentText] = useState("");
-  const [userProfile, setUserProfile] = useState<{ auth_uid: string; name?: string | null } | null>(null);
+  const [userProfile, setUserProfile] = useState<{
+    auth_uid: string;
+    name?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -61,7 +64,11 @@ export default function CommentThread({
     (async () => {
       try {
         const profile = await getCurrentUserProfile();
-        if (profile) setUserProfile({ auth_uid: profile.auth_uid, name: profile.name ?? undefined });
+        if (profile)
+          setUserProfile({
+            auth_uid: profile.auth_uid,
+            name: profile.name ?? undefined,
+          });
       } catch {
         // ignore
       }
@@ -85,7 +92,11 @@ export default function CommentThread({
     };
   }
 
-  function addReplyToTree(list: Comment[], parentId: string, reply: Comment): Comment[] {
+  function addReplyToTree(
+    list: Comment[],
+    parentId: string,
+    reply: Comment,
+  ): Comment[] {
     return list.map((c) => {
       if (c.id === parentId) {
         const nextReplies = c.replies ? [reply, ...c.replies] : [reply];
@@ -98,11 +109,18 @@ export default function CommentThread({
     });
   }
 
-  function mapCommentsUpdating(list: Comment[], targetId: string, updater: (c: Comment) => Comment): Comment[] {
+  function mapCommentsUpdating(
+    list: Comment[],
+    targetId: string,
+    updater: (c: Comment) => Comment,
+  ): Comment[] {
     return list.map((c) => {
       if (c.id === targetId) return updater(c);
       if (c.replies && c.replies.length) {
-        return { ...c, replies: mapCommentsUpdating(c.replies, targetId, updater) };
+        return {
+          ...c,
+          replies: mapCommentsUpdating(c.replies, targetId, updater),
+        };
       }
       return c;
     });
@@ -178,7 +196,9 @@ export default function CommentThread({
       const replacer = (list: Comment[]): Comment[] =>
         list.map((c) => {
           if (c.id === parentId) {
-            const newReplies = (c.replies ?? []).map((r) => (r.id === tempId ? serverReply : r));
+            const newReplies = (c.replies ?? []).map((r) =>
+              r.id === tempId ? serverReply : r,
+            );
             return { ...c, replies: newReplies };
           }
           if (c.replies && c.replies.length) {
@@ -209,15 +229,30 @@ export default function CommentThread({
 
   async function handleLike(commentId: string) {
     // optimistic increment
-    setComments((prev) => mapCommentsUpdating(prev, commentId, (c) => ({ ...c, likes: c.likes + 1 })));
+    setComments((prev) =>
+      mapCommentsUpdating(prev, commentId, (c) => ({
+        ...c,
+        likes: c.likes + 1,
+      })),
+    );
 
     try {
       const newCount = await changeCommentLikeCount(commentId, +1);
-      setComments((prev) => mapCommentsUpdating(prev, commentId, (c) => ({ ...c, likes: newCount })));
+      setComments((prev) =>
+        mapCommentsUpdating(prev, commentId, (c) => ({
+          ...c,
+          likes: newCount,
+        })),
+      );
     } catch (err) {
       console.error("Failed to like comment:", err);
       // roll back
-      setComments((prev) => mapCommentsUpdating(prev, commentId, (c) => ({ ...c, likes: Math.max(0, c.likes - 1) })));
+      setComments((prev) =>
+        mapCommentsUpdating(prev, commentId, (c) => ({
+          ...c,
+          likes: Math.max(0, c.likes - 1),
+        })),
+      );
     }
   }
 
@@ -233,10 +268,18 @@ export default function CommentThread({
           />
         </div>
         <div className="lg:flex lg:items-center lg:justify-end lg:gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setTopCommentText("")}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setTopCommentText("")}
+          >
             Cancel
           </Button>
-          <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm" onClick={submitTopLevelComment}>
+          <Button
+            size="sm"
+            className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm"
+            onClick={submitTopLevelComment}
+          >
             Comment
           </Button>
         </div>
@@ -246,18 +289,35 @@ export default function CommentThread({
         <div className="lg:flex lg:items-center lg:justify-between lg:mb-2">
           <div className="text-sm text-text-lighter-lm">Sort:</div>
           <div className="lg:flex lg:gap-2">
-            <button className={`px-2 py-1 rounded ${sort === "latest" ? "bg-accent-lm text-primary-lm" : "bg-secondary-lm text-accent-lm"}`} onClick={() => setSort("latest")}>Latest</button>
-            <button className={`px-2 py-1 rounded ${sort === "best" ? "bg-accent-lm text-primary-lm" : "bg-secondary-lm text-accent-lm"}`} onClick={() => setSort("best")}>Best</button>
+            <button
+              className={`px-2 py-1 rounded ${sort === "latest" ? "bg-accent-lm text-primary-lm" : "bg-secondary-lm text-accent-lm"}`}
+              onClick={() => setSort("latest")}
+            >
+              Latest
+            </button>
+            <button
+              className={`px-2 py-1 rounded ${sort === "best" ? "bg-accent-lm text-primary-lm" : "bg-secondary-lm text-accent-lm"}`}
+              onClick={() => setSort("best")}
+            >
+              Best
+            </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-sm text-text-lighter-lm">Loading comments...</div>
+          <div className="text-sm text-text-lighter-lm">
+            Loading comments...
+          </div>
         ) : comments.length === 0 ? (
           <div className="text-sm text-text-lighter-lm">No comments yet.</div>
         ) : (
           comments.map((c) => (
-            <CommentItem key={c.id} comment={c} onReply={handleAddReply} onLike={handleLike} />
+            <CommentItem
+              key={c.id}
+              comment={c}
+              onReply={handleAddReply}
+              onLike={handleLike}
+            />
           ))
         )}
       </div>
@@ -269,7 +329,6 @@ function CommentItem({
   comment,
   onReply,
   onLike,
-  isReply = false,
 }: {
   comment: Comment;
   isReply?: boolean;
@@ -298,26 +357,60 @@ function CommentItem({
         </div>
         <div className="lg:flex-1 lg:pb-2">
           <div className="lg:flex lg:items-center lg:gap-2 lg:mb-1">
-            <span className="text-sm lg:font-bold text-text-lm">{comment.author}</span>
-            <span className="text-[10px] text-text-lighter-lm lg:font-medium lg:px-1.5 lg:py-0.5 bg-secondary-lm lg:rounded">{comment.course}</span>
+            <span className="text-sm lg:font-bold text-text-lm">
+              {comment.author}
+            </span>
+            <span className="text-[10px] text-text-lighter-lm lg:font-medium lg:px-1.5 lg:py-0.5 bg-secondary-lm lg:rounded">
+              {comment.course}
+            </span>
           </div>
-          <p className="text-sm text-text-lm lg:mb-2 lg:leading-snug">{comment.content}</p>
+          <p className="text-sm text-text-lm lg:mb-2 lg:leading-snug">
+            {comment.content}
+          </p>
           <div className="lg:flex lg:items-center lg:gap-4">
-            <button onClick={() => onLike(comment.id)} className="lg:flex lg:items-center lg:gap-1 text-[11px] lg:font-bold text-text-lighter-lm hover:text-accent-lm">
+            <button
+              onClick={() => onLike(comment.id)}
+              className="lg:flex lg:items-center lg:gap-1 text-[11px] lg:font-bold text-text-lighter-lm hover:text-accent-lm"
+            >
               <Heart className="lg:h-3 lg:w-3" />
               {comment.likes}
             </button>
-            <button className="text-[11px] lg:font-bold text-accent-lm hover:underline" onClick={() => setReplying((r) => !r)}>Reply</button>
+            <button
+              className="text-[11px] lg:font-bold text-accent-lm hover:underline"
+              onClick={() => setReplying((r) => !r)}
+            >
+              Reply
+            </button>
           </div>
         </div>
       </div>
 
       {replying && (
         <div className="lg:ml-4 lg:mt-4 lg:space-y-3">
-          <Textarea placeholder={`Reply to ${comment.author}...`} value={replyText} onChange={(e) => setReplyText(e.target.value)} className="lg:min-h-20 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm" />
+          <Textarea
+            placeholder={`Reply to ${comment.author}...`}
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            className="lg:min-h-20 border-none focus-visible:ring-0 lg:p-0 text-sm bg-primary-lm text-text-lm placeholder:text-text-lighter-lm"
+          />
           <div className="lg:flex lg:items-center lg:justify-end lg:gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { setReplying(false); setReplyText(""); }}>Cancel</Button>
-            <Button size="sm" className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4" onClick={submitReply}>Comment</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setReplying(false);
+                setReplyText("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-accent-lm hover:bg-hover-btn-lm text-primary-lm lg:px-4"
+              onClick={submitReply}
+            >
+              Comment
+            </Button>
           </div>
         </div>
       )}
@@ -325,7 +418,13 @@ function CommentItem({
       {comment.replies && comment.replies.length > 0 && (
         <div className="lg:ml-4 lg:mt-4 lg:space-y-4 border-l-2 border-stroke-grey lg:pl-6">
           {comment.replies.map((r) => (
-            <CommentItem key={r.id} comment={r} isReply onReply={onReply} onLike={onLike} />
+            <CommentItem
+              key={r.id}
+              comment={r}
+              isReply
+              onReply={onReply}
+              onLike={onLike}
+            />
           ))}
         </div>
       )}

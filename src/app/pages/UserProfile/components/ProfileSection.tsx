@@ -1,5 +1,5 @@
 import { LucideMessageCircle, LucidePencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useUserProfileContext } from "./UserProfileContext";
 import {
@@ -74,9 +74,12 @@ export function ProfileSection() {
         </div>
 
         <div className="flex flex-col lg:mx-8">
-
           <div className="rounded-full lg:size-35 lg:mb-4 border-3 border-primary-lm lg:-mt-20 relative">
-            <img src={effectiveAvatarUrl} className="object-cover lg:size-35 rounded-full" alt="Profile" />
+            <img
+              src={effectiveAvatarUrl}
+              className="object-cover lg:size-35 rounded-full"
+              alt="Profile"
+            />
             {canEdit && (
               <button
                 type="button"
@@ -124,10 +127,18 @@ export function ProfileSection() {
                     target={isEmail ? undefined : "_blank"}
                     rel={isEmail ? undefined : "noreferrer"}
                     className="flex lg:gap-2 items-center hover:opacity-80"
-                    aria-label={c.platform ? `${c.platform} contact` : "Contact"}
+                    aria-label={
+                      c.platform ? `${c.platform} contact` : "Contact"
+                    }
                   >
-                    <img src={getPlatformIconSrc(c.platform)} className="size-8" alt="Contact" />
-                    <p className="max-w-[18rem] truncate">{displayContactLinkText(href)}</p>
+                    <img
+                      src={getPlatformIconSrc(c.platform)}
+                      className="size-8"
+                      alt="Contact"
+                    />
+                    <p className="max-w-[18rem] truncate">
+                      {displayContactLinkText(href)}
+                    </p>
                   </a>
                 );
               })}
