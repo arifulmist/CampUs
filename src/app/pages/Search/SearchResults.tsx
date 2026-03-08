@@ -594,9 +594,8 @@ export default function SearchResults() {
             authorAuthUid: authorId,
             description: base.description,
             imageUrl: lfImgByPostId.get(postId) ?? undefined,
-            reactions: typeof base.like_count === "number" ? base.like_count : 0,
-            comments: typeof base.comment_count === "number" ? base.comment_count : 0,
-            shares: 0,
+            likeCount: Number(base.like_count ?? 0),
+            commentCount: Number(base.comment_count ?? 0),
             timestamp: formatRelativeTime(base.created_at ?? null),
           });
         }
@@ -739,11 +738,7 @@ export default function SearchResults() {
                 <div key={p.post_id} className="lg:mb-4">
                   <LFPostCard
                     post={post}
-                    isLiked={false}
-                    onToggleLike={() => {
-                      /* keep search results read-only */
-                    }}
-                    onOpenComments={() => navigate(buildUrl(p))}
+                    commentNavigateTo={buildUrl(p)}
                     onEdit={() => navigate(buildUrl(p))}
                     onRemove={() => {
                       /* keep search results read-only */

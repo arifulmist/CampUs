@@ -489,7 +489,7 @@ export function EventPostRoute({
   }
 
   return (
-    <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in mb-5">
+    <div className="lg:flex lg:flex-col lg:gap-3 bg-primary-lm border border-stroke-grey lg:p-8 lg:rounded-2xl lg:animate-slide-in lg:mb-5 lg:-mt-5">
       <div className="lg:mt-1 lg:mb-3 flex items-center justify-between">
         <p
           className={`inline-block px-4 py-1 rounded-full font-semibold text-text-lm text-base ${getCategoryClass(detail.category, "events")}`}

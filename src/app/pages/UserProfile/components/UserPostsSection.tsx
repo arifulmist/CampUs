@@ -14,17 +14,53 @@ import { QnaPostCard, type QnaFeedPost } from "../../QnA/components/QnaPostCard"
 import { LFPostCard, type LFPost } from "../../LostAndFound/components/LFPostCard";
 import { Loading } from "../../Fallback/Loading";
 
-function asCollabCategory(value: unknown): CollabPost["category"] | null {
-  if (typeof value !== "string") return null;
+function normalizePostType(type: string): "event" | "collab" | "qna" | "lostfound" | string {
+  const t = String(type ?? "").trim().toLowerCase();
+  if (t === "events" || t === "event") return "event";
+  if (
+    t === "lost-and-found" ||
+    t === "lostfound" ||
+    t === "lost_and_found" ||
+    t === "lost and found"
+  )
+    return "lostfound";
+  if (t === "collabhub" || t === "collab") return "collab";
+  if (t === "qna" || t === "q&a" || t === "q_and_a" || t === "qna_posts") return "qna";
+  return t;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
+}
+
+function getStringField(obj: Record<string, unknown> | null, key: string): string | undefined {
+  if (!obj) return undefined;
+  const v = obj[key];
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  return s.length ? s : undefined;
+}
+
+function getNumberField(obj: Record<string, unknown> | null, key: string): number | undefined {
+  if (!obj) return undefined;
+  const v = obj[key];
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function asCollabCategory(value: unknown): CollabPost["category"] {
+  if (typeof value !== "string") return "research";
   const v = value.trim().toLowerCase();
   if (v === "all" || v === "research" || v === "competition" || v === "project") {
     return v as CollabPost["category"];
   }
-  return null;
+  return "research";
 }
 
 function postPath(type: string, postId: string) {
-  const t = type.trim().toLowerCase();
+  const t = normalizePostType(type);
   const base = t === "lostfound" ? "lost-and-found" : t;
   return `/${base}/${postId}`;
 }
@@ -64,7 +100,7 @@ export function UserPostsSection() {
     };
 
     for (const p of userPosts) {
-      const t = p.type.trim().toLowerCase();
+      const t = normalizePostType(p.type);
       if (t === "event") byType.event.push(p.postId);
       else if (t === "collab") byType.collab.push(p.postId);
       else if (t === "qna") byType.qna.push(p.postId);
@@ -127,14 +163,14 @@ export function UserPostsSection() {
           ]);
 
           const skillNameById = new Map<number, string>();
-          for (const s of (skills ?? []) as any[]) {
+          for (const s of (skills ?? []) as Array<Record<string, unknown>>) {
             if (typeof s?.id === "number" && typeof s?.skill === "string") {
               skillNameById.set(s.id, s.skill);
             }
           }
 
           const tagsByPostId = new Map<string, { skill_id: number; name: string }[]>();
-          for (const t of (tags ?? []) as any[]) {
+          for (const t of (tags ?? []) as Array<Record<string, unknown>>) {
             const postId = t?.post_id;
             const skillId = t?.skill_id;
             if (typeof postId !== "string" || typeof skillId !== "number") continue;
@@ -145,33 +181,35 @@ export function UserPostsSection() {
           }
 
           const map = new Map<string, EventPostType>();
-          for (const ev of (events ?? []) as any[]) {
-            const postId = ev?.post_id;
-            const postObj = ev?.all_posts;
+          for (const ev of (events ?? []) as Array<Record<string, unknown>>) {
+            const evRec = asRecord(ev);
+            const postId = getStringField(evRec, "post_id");
+            const postObj = asRecord(evRec?.all_posts);
+            const categoryObj = asRecord(evRec?.events_category);
             if (typeof postId !== "string") continue;
+
+            const title = getStringField(postObj, "title") ?? "Untitled";
+            const description = getStringField(postObj, "description") ?? "";
 
             map.set(postId, {
               id: postId,
-              category: ev?.events_category?.category_name ?? "Uncategorized",
-              title: typeof postObj?.title === "string" ? postObj.title : "Untitled",
+              category: getStringField(categoryObj, "category_name") ?? "Uncategorized",
+              title,
               author: displayName,
               authorAuthUid,
               dept,
               batch,
-              excerpt:
-                typeof postObj?.description === "string"
-                  ? postObj.description.slice(0, 100)
-                  : "",
-              body: typeof postObj?.description === "string" ? postObj.description : "",
-              location: ev?.location ?? null,
-              eventStartDate: ev?.event_start_date ?? null,
-              eventEndDate: ev?.event_end_date ?? null,
-              image: ev?.img_url ?? null,
-              likes: typeof postObj?.like_count === "number" ? postObj.like_count : 0,
+              excerpt: description ? description.slice(0, 100) : "",
+              body: description,
+              location: getStringField(evRec, "location"),
+              eventStartDate: getStringField(evRec, "event_start_date") ?? null,
+              eventEndDate: getStringField(evRec, "event_end_date") ?? null,
+              image: getStringField(evRec, "img_url") ?? null,
+              likes: getNumberField(postObj, "like_count") ?? 0,
               comments:
-                typeof postObj?.comment_count === "number" ? postObj.comment_count : 0,
+                getNumberField(postObj, "comment_count") ?? 0,
               shares: 0,
-              createdAt: typeof postObj?.created_at === "string" ? postObj.created_at : "",
+              createdAt: getStringField(postObj, "created_at") ?? "",
               segments: [],
               tags: tagsByPostId.get(postId) ?? [],
               profilePictureUrl: profilePictureUrl ?? undefined,
@@ -196,7 +234,7 @@ export function UserPostsSection() {
               supabase
                 .from("all_posts")
                 .select("post_id,title,description,author_id,like_count,comment_count,created_at")
-                .eq("type", "collab")
+                .in("type", ["collab", "collabhub"])
                 .in("post_id", idsByType.collab),
               supabase.from("collab_posts").select("post_id,category_id").in("post_id", idsByType.collab),
             ]);
@@ -254,18 +292,16 @@ export function UserPostsSection() {
           }
 
           const map = new Map<string, CollabPost>();
-          for (const row of (postRows ?? []) as any[]) {
-            const postId = row?.post_id;
-            const title = row?.title;
-            const description = row?.description;
-            if (typeof postId !== "string" || typeof title !== "string" || typeof description !== "string") {
-              continue;
-            }
+          for (const row of (postRows ?? []) as Array<Record<string, unknown>>) {
+            const postId = typeof row?.post_id === "string" ? row.post_id.trim() : "";
+            if (!postId) continue;
+
+            const title = String(row?.title ?? "Untitled");
+            const description = String(row?.description ?? (row as Record<string, unknown>)?.content ?? "");
 
             const categoryId = metaByPostId.get(postId);
             const categoryRaw = categoryId ? categoryById.get(categoryId) : undefined;
             const category = asCollabCategory(categoryRaw);
-            if (!category) continue;
 
             map.set(postId, {
               id: postId,
@@ -277,8 +313,8 @@ export function UserPostsSection() {
               authorBatch: batchLabel,
               authorAvatarUrl: profilePictureUrl,
               tags: tagsByPostId.get(postId) ?? [],
-              likes: typeof row?.like_count === "number" ? row.like_count : 0,
-              comments: typeof row?.comment_count === "number" ? row.comment_count : 0,
+              likes: typeof row?.like_count === "number" ? row.like_count : Number(row?.like_count ?? 0),
+              comments: typeof row?.comment_count === "number" ? row.comment_count : Number(row?.comment_count ?? 0),
               createdAt: typeof row?.created_at === "string" ? row.created_at : null,
             });
           }
@@ -299,16 +335,20 @@ export function UserPostsSection() {
           const { data: rows, error } = await supabase
             .from("all_posts")
             .select("post_id,title,description,like_count,comment_count,created_at")
-            .ilike("type", "qna")
             .in("post_id", idsByType.qna);
           if (error) throw error;
 
           const map = new Map<string, QnaFeedPost>();
-          for (const r of (rows ?? []) as any[]) {
-            const postId = r?.post_id;
-            const title = r?.title;
-            const description = r?.description;
-            if (typeof postId !== "string" || typeof title !== "string" || typeof description !== "string") continue;
+          for (const r of (rows ?? []) as Array<Record<string, unknown>>) {
+            const postId = typeof r?.post_id === "string" ? r.post_id.trim() : "";
+            if (!postId) continue;
+
+            const title = String(r?.title ?? "Untitled");
+            const description = String(r?.description ?? (r as Record<string, unknown>)?.content ?? "");
+
+            const createdAtRaw = r?.created_at;
+            const createdAt = typeof createdAtRaw === "string" ? createdAtRaw : null;
+
             map.set(postId, {
               id: postId,
               title,
@@ -319,10 +359,10 @@ export function UserPostsSection() {
               content: description,
               category: "Question",
               tags: [],
-              reactions: typeof r?.like_count === "number" ? r.like_count : 0,
-              comments: typeof r?.comment_count === "number" ? r.comment_count : 0,
+              reactions: typeof r?.like_count === "number" ? r.like_count : Number(r?.like_count ?? 0),
+              comments: typeof r?.comment_count === "number" ? r.comment_count : Number(r?.comment_count ?? 0),
               shares: 0,
-              timestamp: formatRelativeTime(r?.created_at ?? null),
+              timestamp: formatRelativeTime(createdAt),
             });
           }
 
@@ -342,7 +382,6 @@ export function UserPostsSection() {
           const { data: rows, error } = await supabase
             .from("all_posts")
             .select("post_id,title,description,like_count,comment_count,created_at")
-            .eq("type", "lostfound")
             .in("post_id", idsByType.lostfound);
           if (error) throw error;
 
@@ -354,7 +393,7 @@ export function UserPostsSection() {
 
           const imgById = new Map<string, string | null>();
           const catById = new Map<string, string | null>();
-          for (const m of (metaRows ?? []) as any[]) {
+          for (const m of (metaRows ?? []) as Array<Record<string, unknown>>) {
             const postId = m?.post_id;
             if (typeof postId !== "string") continue;
             imgById.set(postId, typeof m?.img_url === "string" && m.img_url.trim() ? m.img_url : null);
@@ -362,25 +401,30 @@ export function UserPostsSection() {
           }
 
           const map = new Map<string, LFPost>();
-          for (const r of (rows ?? []) as any[]) {
-            const postId = r?.post_id;
-            const title = r?.title;
-            const description = r?.description;
-            if (typeof postId !== "string" || typeof title !== "string" || typeof description !== "string") continue;
+          for (const r of (rows ?? []) as Array<Record<string, unknown>>) {
+            const postId = typeof r?.post_id === "string" ? r.post_id.trim() : "";
+            if (!postId) continue;
+
+            const title = String(r?.title ?? "Untitled");
+            const description = String(r?.description ?? (r as Record<string, unknown>)?.content ?? "");
+
+            const createdAtRaw = r?.created_at;
+            const createdAt = typeof createdAtRaw === "string" ? createdAtRaw : null;
+
             map.set(postId, {
               id: postId,
               category: catById.get(postId) ?? undefined,
               title,
               author: displayName,
               authorCourse: batchLabel || "—",
-              authorAvatar: undefined,
+              authorAvatar: profilePictureUrl ?? undefined,
               authorAuthUid,
               description,
               imageUrl: imgById.get(postId) ?? undefined,
-              reactions: typeof r?.like_count === "number" ? r.like_count : 0,
-              comments: typeof r?.comment_count === "number" ? r.comment_count : 0,
-              shares: 0,
-              timestamp: formatRelativeTime(r?.created_at ?? null),
+              likeCount: typeof r?.like_count === "number" ? r.like_count : Number(r?.like_count ?? 0),
+              commentCount:
+                typeof r?.comment_count === "number" ? r.comment_count : Number(r?.comment_count ?? 0),
+              timestamp: formatRelativeTime(createdAt),
             });
           }
 
@@ -416,7 +460,7 @@ export function UserPostsSection() {
           <p className="text-text-lighter-lm">No posts yet.</p>
         ) : (
           userPosts.map((p) => {
-            const t = p.type.trim().toLowerCase();
+            const t = normalizePostType(p.type);
 
             if (t === "event") {
               const post = eventById.get(p.postId);
@@ -471,11 +515,7 @@ export function UserPostsSection() {
                   key={p.postId}
                   post={post}
                   showPostTypeLabel
-                  isLiked={false}
-                  onToggleLike={() => {
-                    /* keep profile feed read-only for now */
-                  }}
-                  onOpenComments={() => navigate(postPath("lostfound", p.postId))}
+                  commentNavigateTo={postPath("lostfound", p.postId)}
                   onEdit={() => {
                     if (canEdit) navigate(postPath("lostfound", p.postId));
                   }}
