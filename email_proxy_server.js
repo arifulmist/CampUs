@@ -37,3 +37,8 @@ app.post("/send-email", async (req, res) => {
         res.status(500).json({ success: false, message: error.toString() });
     } 
 });
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Email proxy server is running on http://localhost:${PORT}`);
+});
