@@ -5,12 +5,17 @@ import { toast } from "react-hot-toast";
 import postEmptyState from "@/assets/images/noPost.svg";
 import { CategoryFilter } from "@/app/pages/CollabHub/components/CategoryFilter";
 
-import LostFoundPost, { type LostFoundPostType } from "./components/LostFoundPost";
+import LostFoundPost, {
+  type LostFoundPostType,
+} from "./components/LostFoundPost";
 import CreateLostFoundModal from "./components/CreateLostFoundModal";
 
 import { fetchLostAndFoundPosts } from "./backend/lostAndFoundService";
 import { Loading } from "../Fallback/Loading";
-import { fetchAttachmentUrlsByPostIds, normalizeAttachmentUrls } from "@/utils/postAttachments";
+import {
+  fetchAttachmentUrlsByPostIds,
+  normalizeAttachmentUrls,
+} from "@/utils/postAttachments";
 
 type LFCategory = "all" | "lost" | "found";
 
@@ -21,7 +26,7 @@ export function LostFound() {
   const [filter, setFilter] = useState<LFCategory>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const [_initialLoad, setInitialLoad] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
@@ -45,7 +50,12 @@ export function LostFound() {
     const categoryArg = filter === "all" ? null : filter;
 
     try {
-      const backend = await fetchLostAndFoundPosts({ limit: PAGE_SIZE, offset, order: "newest", category: categoryArg });
+      const backend = await fetchLostAndFoundPosts({
+        limit: PAGE_SIZE,
+        offset,
+        order: "newest",
+        category: categoryArg,
+      });
       const mapped: LostFoundPostType[] = (backend ?? []).map((p) => ({
         id: p.id,
         category: p.category === "found" ? "found" : "lost",
@@ -68,7 +78,10 @@ export function LostFound() {
       const attachmentMap = await fetchAttachmentUrlsByPostIds(ids);
       const withAttachments: LostFoundPostType[] = mapped.map((p) => {
         const fromTable = attachmentMap.get(p.id) ?? [];
-        const merged = normalizeAttachmentUrls([...fromTable, p.image ?? undefined]);
+        const merged = normalizeAttachmentUrls([
+          ...fromTable,
+          p.image ?? undefined,
+        ]);
         return {
           ...p,
           images: merged.length ? merged : undefined,
@@ -76,7 +89,9 @@ export function LostFound() {
         };
       });
 
-      setPosts((prev) => (reset ? withAttachments : [...prev, ...withAttachments]));
+      setPosts((prev) =>
+        reset ? withAttachments : [...prev, ...withAttachments],
+      );
       setHasMore(withAttachments.length === PAGE_SIZE);
       setPage((p) => (reset ? 1 : p + 1));
     } catch (err) {
@@ -106,7 +121,7 @@ export function LostFound() {
         if (!first?.isIntersecting) return;
         void loadPosts({ reset: false });
       },
-      { root: null, rootMargin: "400px", threshold: 0 }
+      { root: null, rootMargin: "400px", threshold: 0 },
     );
 
     obs.observe(el);
@@ -139,11 +154,17 @@ export function LostFound() {
               ) : filtered.length === 0 ? (
                 <div className="lg:flex flex-col lg:items-center lg:justify-center lg:min-h-50 border-stroke-grey">
                   <img src={postEmptyState} className="lg:size-50" />
-                  <p className="text-text-lighter-lm text-lg">No posts in this category</p>
+                  <p className="text-text-lighter-lm text-lg">
+                    No posts in this category
+                  </p>
                 </div>
               ) : (
                 filtered.map((p) => (
-                  <LostFoundPost key={p.id} post={p} onClick={() => navigate(`/lost-and-found/${p.id}`)} />
+                  <LostFoundPost
+                    key={p.id}
+                    post={p}
+                    onClick={() => navigate(`/lost-and-found/${p.id}`)}
+                  />
                 ))
               )}
 
@@ -159,10 +180,18 @@ export function LostFound() {
         </div>
 
         {/* RIGHT: Categories */}
-        <CategoryFilter categories={categories} selected={filter} onChange={setFilter} />
+        <CategoryFilter
+          categories={categories}
+          selected={filter}
+          onChange={setFilter}
+        />
       </div>
 
-      <CreateLostFoundModal open={modalOpen} onClose={() => setModalOpen(false)} onCreate={handleCreate} />
+      <CreateLostFoundModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreate={handleCreate}
+      />
     </div>
   );
 }

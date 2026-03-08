@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/supabase/supabaseClient";
 import { OnlineUsersContext } from "./OnlineUsersContext";
 
-export function OnlineUsersProvider({ children }: { children: React.ReactNode }) {
+export function OnlineUsersProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [authUid, setAuthUid] = useState<string | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
@@ -43,7 +47,7 @@ export function OnlineUsersProvider({ children }: { children: React.ReactNode })
       try {
         const channel = supabase.channel("online-users", {
           config: {
-            presence: { key: authUid },
+            presence: { key: authUid ?? undefined },
           },
         });
 
@@ -55,10 +59,12 @@ export function OnlineUsersProvider({ children }: { children: React.ReactNode })
             const online = new Set<string>();
 
             Object.values(state).forEach((presences) => {
-              (presences as Array<Record<string, unknown>>).forEach((presence) => {
-                const id = presence.auth_uid;
-                if (typeof id === "string") online.add(id);
-              });
+              (presences as Array<Record<string, unknown>>).forEach(
+                (presence) => {
+                  const id = presence.auth_uid;
+                  if (typeof id === "string") online.add(id);
+                },
+              );
             });
 
             if (!cancelled) setOnlineUserIds(online);
@@ -113,5 +119,9 @@ export function OnlineUsersProvider({ children }: { children: React.ReactNode })
 
   const value = useMemo(() => ({ onlineUserIds }), [onlineUserIds]);
 
-  return <OnlineUsersContext.Provider value={value}>{children}</OnlineUsersContext.Provider>;
+  return (
+    <OnlineUsersContext.Provider value={value}>
+      {children}
+    </OnlineUsersContext.Provider>
+  );
 }

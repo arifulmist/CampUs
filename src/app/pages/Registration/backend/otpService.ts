@@ -1,7 +1,4 @@
-import {
-  supabase,
-  callEdgeFunction,
-} from "@/supabase/supabaseClient";
+import { supabase } from "@/supabase/supabaseClient";
 
 /**
  * Generate a 6-digit OTP
