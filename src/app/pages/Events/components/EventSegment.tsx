@@ -1,3 +1,5 @@
+import React from "react";
+
 type SegmentTypes = {
   segmentTitle: string;
   segmentDescription: string;
@@ -62,11 +64,7 @@ export function EventSegment({
     try {
       const da = new Date(a);
       const db = new Date(b);
-      return (
-        da.getFullYear() === db.getFullYear() &&
-        da.getMonth() === db.getMonth() &&
-        da.getDate() === db.getDate()
-      );
+      return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
     } catch {
       return a === b;
     }
@@ -77,24 +75,17 @@ export function EventSegment({
       <h5 className="text-text-lm font-semibold">{segmentTitle}</h5>
       <div>
         <p className="text-accent-lm text-sm font-medium m-0 p-0">
-          {sd && ed && isSameDay(segmentStartDate, segmentEndDate) ? (
-            sd
-          ) : (
-            <>
-              {sd}
-              {sd && ed ? " \u2014 " : ""}
-              {ed ? ed : ""}
-            </>
-          )}
-          {(sd || ed) && (st || et) ? " | " : ""}
-          {st}
-          {et ? ` \u2014 ${et}` : ""}
+          {sd && ed && isSameDay(segmentStartDate, segmentEndDate)
+            ? sd
+            : (
+                <>
+                  {sd}{sd && ed ? " \u2014 " : ""}{ed ? ed : ""}
+                </>
+              )}
+          { (sd || ed) && (st || et) ? " | " : "" }
+          {st}{et ? ` \u2014 ${et}` : ""}
         </p>
-        {segmentLocation ? (
-          <p className="m-0 p-0 text-text-lm font-medium text-sm">
-            {segmentLocation}
-          </p>
-        ) : null}
+        {segmentLocation ? <p className="m-0 p-0 text-text-lm font-medium text-sm">{segmentLocation}</p> : null}
       </div>
       <p className="m-0 p-0 text-text-lm">{segmentDescription}</p>
     </div>

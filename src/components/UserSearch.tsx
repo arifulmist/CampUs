@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import placeholderUserImg from "@/assets/images/placeholderUser.png";
 import { supabase } from "@/supabase/supabaseClient";
@@ -41,7 +41,7 @@ export function UserSearch() {
         const { data: users, error: usersError } = await supabase
           .from("user_info")
           .select(
-            "auth_uid,name,batch,department,student_id,departments_lookup(department_name)",
+            "auth_uid,name,batch,department,student_id,departments_lookup(department_name)"
           )
           .ilike("name", `%${q}%`)
           .limit(8);
@@ -57,35 +57,24 @@ export function UserSearch() {
           batch: number | null;
         }> = [];
 
-        for (const row of (users ?? []) as unknown as Array<
-          Record<string, unknown>
-        >) {
+        for (const row of (users ?? []) as unknown as Array<Record<string, unknown>>) {
           const authUid = row.auth_uid;
           const name = row.name;
           const studentId = row.student_id;
           const deptIdOrText = row.department;
           const batch = row.batch;
-          const deptLookup = row.departments_lookup as
-            | Record<string, unknown>
-            | null
-            | undefined;
+          const deptLookup = row.departments_lookup as Record<string, unknown> | null | undefined;
           const deptName = deptLookup?.department_name;
 
-          if (
-            typeof authUid === "string" &&
-            typeof name === "string" &&
-            typeof studentId === "string"
-          ) {
+          if (typeof authUid === "string" && typeof name === "string" && typeof studentId === "string") {
             parsedUsers.push({
               authUid,
               studentId,
               name,
               department:
-                typeof deptName === "string" && deptName.trim()
+                (typeof deptName === "string" && deptName.trim())
                   ? deptName
-                  : typeof deptIdOrText === "string"
-                    ? deptIdOrText
-                    : "",
+                  : (typeof deptIdOrText === "string" ? deptIdOrText : ""),
               batch: typeof batch === "number" ? batch : null,
             });
           }
@@ -102,16 +91,10 @@ export function UserSearch() {
 
           if (profilesError) throw profilesError;
 
-          for (const row of (profiles ?? []) as unknown as Array<
-            Record<string, unknown>
-          >) {
+          for (const row of (profiles ?? []) as unknown as Array<Record<string, unknown>>) {
             const authUid = row.auth_uid;
             const url = row.profile_picture_url;
-            if (
-              typeof authUid === "string" &&
-              typeof url === "string" &&
-              url.trim()
-            ) {
+            if (typeof authUid === "string" && typeof url === "string" && url.trim()) {
               profilePicByAuthUid.set(authUid, url);
             }
           }
@@ -121,7 +104,7 @@ export function UserSearch() {
           parsedUsers.map((u) => ({
             ...u,
             profilePictureUrl: profilePicByAuthUid.get(u.authUid) ?? null,
-          })),
+          }))
         );
         setOpen(true);
       } catch (e: unknown) {
@@ -164,27 +147,24 @@ export function UserSearch() {
               {error}
             </div>
           )}
-          {!loading &&
-            !error &&
-            results.map((u) => (
-              <button
-                key={u.authUid}
-                onClick={() => goToProfile(u.studentId)}
-                className="lg:flex lg:w-full lg:items-center lg:gap-2 lg:px-3 lg:py-2 text-left hover:bg-hover-lm"
-              >
-                <img
-                  src={u.profilePictureUrl ?? placeholderUserImg}
-                  className="lg:h-6 lg:w-6 lg:rounded-full lg:border border-stroke-peach"
-                />
-                <div className="lg:flex-1">
-                  <div className="text-sm text-text-lm">{u.name}</div>
-                  <div className="text-xs text-text-lighter-lm">
-                    {u.department}
-                    {u.batch ? `-${u.batch}` : ""}
-                  </div>
+          {!loading && !error && results.map((u) => (
+            <button
+              key={u.authUid}
+              onClick={() => goToProfile(u.studentId)}
+              className="lg:flex lg:w-full lg:items-center lg:gap-2 lg:px-3 lg:py-2 text-left hover:bg-hover-lm"
+            >
+              <img
+                src={u.profilePictureUrl ?? placeholderUserImg}
+                className="lg:h-6 lg:w-6 lg:rounded-full lg:border border-stroke-peach"
+              />
+              <div className="lg:flex-1">
+                <div className="text-sm text-text-lm">{u.name}</div>
+                <div className="text-xs text-text-lighter-lm">
+                  {u.department}{u.batch ? `-${u.batch}` : ""}
                 </div>
-              </button>
-            ))}
+              </div>
+            </button>
+          ))}
           {!loading && !error && results.length === 0 && (
             <div className="lg:px-3 lg:py-2 text-sm text-text-lighter-lm">
               No matches

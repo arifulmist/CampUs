@@ -59,7 +59,7 @@ export async function storeOTP(
 }
 
 /**
- * Send OTP via Supabase Edge Function (Resend)
+ * Send OTP via Resend
  */
 export async function sendOTPEmail(
   email: string,
@@ -71,16 +71,32 @@ export async function sendOTPEmail(
   devOTP?: string;
 }> {
   try {
-    console.log("[OTP] Attempting to send OTP email to", email);
-
-    const result = await callEdgeFunction("send-otp", {
+    console.log("[OTP] Attempting to send OTP email", {
       email,
       otp,
-      student_id: studentId,
+      studentId,
     });
 
-    if (result.error) {
-      console.error("Error sending OTP email:", result.error);
+    // Backend email server URL (can be configured via Vite env var)
+    const baseUrl =
+      (import.meta as any).env.VITE_EMAIL_SERVER_URL || "http://localhost:5001";
+
+    const response = await fetch(`${baseUrl}/send-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: "Your Campus Login OTP",
+        text: `Your login verification code is: ${otp}\n\nStudent ID: ${studentId}\nThis code expires in 10 minutes.`,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      console.error("Error sending OTP email:", result);
 
       // For development / fallback: return OTP so it can be shown in UI
       return {

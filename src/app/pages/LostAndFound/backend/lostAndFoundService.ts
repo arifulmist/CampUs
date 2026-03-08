@@ -87,38 +87,26 @@ export async function fetchLostAndFoundPosts({
       if (!rpcRes.error && Array.isArray(rpcRes.data)) {
         const rows = rpcRes.data as any[];
         return rows.map((r) => {
-          const dept =
-            typeof r.author_department === "string" ? r.author_department : "";
-          const batch =
-            typeof r.author_batch === "string" ? r.author_batch : "";
+          const dept = typeof r.author_department === "string" ? r.author_department : "";
+          const batch = typeof r.author_batch === "string" ? r.author_batch : "";
           const course = dept && batch ? `${dept}-${batch}` : dept || undefined;
 
           return {
             id: String(r.post_id),
-            category:
-              typeof r.lf_category === "string" ? r.lf_category : "lost",
+            category: typeof r.lf_category === "string" ? r.lf_category : "lost",
             title: String(r.title ?? ""),
             description: String(r.description ?? ""),
-            authorAuthUid:
-              typeof r.author_auth_uid === "string"
-                ? r.author_auth_uid
-                : undefined,
-            authorName:
-              typeof r.author_name === "string" ? r.author_name : "Unknown",
+            authorAuthUid: typeof r.author_auth_uid === "string" ? r.author_auth_uid : undefined,
+            authorName: typeof r.author_name === "string" ? r.author_name : "Unknown",
             authorCourse: course,
-            authorAvatar:
-              typeof r.author_avatar === "string" ? r.author_avatar : null,
+            authorAvatar: typeof r.author_avatar === "string" ? r.author_avatar : null,
             likeCount: Number(r.like_count ?? 0),
             commentCount: Number(r.comment_count ?? 0),
             createdAt: typeof r.created_at === "string" ? r.created_at : null,
             updatedAt: null,
             imgUrl: typeof r.img_url === "string" ? r.img_url : null,
-            dateLostOrFound: r.date_lost_or_found
-              ? String(r.date_lost_or_found)
-              : null,
-            timeLostOrFound: r.time_lost_or_found
-              ? String(r.time_lost_or_found)
-              : null,
+            dateLostOrFound: r.date_lost_or_found ? String(r.date_lost_or_found) : null,
+            timeLostOrFound: r.time_lost_or_found ? String(r.time_lost_or_found) : null,
           } satisfies LFPost;
         });
       }
@@ -126,7 +114,7 @@ export async function fetchLostAndFoundPosts({
       if (rpcRes.error) {
         console.warn(
           "fetchLostAndFoundPosts: get_lostfound_feed_page RPC unavailable; falling back to slower multi-query path",
-          rpcRes.error,
+          rpcRes.error
         );
       }
     }
@@ -139,7 +127,7 @@ export async function fetchLostAndFoundPosts({
         .select(
           `post_id,title,description,author_id,like_count,comment_count,created_at,updated_at,
            lost_and_found_posts!inner(date_lost_or_found,time_lost_or_found,img_url,category),
-           author:user_info!fk_author(auth_uid,name,batch,department,departments_lookup(department_name),user_profile(profile_picture_url))`,
+           author:user_info!fk_author(auth_uid,name,batch,department,departments_lookup(department_name),user_profile(profile_picture_url))`
         )
         .eq("type", "lostfound")
         .order("created_at", { ascending: orderAsc })
@@ -157,66 +145,43 @@ export async function fetchLostAndFoundPosts({
             const lfRaw = row?.lost_and_found_posts;
             const lf = Array.isArray(lfRaw) ? lfRaw[0] : lfRaw;
             const author = row?.author;
-            const deptName =
-              author?.departments_lookup?.department_name ??
-              author?.department ??
-              "";
+            const deptName = author?.departments_lookup?.department_name ?? author?.department ?? "";
             const batch = author?.batch;
-            const course =
-              deptName &&
-              (typeof batch === "string" || typeof batch === "number")
-                ? `${deptName}-${String(batch)}`
-                : deptName || undefined;
+            const course = deptName && (typeof batch === "string" || typeof batch === "number") ? `${deptName}-${String(batch)}` : deptName || undefined;
             const avatar = author?.user_profile?.profile_picture_url ?? null;
 
             return {
               id: String(row.post_id),
-              category: (typeof lf?.category === "string"
-                ? lf.category
-                : "lost"
-              ).toLowerCase(),
+              category: (typeof lf?.category === "string" ? lf.category : "lost").toLowerCase(),
               title: String(row.title ?? ""),
               description: String(row.description ?? ""),
-              authorAuthUid:
-                typeof row.author_id === "string" ? row.author_id : undefined,
-              authorName:
-                typeof author?.name === "string" ? author.name : "Unknown",
+              authorAuthUid: typeof row.author_id === "string" ? row.author_id : undefined,
+              authorName: typeof author?.name === "string" ? author.name : "Unknown",
               authorCourse: course,
               authorAvatar: typeof avatar === "string" ? avatar : null,
               likeCount: Number(row.like_count ?? 0),
               commentCount: Number(row.comment_count ?? 0),
-              createdAt:
-                typeof row.created_at === "string" ? row.created_at : null,
-              updatedAt:
-                typeof row.updated_at === "string" ? row.updated_at : null,
+              createdAt: typeof row.created_at === "string" ? row.created_at : null,
+              updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
               imgUrl: typeof lf?.img_url === "string" ? lf.img_url : null,
-              dateLostOrFound: lf?.date_lost_or_found
-                ? String(lf.date_lost_or_found)
-                : null,
-              timeLostOrFound: lf?.time_lost_or_found
-                ? String(lf.time_lost_or_found)
-                : null,
+              dateLostOrFound: lf?.date_lost_or_found ? String(lf.date_lost_or_found) : null,
+              timeLostOrFound: lf?.time_lost_or_found ? String(lf.time_lost_or_found) : null,
             } satisfies LFPost;
           })
           .filter((p) => Boolean(p?.id));
 
         // Keep behavior correct on older DBs
-        return category
-          ? mapped.filter((p) => p.category === category)
-          : mapped;
+        return category ? mapped.filter((p) => p.category === category) : mapped;
       }
     } catch (e) {
       // ignore and continue with multi-query fallback
-      console.warn(
-        "fetchLostAndFoundPosts: embedded-select fast fallback failed; using multi-query fallback",
-        e,
-      );
+      console.warn("fetchLostAndFoundPosts: embedded-select fast fallback failed; using multi-query fallback", e);
     }
 
     const { data: rows, error } = await supabase
       .from("all_posts")
       .select(
-        `post_id, title, description, author_id, like_count, comment_count, created_at, updated_at`,
+        `post_id, title, description, author_id, like_count, comment_count, created_at, updated_at`
       )
       .eq("type", "lostfound")
       .order("created_at", { ascending: orderAsc })
@@ -231,18 +196,14 @@ export async function fetchLostAndFoundPosts({
 
     // Collect post_ids and author_ids
     const postIds = posts.map((p) => p.post_id);
-    const authorIds = Array.from(
-      new Set(posts.map((p) => p.author_id).filter(Boolean) as string[]),
-    );
+    const authorIds = Array.from(new Set(posts.map((p) => p.author_id).filter(Boolean) as string[]));
 
     // Fetch lost_and_found_posts rows for these postIds
     // NOTE: tolerate older DBs where the new `category` column doesn't exist yet.
     let lfRows: unknown[] | null = null;
     let lfTry1Query = supabase
       .from("lost_and_found_posts")
-      .select(
-        "post_id, date_lost_or_found, time_lost_or_found, img_url, category",
-      )
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .in("post_id", postIds);
 
     if (category) {
@@ -253,19 +214,13 @@ export async function fetchLostAndFoundPosts({
     const lfTry1 = await lfTry1Query;
 
     if (lfTry1.error) {
-      console.warn(
-        "fetchLostAndFoundPosts: lost_and_found_posts lookup error",
-        lfTry1.error,
-      );
+      console.warn("fetchLostAndFoundPosts: lost_and_found_posts lookup error", lfTry1.error);
       const lfTry2 = await supabase
         .from("lost_and_found_posts")
         .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
         .in("post_id", postIds);
       if (lfTry2.error) {
-        console.warn(
-          "fetchLostAndFoundPosts: lost_and_found_posts fallback also failed",
-          lfTry2.error,
-        );
+        console.warn("fetchLostAndFoundPosts: lost_and_found_posts fallback also failed", lfTry2.error);
       } else {
         lfRows = (lfTry2.data as unknown as unknown[]) ?? [];
       }
@@ -283,9 +238,7 @@ export async function fetchLostAndFoundPosts({
       authorIds.length
         ? supabase
             .from("user_info")
-            .select(
-              "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id",
-            )
+            .select("auth_uid,name,department,departments_lookup(department_name),level,batch,student_id")
             .in("auth_uid", authorIds)
         : Promise.resolve({ data: [], error: null } as any),
       authorIds.length
@@ -297,24 +250,16 @@ export async function fetchLostAndFoundPosts({
     ]);
 
     if (userInfoRes.error) {
-      console.warn(
-        "fetchLostAndFoundPosts: user_info lookup error",
-        userInfoRes.error,
-      );
+      console.warn("fetchLostAndFoundPosts: user_info lookup error", userInfoRes.error);
     }
     if (userProfileRes.error) {
-      console.warn(
-        "fetchLostAndFoundPosts: user_profile lookup error",
-        userProfileRes.error,
-      );
+      console.warn("fetchLostAndFoundPosts: user_profile lookup error", userProfileRes.error);
     }
     const userInfoById = new Map<string, UserInfoRow>();
     for (const u of (userInfoRes.data ?? []) as any[]) {
       if (!u?.auth_uid) continue;
       const deptLookupName = u?.departments_lookup?.department_name ?? null;
-      const dept =
-        deptLookupName ??
-        (typeof u.department === "string" ? u.department : u.department);
+      const dept = deptLookupName ?? (typeof u.department === "string" ? u.department : u.department);
       userInfoById.set(u.auth_uid, {
         auth_uid: u.auth_uid,
         name: u.name ?? null,
@@ -335,18 +280,12 @@ export async function fetchLostAndFoundPosts({
     // Map rows to LFPost shape expected by UI
     const result: LFPost[] = posts.map((ap) => {
       const lf = lfByPost.get(ap.post_id) ?? null;
-      const author = ap.author_id
-        ? (userInfoById.get(ap.author_id) ?? null)
-        : null;
-      const avatar = ap.author_id
-        ? (profileById.get(ap.author_id) ?? null)
-        : null;
+      const author = ap.author_id ? userInfoById.get(ap.author_id) ?? null : null;
+      const avatar = ap.author_id ? profileById.get(ap.author_id) ?? null : null;
       const course =
-        author?.department &&
-        author.batch !== null &&
-        author.batch !== undefined
+        author?.department && (author.batch !== null && author.batch !== undefined)
           ? `${author.department}-${author.batch}`
-          : (author?.department ?? undefined);
+          : author?.department ?? undefined;
 
       return {
         id: ap.post_id,
@@ -358,8 +297,7 @@ export async function fetchLostAndFoundPosts({
         authorCourse: course,
         authorAvatar: avatar ?? undefined,
         likeCount: typeof ap.like_count === "number" ? ap.like_count : 0,
-        commentCount:
-          typeof ap.comment_count === "number" ? ap.comment_count : 0,
+        commentCount: typeof ap.comment_count === "number" ? ap.comment_count : 0,
         createdAt: ap.created_at ?? null,
         updatedAt: ap.updated_at ?? null,
         imgUrl: lf?.img_url ?? null,
@@ -423,33 +361,26 @@ export async function createLostAndFoundPost({
           comment_count: 0,
         },
       ])
-      .select(
-        "post_id, title, description, author_id, like_count, comment_count, created_at, updated_at",
-      )
+      .select("post_id, title, description, author_id, like_count, comment_count, created_at, updated_at")
       .single();
 
     if (insertError) {
-      console.error(
-        "createLostAndFoundPost: insert all_posts error",
-        insertError,
-      );
+      console.error("createLostAndFoundPost: insert all_posts error", insertError);
       throw insertError;
     }
 
     const postId = (insertData as AllPostsRow).post_id;
     // Insert into lost_and_found_posts
     // NOTE: tolerate older DBs where the new `category` column doesn't exist yet.
-    let lfError = (
-      await supabase.from("lost_and_found_posts").insert([
-        {
-          post_id: postId,
-          date_lost_or_found: dateLostOrFound ?? null,
-          time_lost_or_found: timeLostOrFound ?? null,
-          img_url: imgUrl ?? null,
-          category: String(category).toLowerCase(),
-        },
-      ])
-    ).error;
+    let lfError = (await supabase.from("lost_and_found_posts").insert([
+      {
+        post_id: postId,
+        date_lost_or_found: dateLostOrFound ?? null,
+        time_lost_or_found: timeLostOrFound ?? null,
+        img_url: imgUrl ?? null,
+        category: String(category).toLowerCase(),
+      },
+    ])).error;
 
     if (lfError) {
       const fallback = await supabase.from("lost_and_found_posts").insert([
@@ -467,10 +398,7 @@ export async function createLostAndFoundPost({
 
     if (lfError) {
       // attempt to rollback all_posts insert (best-effort)
-      console.error(
-        "createLostAndFoundPost: insert lost_and_found_posts error",
-        lfError,
-      );
+      console.error("createLostAndFoundPost: insert lost_and_found_posts error", lfError);
       try {
         await supabase.from("all_posts").delete().eq("post_id", postId);
       } catch (rollbackErr) {
@@ -480,14 +408,12 @@ export async function createLostAndFoundPost({
     }
 
     // Return the joined post (reuse fetch function to keep mapping consistent)
-    await fetchLostAndFoundPosts({ limit: 1, order: "newest" });
+    const [created] = await fetchLostAndFoundPosts({ limit: 1, order: "newest" });
     // The above returns newest post; if multiple posts exist, ensure we return the inserted by id
     // Safer: fetch by post id explicitly
     const { data: fetchById, error: fetchErr } = await supabase
       .from("all_posts")
-      .select(
-        "post_id, type, title, description, author_id, like_count, comment_count, created_at, updated_at",
-      )
+      .select("post_id, type, title, description, author_id, like_count, comment_count, created_at, updated_at")
       .eq("post_id", postId)
       .maybeSingle();
 
@@ -496,9 +422,7 @@ export async function createLostAndFoundPost({
       // tolerate missing category column
       let lfRowRes = await supabase
         .from("lost_and_found_posts")
-        .select(
-          "post_id, date_lost_or_found, time_lost_or_found, img_url, category",
-        )
+        .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
         .eq("post_id", postId)
         .maybeSingle();
       if (lfRowRes.error) {
@@ -511,36 +435,21 @@ export async function createLostAndFoundPost({
       const lfRow = (lfRowRes.data ?? null) as LostAndFoundRow | null;
 
       const authorRow = authorAuthUid
-        ? ((
-            await supabase
-              .from("user_info")
-              .select("auth_uid,name,department,level,batch")
-              .eq("auth_uid", authorAuthUid)
-              .maybeSingle()
-          ).data as any)
+        ? ((await supabase.from("user_info").select("auth_uid,name,department,level,batch").eq("auth_uid", authorAuthUid).maybeSingle()).data as any)
         : null;
       const profileRow = authorAuthUid
-        ? ((
-            await supabase
-              .from("user_profile")
-              .select("auth_uid,profile_picture_url")
-              .eq("auth_uid", authorAuthUid)
-              .maybeSingle()
-          ).data as any)
+        ? ((await supabase.from("user_profile").select("auth_uid,profile_picture_url").eq("auth_uid", authorAuthUid).maybeSingle()).data as any)
         : null;
 
       const authorName = authorRow?.name ?? "Unknown";
       const dept = authorRow?.department ?? null;
       const batch = authorRow?.batch ?? null;
-      const course = dept && batch ? `${dept}-${batch}` : (dept ?? undefined);
+      const course = dept && batch ? `${dept}-${batch}` : dept ?? undefined;
       const avatar = profileRow?.profile_picture_url ?? undefined;
 
       return {
         id: postId,
-        category: (lfRow?.category
-          ? String(lfRow.category)
-          : String(category)
-        ).toLowerCase(),
+        category: (lfRow?.category ? String(lfRow.category) : String(category)).toLowerCase(),
         title,
         description,
         authorAuthUid: authorAuthUid ?? undefined,
@@ -562,9 +471,7 @@ export async function createLostAndFoundPost({
     // tolerate missing category column
     let lfRowRes2 = await supabase
       .from("lost_and_found_posts")
-      .select(
-        "post_id, date_lost_or_found, time_lost_or_found, img_url, category",
-      )
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .eq("post_id", postId)
       .maybeSingle();
     if (lfRowRes2.error) {
@@ -578,9 +485,7 @@ export async function createLostAndFoundPost({
 
     const { data: userInfoData } = await supabase
       .from("user_info")
-      .select(
-        "auth_uid,name,department,departments_lookup(department_name),batch",
-      )
+      .select("auth_uid,name,department,departments_lookup(department_name),batch")
       .eq("auth_uid", allPostRow.author_id)
       .maybeSingle();
 
@@ -592,32 +497,22 @@ export async function createLostAndFoundPost({
 
     const authorName = userInfoData?.name ?? "Unknown";
     const deptName =
-      userInfoData?.departments_lookup?.[0]?.department_name ??
-      (typeof userInfoData?.department === "string"
-        ? userInfoData?.department
-        : undefined);
+      userInfoData?.departments_lookup?.department_name ??
+      (typeof userInfoData?.department === "string" ? userInfoData?.department : undefined);
     const batch = userInfoData?.batch ?? undefined;
-    const course =
-      deptName && batch ? `${deptName}-${batch}` : (deptName ?? undefined);
+    const course = deptName && batch ? `${deptName}-${batch}` : deptName ?? undefined;
 
     return {
       id: allPostRow.post_id,
-      category: (lfRow2?.category
-        ? String(lfRow2.category)
-        : String(category)
-      ).toLowerCase(),
+      category: (lfRow2?.category ? String(lfRow2.category) : String(category)).toLowerCase(),
       title: allPostRow.title,
       description: allPostRow.description,
       authorAuthUid: allPostRow.author_id ?? undefined,
       authorName,
       authorCourse: course,
       authorAvatar: userProfileData?.profile_picture_url ?? undefined,
-      likeCount:
-        typeof allPostRow.like_count === "number" ? allPostRow.like_count : 0,
-      commentCount:
-        typeof allPostRow.comment_count === "number"
-          ? allPostRow.comment_count
-          : 0,
+      likeCount: typeof allPostRow.like_count === "number" ? allPostRow.like_count : 0,
+      commentCount: typeof allPostRow.comment_count === "number" ? allPostRow.comment_count : 0,
       createdAt: allPostRow.created_at ?? null,
       updatedAt: allPostRow.updated_at ?? null,
       imgUrl: lfRow2?.img_url ?? null,
@@ -651,31 +546,22 @@ export async function updateLostAndFoundPost({
   try {
     const allUpdates: Partial<AllPostsRow> = {};
     if (typeof updates.title === "string") allUpdates.title = updates.title;
-    if (typeof updates.description === "string")
-      allUpdates.description = updates.description;
+    if (typeof updates.description === "string") allUpdates.description = updates.description;
 
     if (Object.keys(allUpdates).length) {
-      const { error: updErr } = await supabase
-        .from("all_posts")
-        .update(allUpdates)
-        .eq("post_id", postId);
+      const { error: updErr } = await supabase.from("all_posts").update(allUpdates).eq("post_id", postId);
       if (updErr) throw updErr;
     }
 
     const lfUpdates: Partial<LostAndFoundRow> = {};
-    if (typeof updates.category === "string")
-      lfUpdates.category = updates.category.toLowerCase();
+    if (typeof updates.category === "string") lfUpdates.category = updates.category.toLowerCase();
     // `date_lost_or_found` is NOT NULL in the DB schema. Only include it in the
     // upsert when the caller provides a non-empty string. This prevents
     // attempting to write NULL and violating the constraint.
-    if (
-      typeof updates.dateLostOrFound === "string" &&
-      updates.dateLostOrFound.trim() !== ""
-    ) {
+    if (typeof updates.dateLostOrFound === "string" && updates.dateLostOrFound.trim() !== "") {
       lfUpdates.date_lost_or_found = updates.dateLostOrFound;
     }
-    if ("timeLostOrFound" in updates)
-      lfUpdates.time_lost_or_found = updates.timeLostOrFound ?? null;
+    if ("timeLostOrFound" in updates) lfUpdates.time_lost_or_found = updates.timeLostOrFound ?? null;
     if ("imgUrl" in updates) lfUpdates.img_url = updates.imgUrl ?? null;
 
     if (Object.keys(lfUpdates).length) {
@@ -690,11 +576,7 @@ export async function updateLostAndFoundPost({
             .select("category")
             .eq("post_id", postId)
             .maybeSingle();
-          if (
-            !fetchErr &&
-            existing &&
-            typeof (existing as any).category === "string"
-          ) {
+          if (!fetchErr && existing && typeof (existing as any).category === "string") {
             lfUpdates.category = (existing as any).category;
           } else {
             lfUpdates.category = "lost";
@@ -716,16 +598,12 @@ export async function updateLostAndFoundPost({
         // If the upsert failed for another reason (RLS/403, NOT NULL violation,
         // etc.), rethrow the original error to avoid inserting NULL into the
         // NOT NULL `category` column.
-        const errMsg =
-          lfErr && (lfErr as any).message
-            ? String((lfErr as any).message).toLowerCase()
-            : "";
-        const errCode =
-          lfErr && (lfErr as any).code ? String((lfErr as any).code) : "";
+        const errMsg = (lfErr && (lfErr as any).message) ? String((lfErr as any).message).toLowerCase() : "";
+        const errCode = (lfErr && (lfErr as any).code) ? String((lfErr as any).code) : "";
 
         const looksLikeMissingColumn =
           errCode === "42703" || // undefined_column
-          errMsg.includes('column "category"') ||
+          errMsg.includes("column \"category\"") ||
           errMsg.includes("does not exist") ||
           errMsg.includes("unrecognized column") ||
           errMsg.includes("missing column");
@@ -761,15 +639,11 @@ export async function updateLostAndFoundPost({
 /**
  * Fetch a single lost & found post by id (joined)
  */
-export async function fetchLostAndFoundPostById(
-  postId: string,
-): Promise<LFPost | null> {
+export async function fetchLostAndFoundPostById(postId: string): Promise<LFPost | null> {
   try {
     const { data: allRow, error: allErr } = await supabase
       .from("all_posts")
-      .select(
-        "post_id, type, title, description, author_id, like_count, comment_count, created_at, updated_at",
-      )
+      .select("post_id, type, title, description, author_id, like_count, comment_count, created_at, updated_at")
       .eq("post_id", postId)
       .maybeSingle();
 
@@ -783,26 +657,18 @@ export async function fetchLostAndFoundPostById(
     let lfRow: any = null;
     const lfTry1 = await supabase
       .from("lost_and_found_posts")
-      .select(
-        "post_id, date_lost_or_found, time_lost_or_found, img_url, category",
-      )
+      .select("post_id, date_lost_or_found, time_lost_or_found, img_url, category")
       .eq("post_id", postId)
       .maybeSingle();
     if (lfTry1.error) {
-      console.warn(
-        "fetchLostAndFoundPostById lost_and_found_posts error",
-        lfTry1.error,
-      );
+      console.warn("fetchLostAndFoundPostById lost_and_found_posts error", lfTry1.error);
       const lfTry2 = await supabase
         .from("lost_and_found_posts")
         .select("post_id, date_lost_or_found, time_lost_or_found, img_url")
         .eq("post_id", postId)
         .maybeSingle();
       if (lfTry2.error) {
-        console.warn(
-          "fetchLostAndFoundPostById lost_and_found_posts fallback error",
-          lfTry2.error,
-        );
+        console.warn("fetchLostAndFoundPostById lost_and_found_posts fallback error", lfTry2.error);
       } else {
         lfRow = lfTry2.data ?? null;
       }
@@ -812,9 +678,7 @@ export async function fetchLostAndFoundPostById(
 
     const { data: userInfoData } = await supabase
       .from("user_info")
-      .select(
-        "auth_uid,name,department,departments_lookup(department_name),batch",
-      )
+      .select("auth_uid,name,department,departments_lookup(department_name),batch")
       .eq("auth_uid", allRow.author_id)
       .maybeSingle();
 
@@ -826,20 +690,14 @@ export async function fetchLostAndFoundPostById(
 
     const authorName = userInfoData?.name ?? "Unknown";
     const deptName =
-      userInfoData?.departments_lookup?.[0]?.department_name ??
-      (typeof userInfoData?.department === "string"
-        ? userInfoData?.department
-        : undefined);
+      userInfoData?.departments_lookup?.department_name ??
+      (typeof userInfoData?.department === "string" ? userInfoData?.department : undefined);
     const batch = userInfoData?.batch ?? undefined;
-    const course =
-      deptName && batch ? `${deptName}-${batch}` : (deptName ?? undefined);
+    const course = deptName && batch ? `${deptName}-${batch}` : deptName ?? undefined;
 
     return {
       id: allRow.post_id,
-      category: (lfRow?.category
-        ? String(lfRow.category)
-        : "lost"
-      ).toLowerCase(),
+      category: (lfRow?.category ? String(lfRow.category) : "lost").toLowerCase(),
       title: allRow.title,
       description: allRow.description,
       authorAuthUid: allRow.author_id ?? undefined,
@@ -847,8 +705,7 @@ export async function fetchLostAndFoundPostById(
       authorCourse: course,
       authorAvatar: userProfileData?.profile_picture_url ?? undefined,
       likeCount: typeof allRow.like_count === "number" ? allRow.like_count : 0,
-      commentCount:
-        typeof allRow.comment_count === "number" ? allRow.comment_count : 0,
+      commentCount: typeof allRow.comment_count === "number" ? allRow.comment_count : 0,
       createdAt: allRow.created_at ?? null,
       updatedAt: allRow.updated_at ?? null,
       imgUrl: lfRow?.img_url ?? null,
@@ -870,27 +727,15 @@ export async function fetchLostAndFoundPostById(
  */
 export async function deleteLostAndFoundPost(postId: string): Promise<boolean> {
   try {
-    const { error: lfErr } = await supabase
-      .from("lost_and_found_posts")
-      .delete()
-      .eq("post_id", postId);
+    const { error: lfErr } = await supabase.from("lost_and_found_posts").delete().eq("post_id", postId);
     if (lfErr) {
-      console.warn(
-        "deleteLostAndFoundPost: failed to delete lost_and_found_posts",
-        lfErr,
-      );
+      console.warn("deleteLostAndFoundPost: failed to delete lost_and_found_posts", lfErr);
       // continue to attempt deleting all_posts
     }
 
-    const { error: allErr } = await supabase
-      .from("all_posts")
-      .delete()
-      .eq("post_id", postId);
+    const { error: allErr } = await supabase.from("all_posts").delete().eq("post_id", postId);
     if (allErr) {
-      console.error(
-        "deleteLostAndFoundPost: failed to delete all_posts",
-        allErr,
-      );
+      console.error("deleteLostAndFoundPost: failed to delete all_posts", allErr);
       throw allErr;
     }
     return true;
@@ -904,10 +749,7 @@ export async function deleteLostAndFoundPost(postId: string): Promise<boolean> {
  * Increment/decrement like_count on a post and return new like_count.
  * delta: +1 or -1
  */
-export async function changePostLikeCount(
-  postId: string,
-  delta = 1,
-): Promise<number> {
+export async function changePostLikeCount(postId: string, delta = 1): Promise<number> {
   try {
     const { data: fetch, error: fetchErr } = await supabase
       .from("all_posts")
@@ -922,10 +764,7 @@ export async function changePostLikeCount(
     const current = Number((fetch as any)?.like_count ?? 0);
     const next = Math.max(0, current + delta);
 
-    const { error: updateErr } = await supabase
-      .from("all_posts")
-      .update({ like_count: next })
-      .eq("post_id", postId);
+    const { error: updateErr } = await supabase.from("all_posts").update({ like_count: next }).eq("post_id", postId);
     if (updateErr) {
       console.error("changePostLikeCount updateErr", updateErr);
       throw updateErr;
@@ -941,10 +780,7 @@ export async function changePostLikeCount(
  * Increment comment_count on a post by delta (default +1). Useful when client adds/removes comments.
  * Returns new comment_count.
  */
-export async function changePostCommentCount(
-  postId: string,
-  delta = 1,
-): Promise<number> {
+export async function changePostCommentCount(postId: string, delta = 1): Promise<number> {
   try {
     const { data: fetch, error: fetchErr } = await supabase
       .from("all_posts")
@@ -959,10 +795,7 @@ export async function changePostCommentCount(
     const current = Number((fetch as any)?.comment_count ?? 0);
     const next = Math.max(0, current + delta);
 
-    const { error: updateErr } = await supabase
-      .from("all_posts")
-      .update({ comment_count: next })
-      .eq("post_id", postId);
+    const { error: updateErr } = await supabase.from("all_posts").update({ comment_count: next }).eq("post_id", postId);
     if (updateErr) {
       console.error("changePostCommentCount updateErr", updateErr);
       throw updateErr;

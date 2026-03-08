@@ -62,9 +62,7 @@ export type CommentNode = {
  * Fetch comments for a given post, joined with user_info (based on your schema).
  * The `user_info(...)` selection must match the actual foreign key relationship name in Supabase.
  */
-export async function fetchCommentsByPost(
-  postId: string,
-): Promise<CommentRow[]> {
+export async function fetchCommentsByPost(postId: string): Promise<CommentRow[]> {
   const { data, error } = await supabase
     .from("comments")
     .select(
@@ -76,7 +74,7 @@ export async function fetchCommentsByPost(
       content,
       like_count,
       parent_comment_id
-    `,
+    `
     )
     .eq("post_id", postId)
     // Keep DB order stable (oldest -> newest). Parent sorting is done in UI,
@@ -88,32 +86,23 @@ export async function fetchCommentsByPost(
     throw error;
   }
 
-  const rows = ((data as unknown as CommentRow[]) || []).map((r) => ({
-    ...r,
-    user_info: null,
-  }));
+  const rows = ((data as unknown as CommentRow[]) || []).map((r) => ({ ...r, user_info: null }));
   const authorIds = Array.from(
-    new Set(
-      rows
-        .map((r) => r.author_id)
-        .filter((x): x is string => typeof x === "string" && x !== ""),
-    ),
+    new Set(rows.map((r) => r.author_id).filter((x): x is string => typeof x === "string" && x))
   );
 
   if (!authorIds.length) return rows;
 
-  const [
-    { data: users, error: usersError },
-    { data: departments, error: deptError },
-  ] = await Promise.all([
-    supabase
-      .from("user_info")
-      .select(
-        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at",
-      )
-      .in("auth_uid", authorIds),
-    supabase.from("departments_lookup").select("dept_id,department_name"),
-  ]);
+  const [{ data: users, error: usersError }, { data: departments, error: deptError }] =
+    await Promise.all([
+      supabase
+    .from("user_info")
+    .select(
+        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at"
+    )
+        .in("auth_uid", authorIds),
+      supabase.from("departments_lookup").select("dept_id,department_name"),
+    ]);
 
   if (usersError) {
     console.warn("fetchCommentsByPost user_info lookup error", usersError);
@@ -125,11 +114,8 @@ export async function fetchCommentsByPost(
   }
 
   const deptById = new Map<string, string>();
-  for (const d of (departments ?? []) as unknown as DepartmentRow[]) {
-    if (
-      typeof d.dept_id === "string" &&
-      typeof d.department_name === "string"
-    ) {
+  for (const d of ((departments ?? []) as unknown as DepartmentRow[])) {
+    if (typeof d.dept_id === "string" && typeof d.department_name === "string") {
       deptById.set(d.dept_id, d.department_name);
     }
   }
@@ -139,10 +125,10 @@ export async function fetchCommentsByPost(
     if (typeof u.auth_uid !== "string") continue;
     const deptName =
       u.departments_lookup?.department_name ??
-      (u.department ? (deptById.get(u.department) ?? null) : null);
+      (u.department ? deptById.get(u.department) ?? null : null);
     const normalized: UserInfoLookupRow = {
       ...u,
-      department: deptName ?? u.department ?? null,
+      department: (deptName ?? u.department) ?? null,
     };
     byId.set(u.auth_uid, normalized);
   }
@@ -166,15 +152,11 @@ export function buildCommentsTree(rows: CommentRow[]): CommentNode[] {
     const avatar = null; // your schema doesn't have avatar; keep null or default on client
     const dept = r.user_info?.department ?? "";
     const batch = r.user_info?.batch ?? null;
-    const courseLabel =
-      `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() ||
-      null;
+    const courseLabel = `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() || null;
     const likes = Number(r.like_count ?? 0);
-    const timestamp =
-      typeof r.comment_creation_timestamp === "string" &&
-      r.comment_creation_timestamp
-        ? new Date(r.comment_creation_timestamp).toISOString()
-        : null;
+    const timestamp = typeof r.comment_creation_timestamp === "string" && r.comment_creation_timestamp
+      ? new Date(r.comment_creation_timestamp).toISOString()
+      : null;
 
     map.set(id, {
       id,
@@ -253,7 +235,7 @@ export async function addComment({
       content,
       like_count,
       parent_comment_id
-    `,
+    `
     )
     .eq("comment_id", inserted.comment_id)
     .single();
@@ -270,7 +252,7 @@ export async function addComment({
     const { data: u, error: uErr } = await supabase
       .from("user_info")
       .select(
-        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at",
+        "auth_uid,name,department,departments_lookup(department_name),level,batch,student_id,email,mobile,created_at"
       )
       .eq("auth_uid", row.author_id)
       .maybeSingle();
@@ -291,7 +273,7 @@ export async function addComment({
 
         userInfo = {
           ...urow,
-          department: deptName ?? urow.department ?? null,
+          department: (deptName ?? urow.department) ?? null,
         };
       }
     }
@@ -299,9 +281,7 @@ export async function addComment({
 
   const dept = userInfo?.department ?? "";
   const batch = userInfo?.batch ?? null;
-  const courseLabel =
-    `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() ||
-    null;
+  const courseLabel = `${dept}${batch !== null && batch !== undefined ? `-${batch}` : ""}`.trim() || null;
 
   const node: CommentNode = {
     id: row.comment_id,
@@ -312,8 +292,7 @@ export async function addComment({
     likes: Number(row.like_count ?? 0),
     parentId: row.parent_comment_id ?? null,
     timestamp:
-      typeof row.comment_creation_timestamp === "string" &&
-      row.comment_creation_timestamp
+      typeof row.comment_creation_timestamp === "string" && row.comment_creation_timestamp
         ? new Date(row.comment_creation_timestamp).toISOString()
         : null,
     raw: { ...row, user_info: userInfo },
@@ -327,10 +306,7 @@ export async function addComment({
  * delta: +1 to increment, -1 to decrement
  * Returns the new like_count (number).
  */
-export async function changeCommentLikeCount(
-  commentId: string,
-  delta = 1,
-): Promise<number> {
+export async function changeCommentLikeCount(commentId: string, delta = 1): Promise<number> {
   // fetch current
   const { data: fetch, error: fetchErr } = await supabase
     .from("comments")
@@ -389,14 +365,7 @@ export async function getCurrentUserProfile(): Promise<{
 
     if (error) {
       console.warn("getCurrentUserProfile: user_info row not found", error);
-      return {
-        auth_uid: uid,
-        name: null,
-        department: null,
-        level: null,
-        batch: null,
-        student_id: null,
-      };
+      return { auth_uid: uid, name: null, department: null, level: null, batch: null, student_id: null };
     }
     return {
       auth_uid: profile.auth_uid,
