@@ -7,10 +7,12 @@ app.use(express.json());
 
 const PORT = process.env.EMAIL_PROXY_PORT || 5000;
 
-const allowedOrigins = [process.env.CLIENT_URL, "http://localhost:5173"]; // Frontend and Email Server
+const allowedOrigins = [process.env.CLIENT_URL, "http://localhost:5173"].filter(Boolean);
 
 app.use(cors({
-    origin: allowedOrigins
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type'],
 }));
 
 app.get('/', (req, res) => {
