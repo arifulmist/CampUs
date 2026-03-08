@@ -1,24 +1,24 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY as string
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function callEdgeFunction(functionName: string, body: any) {
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`
-      },
-      body: JSON.stringify(body)
-    })
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body,
+    });
 
-    return await response.json()
+    if (error) {
+      console.error("Edge function error:", error);
+      return { error: error.message };
+    }
+
+    return data;
   } catch (error) {
-    console.error('Error calling edge function:', error)
-    return { error: 'Failed to call function' }
+    console.error("Error calling edge function:", error);
+    return { error: "Failed to call function" };
   }
 }
